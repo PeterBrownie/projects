@@ -593,6 +593,148 @@
         .cell:hover .reroll-btn { opacity: 1; }
         .reroll-btn:hover { background: rgba(0,0,0,0.8); color: #7ee8a2; border-color: rgba(255,255,255,0.4); }
 
+        .layers-btn {
+            position: absolute;
+            bottom: 6px;
+            right: 6px;
+            width: 26px;
+            height: 26px;
+            background: rgba(0,0,0,0.55);
+            border: 1px solid rgba(255,255,255,0.18);
+            color: rgba(255,255,255,0.5);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.15s, background 0.15s, color 0.15s;
+            z-index: 10;
+            pointer-events: auto;
+        }
+        .cell:hover .layers-btn { opacity: 1; }
+        .layers-btn:hover { background: rgba(0,0,0,0.8); color: #a8d8ff; border-color: rgba(255,255,255,0.4); }
+
+        #layer-panel {
+            display: none;
+            position: fixed;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 8px;
+            min-width: 220px;
+            max-width: 280px;
+            z-index: 9000;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.7);
+            overflow: hidden;
+        }
+        #layer-panel.visible { display: block; }
+        #layer-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            border-bottom: 1px solid #333;
+        }
+        #layer-panel-title { font-size: 13px; font-weight: 600; color: #ddd; }
+        #layer-panel-close {
+            background: none;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+            padding: 0 2px;
+        }
+        #layer-panel-close:hover { color: #fff; }
+        #layer-panel-list {
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+        .layer-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px;
+            border-radius: 4px;
+            background: #222;
+            border: 1px solid #333;
+        }
+        .layer-preview-canvas {
+            width: 60px;
+            height: 40px;
+            border-radius: 3px;
+            flex-shrink: 0;
+            background: #111;
+            display: block;
+        }
+        .layer-type-label {
+            flex: 1;
+            font-size: 11px;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .layer-delete-btn {
+            background: none;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #888;
+            cursor: pointer;
+            font-size: 15px;
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background 0.12s, color 0.12s, border-color 0.12s;
+        }
+        .layer-delete-btn:hover:not(:disabled) { background: rgba(255,80,80,0.2); color: #ff8080; border-color: #ff6060; }
+        .layer-delete-btn:disabled { opacity: 0.3; cursor: default; }
+        .layer-vis-btn {
+            background: none;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #888;
+            cursor: pointer;
+            width: 22px;
+            height: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background 0.12s, color 0.12s, border-color 0.12s;
+        }
+        .layer-vis-btn:hover { background: rgba(255,255,255,0.08); color: #ccc; border-color: #666; }
+        .layer-vis-btn.hidden { color: #555; border-color: #383838; }
+        .layer-row.layer-hidden { opacity: 0.45; }
+        #layer-tooltip {
+            display: none;
+            position: fixed;
+            background: #111;
+            border: 1px solid #3a3a3a;
+            border-radius: 5px;
+            padding: 6px 9px;
+            font-size: 11px;
+            color: #999;
+            z-index: 9999;
+            pointer-events: none;
+            line-height: 1.7;
+            white-space: nowrap;
+        }
+        #layer-tooltip.visible { display: block; }
+        #layer-tooltip b { color: #ddd; font-weight: 600; display: block; margin-bottom: 2px; }
+        #layer-tooltip .tip-effect { color: #aaa; }
+        #layer-tooltip .tip-none { color: #555; font-style: italic; }
+
         .color-dice {
             position: absolute;
             bottom: 6px;
@@ -815,6 +957,16 @@
         <p>evolveSVG is designed for desktop use. On a phone, things may be hard to interact with.</p>
         <button id="mobile-warning-dismiss">Ok, whatever.<br>(ignore & close)</button>
     </div>
+</div>
+
+<div id="layer-tooltip"></div>
+
+<div id="layer-panel">
+    <div id="layer-panel-header">
+        <span id="layer-panel-title">Layers</span>
+        <button id="layer-panel-close">×</button>
+    </div>
+    <div id="layer-panel-list"></div>
 </div>
 
 <div id="sidebar-wrapper">
@@ -1191,6 +1343,7 @@ function genomeToSVG(genome, W = 640, H = 360, prefix = 'x', loose = false) {
 
     bodyParts.push(renderBackground(genome, W, H, defs, makeGradientId));
     for (const layer of genome.layers) {
+        if (layer.hidden) continue;
         bodyParts.push(renderLayer(layer, genome.palette, W, H, defs, makeGradientId));
     }
 
@@ -2048,10 +2201,195 @@ function evolveFrom(parentIdx) {
         newGenomes[i] = mutateGenome(parent, opts);
     }
     for (let i = 0; i < 9; i++) { genomes[i] = newGenomes[i]; cellCache[i] = null; }
+    // Strip hidden flags so evolved children always start fully visible
+    for (let i = 0; i < 9; i++) genomes[i].layers.forEach(l => delete l.hidden);
 
     // Re-render all
     for (let i = 0; i < 9; i++) renderCell(i);
     setSelected(4); // select parent in center
+}
+
+let layerPanelCellIdx = -1;
+let layerPanelMouseLeaveHandler = null;
+
+function openLayerPanel(cellIdx, anchorEl) {
+    const panel = document.getElementById('layer-panel');
+
+    // Toggle closed if already open for this cell
+    if (layerPanelCellIdx === cellIdx && panel.classList.contains('visible')) {
+        closeLayerPanel();
+        return;
+    }
+
+    layerPanelCellIdx = cellIdx;
+    populateLayerPanel(cellIdx);
+    panel.classList.add('visible');
+
+    // Position panel beside the anchor button, keeping within viewport
+    const rect = anchorEl.getBoundingClientRect();
+    const panelW = 268;
+    const approxPanelH = 60 + genomes[cellIdx].layers.length * 58;
+    let left = rect.right + 8;
+    let top = rect.top;
+    if (left + panelW > window.innerWidth - 8) left = rect.left - panelW - 8;
+    if (top + approxPanelH > window.innerHeight - 8) top = Math.max(8, window.innerHeight - approxPanelH - 8);
+    panel.style.left = left + 'px';
+    panel.style.top = top + 'px';
+
+    // Auto-close when mouse strays far from the panel
+    if (layerPanelMouseLeaveHandler) document.removeEventListener('mousemove', layerPanelMouseLeaveHandler);
+    const DISMISS_DIST = 120;
+    layerPanelMouseLeaveHandler = e => {
+        const r = panel.getBoundingClientRect();
+        const dx = Math.max(0, r.left - e.clientX, e.clientX - r.right);
+        const dy = Math.max(0, r.top - e.clientY, e.clientY - r.bottom);
+        if (Math.hypot(dx, dy) > DISMISS_DIST) closeLayerPanel();
+    };
+    document.addEventListener('mousemove', layerPanelMouseLeaveHandler);
+}
+
+function closeLayerPanel() {
+    document.getElementById('layer-panel').classList.remove('visible');
+    layerPanelCellIdx = -1;
+    if (layerPanelMouseLeaveHandler) {
+        document.removeEventListener('mousemove', layerPanelMouseLeaveHandler);
+        layerPanelMouseLeaveHandler = null;
+    }
+    hideLayerTooltip();
+}
+
+function getLayerEffectNames(layer) {
+    const effects = [];
+    if (layer.morph)             effects.push(layer.morph.operator === 'dilate' ? 'Morph: dilate' : 'Morph: erode');
+    if (layer.displace)          effects.push('Displacement');
+    if (layer.blur)              effects.push('Blur');
+    if (layer.colorShift)        effects.push('Color shift');
+    if (layer.componentTransfer) effects.push('Channel curves');
+    if (layer.diffuseLight)      effects.push('Diffuse light');
+    if (layer.convolve)          effects.push('Convolve: ' + layer.convolve.type);
+    if (layer.shadow)            effects.push('Shadow');
+    if (layer.mask)              effects.push('Mask: ' + layer.mask.type);
+    if (layer.dash)              effects.push('Dashed stroke');
+    return effects;
+}
+
+function showLayerTooltip(canvas, layer) {
+    const effects = getLayerEffectNames(layer);
+    const tip = document.getElementById('layer-tooltip');
+    const typeName = layer.type.replace(/_/g, ' ');
+    const lines = effects.length
+        ? effects.map(e => `<span class="tip-effect">${e}</span>`).join('<br>')
+        : `<span class="tip-none">no effects</span>`;
+    tip.innerHTML = `<b>${typeName}</b>${lines}`;
+    tip.classList.add('visible');
+
+    const r = canvas.getBoundingClientRect();
+    const tipW = tip.offsetWidth || 140;
+    const tipH = tip.offsetHeight || 40;
+    let left = r.right + 8;
+    let top = r.top;
+    if (left + tipW > window.innerWidth - 6) left = r.left - tipW - 8;
+    if (top + tipH > window.innerHeight - 6) top = window.innerHeight - tipH - 6;
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+}
+
+function hideLayerTooltip() {
+    document.getElementById('layer-tooltip').classList.remove('visible');
+}
+
+const eyeOpenSVG = `<svg width="14" height="10" viewBox="0 0 14 10" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 5C3 1 11 1 13 5C11 9 3 9 1 5Z" stroke="currentColor" stroke-width="1.2"/><circle cx="7" cy="5" r="1.8" fill="currentColor"/></svg>`;
+const eyeClosedSVG = `<svg width="14" height="10" viewBox="0 0 14 10" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 5C3 1 11 1 13 5C11 9 3 9 1 5Z" stroke="currentColor" stroke-width="1.2" opacity="0.4"/><line x1="2" y1="8.5" x2="12" y2="1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+
+function populateLayerPanel(cellIdx) {
+    const genome = genomes[cellIdx];
+    const list = document.getElementById('layer-panel-list');
+    list.innerHTML = '';
+    document.getElementById('layer-panel-title').textContent = `Layers (${genome.layers.length})`;
+
+    genome.layers.forEach((layer, layerIdx) => {
+        const row = document.createElement('div');
+        row.className = 'layer-row' + (layer.hidden ? ' layer-hidden' : '');
+
+        const canvas = document.createElement('canvas');
+        canvas.className = 'layer-preview-canvas';
+        canvas.width = 120;
+        canvas.height = 80;
+        canvas.addEventListener('mouseenter', () => showLayerTooltip(canvas, layer));
+        canvas.addEventListener('mouseleave', hideLayerTooltip);
+        renderLayerPreview(canvas, genome, layerIdx);
+
+        const label = document.createElement('span');
+        label.className = 'layer-type-label';
+        label.textContent = layer.type.replace(/_/g, ' ');
+
+        const visBtn = document.createElement('button');
+        visBtn.className = 'layer-vis-btn' + (layer.hidden ? ' hidden' : '');
+        visBtn.title = layer.hidden ? 'Show layer' : 'Hide layer';
+        visBtn.innerHTML = layer.hidden ? eyeClosedSVG : eyeOpenSVG;
+        visBtn.addEventListener('click', () => toggleLayerVisibility(cellIdx, layerIdx));
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'layer-delete-btn';
+        delBtn.title = genome.layers.length <= 1 ? 'Cannot delete the only layer' : 'Delete layer';
+        delBtn.textContent = '×';
+        if (genome.layers.length <= 1) delBtn.disabled = true;
+        delBtn.addEventListener('click', () => deleteLayer(cellIdx, layerIdx));
+
+        row.appendChild(canvas);
+        row.appendChild(label);
+        row.appendChild(visBtn);
+        row.appendChild(delBtn);
+        list.appendChild(row);
+    });
+}
+
+function toggleLayerVisibility(cellIdx, layerIdx) {
+    const layer = genomes[cellIdx].layers[layerIdx];
+    layer.hidden = !layer.hidden;
+    cellCache[cellIdx] = null;
+    renderCell(cellIdx);
+    // Update only the affected row in-place to avoid re-rendering all thumbnails
+    const row = document.getElementById('layer-panel-list').children[layerIdx];
+    if (row) {
+        row.classList.toggle('layer-hidden', !!layer.hidden);
+        const visBtn = row.querySelector('.layer-vis-btn');
+        if (visBtn) {
+            visBtn.classList.toggle('hidden', !!layer.hidden);
+            visBtn.title = layer.hidden ? 'Show layer' : 'Hide layer';
+            visBtn.innerHTML = layer.hidden ? eyeClosedSVG : eyeOpenSVG;
+        }
+    }
+}
+
+async function renderLayerPreview(canvas, genome, layerIdx) {
+    const previewGenome = {
+        palette: genome.palette,
+        background: genome.background,
+        layers: [genome.layers[layerIdx]]
+    };
+    const svgStr = genomeToSVG(previewGenome, 120, 80, `lp${layerIdx}_${Date.now()}`);
+    const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    await new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+            canvas.getContext('2d').drawImage(img, 0, 0, 120, 80);
+            URL.revokeObjectURL(url);
+            resolve();
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+        img.src = url;
+    });
+}
+
+function deleteLayer(cellIdx, layerIdx) {
+    const genome = genomes[cellIdx];
+    if (genome.layers.length <= 1) return;
+    genome.layers.splice(layerIdx, 1);
+    cellCache[cellIdx] = null;
+    renderCell(cellIdx);
+    populateLayerPanel(cellIdx);
 }
 
 function handleCellClick(idx) {
@@ -2109,6 +2447,14 @@ function buildGrid() {
         expandBtn.addEventListener('mousedown', e => e.stopPropagation());
         expandBtn.addEventListener('click', e => { e.stopPropagation(); openExpand(i); });
         cell.appendChild(expandBtn);
+
+        const layersBtn = document.createElement('button');
+        layersBtn.className = 'layers-btn';
+        layersBtn.title = 'Edit layers';
+        layersBtn.innerHTML = '☰';
+        layersBtn.addEventListener('mousedown', e => e.stopPropagation());
+        layersBtn.addEventListener('click', e => { e.stopPropagation(); openLayerPanel(i, layersBtn); });
+        cell.appendChild(layersBtn);
 
         const label = document.createElement('div');
         label.className = 'cell-label';
@@ -3077,6 +3423,14 @@ if (FS_SUPPORTED) {
 }
 buildGrid();
 restart();
+
+document.getElementById('layer-panel-close').addEventListener('click', closeLayerPanel);
+document.addEventListener('mousedown', e => {
+    const panel = document.getElementById('layer-panel');
+    if (panel.classList.contains('visible') && !panel.contains(e.target) && !e.target.closest('.layers-btn')) {
+        closeLayerPanel();
+    }
+});
 
 (function() {
     const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
