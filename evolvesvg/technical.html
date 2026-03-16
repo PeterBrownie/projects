@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Technical — evolveSVG</title>
+    <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "03a89f35132a4e8aa86bf1ed1b60541a"}'></script><!-- End Cloudflare Web Analytics -->
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg:        #0e0e0e;
+            --surface:   #161616;
+            --surface2:  #1e1e1e;
+            --border:    #2a2a2a;
+            --border2:   #333;
+            --text:      #ccc;
+            --text-dim:  #777;
+            --text-faint:#444;
+            --accent:    #4a9eff;
+            --accent2:   #c0c0c0;
+            --gold:      #f5c542;
+            --green:     #4ade80;
+            --orange:    #fb923c;
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-size: 15px;
+            line-height: 1.65;
+            min-height: 100vh;
+            overflow-x: clip;
+        }
+
+        /* ── Top nav ──────────────────────────────────────── */
+        .topnav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(14,14,14,0.92);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 0 28px;
+            height: 52px;
+        }
+
+        .topnav-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 5px 10px;
+            border: 1px solid var(--border2);
+            border-radius: 4px;
+            transition: background 0.15s, border-color 0.15s;
+            flex-shrink: 0;
+        }
+        .topnav-back:hover { background: #1a1a1a; border-color: #555; }
+        .topnav-back .arrow { font-size: 15px; line-height: 1; }
+
+        .topnav-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #fff;
+            letter-spacing: -0.2px;
+        }
+
+        .topnav-sep { color: var(--border2); }
+
+        .topnav-subtitle {
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+
+        /* ── Page layout ──────────────────────────────────── */
+        .page {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 60px 28px 100px;
+        }
+
+        /* ── Hero ─────────────────────────────────────────── */
+        .hero {
+            text-align: center;
+            padding: 20px 0 56px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 64px;
+        }
+
+        .hero-label {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 14px;
+        }
+
+        .hero-wordmark {
+            font-size: clamp(32px, 7vw, 58px);
+            font-weight: 800;
+            letter-spacing: -2px;
+            color: #fff;
+            line-height: 1.05;
+        }
+
+        .hero-wordmark span { color: var(--accent); }
+
+        .hero-tagline {
+            margin-top: 16px;
+            font-size: 16px;
+            color: var(--text-dim);
+            max-width: 580px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.6;
+        }
+
+        /* ── TOC ──────────────────────────────────────────── */
+        .toc {
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            padding: 24px 28px;
+            margin-bottom: 64px;
+        }
+
+        .toc-title {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 14px;
+        }
+
+        .toc-list {
+            list-style: none;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px 32px;
+        }
+
+        @media (max-width: 560px) {
+            .toc-list { grid-template-columns: 1fr; }
+        }
+
+        .toc-list a {
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .toc-list a:hover { text-decoration: underline; }
+        .toc-list .num {
+            font-size: 11px;
+            color: var(--text-faint);
+            font-variant-numeric: tabular-nums;
+            min-width: 18px;
+        }
+
+        /* ── Section ──────────────────────────────────────── */
+        .section {
+            margin-bottom: 72px;
+            scroll-margin-top: 70px;
+        }
+
+        .section-label {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+
+        .section-title {
+            font-size: 26px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: -0.5px;
+            margin-bottom: 18px;
+            line-height: 1.25;
+        }
+
+        .section-body p {
+            color: var(--text);
+            margin-bottom: 14px;
+        }
+        .section-body p:last-child { margin-bottom: 0; }
+
+        /* ── Subsection ───────────────────────────────────── */
+        .subsection {
+            margin-top: 40px;
+        }
+
+        .subsection-title {
+            font-size: 17px;
+            font-weight: 650;
+            color: #fff;
+            letter-spacing: -0.3px;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* ── Code blocks ──────────────────────────────────── */
+        pre {
+            background: #111;
+            border: 1px solid var(--border2);
+            border-radius: 6px;
+            padding: 18px 20px;
+            overflow-x: auto;
+            margin: 16px 0;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        code {
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', Menlo, Monaco, Consolas, monospace;
+            font-size: 13px;
+        }
+
+        p code, li code {
+            background: #1a1a1a;
+            border: 1px solid var(--border2);
+            border-radius: 3px;
+            padding: 1px 5px;
+            color: var(--accent2);
+            font-size: 12.5px;
+        }
+
+        .kw  { color: #c792ea; }   /* keyword */
+        .fn  { color: #82aaff; }   /* function */
+        .str { color: #c3e88d; }   /* string */
+        .num { color: #f78c6c; }   /* number */
+        .cm  { color: #546e7a; font-style: italic; } /* comment */
+        .key { color: #89ddff; }   /* object key */
+
+        /* ── Tables ───────────────────────────────────────── */
+        .table-wrap {
+            overflow-x: auto;
+            margin: 16px 0;
+            border-radius: 6px;
+            border: 1px solid var(--border2);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13.5px;
+        }
+
+        thead tr {
+            background: var(--surface2);
+        }
+
+        th {
+            text-align: left;
+            padding: 10px 16px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            border-bottom: 1px solid var(--border2);
+        }
+
+        td {
+            padding: 9px 16px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text);
+            vertical-align: top;
+        }
+
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: #131313; }
+
+        td code { font-size: 12px; }
+
+        /* ── Tier cards ───────────────────────────────────── */
+        .tier-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 20px 0;
+        }
+
+        @media (max-width: 640px) {
+            .tier-grid { grid-template-columns: 1fr; }
+        }
+
+        .tier-card {
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .tier-card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .tier-badge {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: 4px;
+            padding: 3px 7px;
+            color: var(--accent);
+            flex-shrink: 0;
+        }
+
+        .tier-card-title {
+            font-size: 14px;
+            font-weight: 650;
+            color: #fff;
+        }
+
+        .tier-card p {
+            font-size: 13.5px;
+            color: var(--text-dim);
+            line-height: 1.55;
+        }
+
+        /* ── Callout / note boxes ─────────────────────────── */
+        .callout {
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-left: 3px solid var(--accent);
+            border-radius: 6px;
+            padding: 16px 20px;
+            margin: 18px 0;
+            font-size: 14px;
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .callout.green  { border-left-color: var(--green); }
+        .callout.orange { border-left-color: var(--orange); }
+        .callout.gold   { border-left-color: var(--gold); }
+
+        .callout-label {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            color: var(--accent);
+        }
+        .callout.green  .callout-label { color: var(--green); }
+        .callout.orange .callout-label { color: var(--orange); }
+        .callout.gold   .callout-label { color: var(--gold); }
+
+        /* ── Probability row ──────────────────────────────── */
+        .prob-list {
+            list-style: none;
+            margin: 16px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .prob-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 13.5px;
+        }
+
+        .prob-label { flex: 1; color: var(--text); }
+
+        .prob-formula {
+            font-family: 'SF Mono', Menlo, monospace;
+            font-size: 12px;
+            color: var(--text-dim);
+            background: var(--surface2);
+            padding: 2px 7px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
+        .prob-bar-wrap {
+            width: 90px;
+            height: 6px;
+            background: var(--surface2);
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
+        .prob-bar {
+            height: 100%;
+            border-radius: 3px;
+            background: var(--accent);
+        }
+
+        /* ── Feature flag grid ────────────────────────────── */
+        .flag-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 16px 0;
+        }
+
+        .flag-card {
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 6px;
+            padding: 14px 16px;
+        }
+
+        .flag-name {
+            font-family: 'SF Mono', Menlo, monospace;
+            font-size: 12.5px;
+            color: var(--accent2);
+            margin-bottom: 4px;
+        }
+
+        .flag-desc {
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        .flag-tier {
+            display: inline-block;
+            margin-top: 6px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        .flag-tier.standard     { background: #1a2a3a; color: var(--accent); }
+        .flag-tier.experimental { background: #2a1a0a; color: var(--orange); }
+
+        /* ── Divider ──────────────────────────────────────── */
+        .divider {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin: 56px 0;
+        }
+
+        /* ── Footer ───────────────────────────────────────── */
+        .footer {
+            margin-top: 80px;
+            padding-top: 28px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            color: var(--text-faint);
+            font-size: 13px;
+        }
+
+        .footer a {
+            color: var(--text-dim);
+            text-decoration: none;
+        }
+        .footer a:hover { color: var(--accent); }
+    </style>
+</head>
+<body>
+
+<nav class="topnav">
+    <a href="index.html" class="topnav-back"><span class="arrow">←</span> Back</a>
+    <span class="topnav-sep">/</span>
+    <span class="topnav-title">evolveSVG</span>
+    <span class="topnav-sep">/</span>
+    <span class="topnav-subtitle">Technical Reference</span>
+</nav>
+
+<div class="page">
+
+    <!-- Hero -->
+    <div class="hero">
+        <div class="hero-label">Technical Reference</div>
+        <h1 class="hero-wordmark">How <span>Mutations</span> Work</h1>
+        <p class="hero-tagline">A full breakdown of the generative evolution engine — genome structure, Gaussian randomization, the 4-tier mutation pipeline, and everything in between.</p>
+    </div>
+
+    <!-- TOC -->
+    <div class="toc">
+        <div class="toc-title">Contents</div>
+        <ul class="toc-list">
+            <li><a href="#overview"><span class="num">01</span> Architecture Overview</a></li>
+            <li><a href="#genome"><span class="num">02</span> Genome Structure</a></li>
+            <li><a href="#randomization"><span class="num">03</span> Randomization Foundation</a></li>
+            <li><a href="#tier1"><span class="num">04</span> Tier 1 — Color Mutation</a></li>
+            <li><a href="#tier2"><span class="num">05</span> Tier 2 — Parameter Mutation</a></li>
+            <li><a href="#tier3"><span class="num">06</span> Tier 3 — Layer Mutation</a></li>
+            <li><a href="#tier4"><span class="num">07</span> Tier 4 — Genome Mutation</a></li>
+            <li><a href="#flow"><span class="num">08</span> Evolution Flow</a></li>
+            <li><a href="#controls"><span class="num">09</span> User Controls</a></li>
+            <li><a href="#flags"><span class="num">10</span> Feature Flag System</a></li>
+        </ul>
+    </div>
+
+    <!-- 01 Architecture -->
+    <section class="section" id="overview">
+        <div class="section-label">01 — Architecture</div>
+        <h2 class="section-title">Architecture Overview</h2>
+        <div class="section-body">
+            <p>evolveSVG is a <strong style="color:#fff">generative art evolution engine</strong> that uses controlled randomization to evolve SVG patterns across generations. The entire application lives in a single HTML file (<code>evolvesvg/index.html</code>).</p>
+            <p>The interface is a <strong style="color:#fff">9-cell grid</strong>. Cell index <code>4</code> (center) always holds the current parent. The 8 surrounding cells hold independent mutations derived from that parent. Clicking any cell breeds 8 new mutations from it, placing it in the center.</p>
+        </div>
+
+        <div class="callout gold">
+            <div class="callout-label">Key principle</div>
+            The parent is never modified. All mutations operate on deep clones, so every evolution step is non-destructive and fully reversible by re-selecting the center.
+        </div>
+    </section>
+
+    <!-- 02 Genome -->
+    <section class="section" id="genome">
+        <div class="section-label">02 — Data Model</div>
+        <h2 class="section-title">Genome Structure</h2>
+        <div class="section-body">
+            <p>Each genome is a plain JSON object fully describing one SVG pattern. It has three top-level fields: a color palette, a background, and an ordered list of layers.</p>
+        </div>
+
+        <pre><code><span class="cm">// Top-level genome</span>
+{
+  <span class="key">palette</span>:    <span class="kw">Color</span>[]          <span class="cm">// 2–6 HSL colors</span>
+  <span class="key">background</span>: <span class="kw">GradientFill</span>     <span class="cm">// solid | linear | radial</span>
+  <span class="key">layers</span>:     <span class="kw">Layer</span>[]          <span class="cm">// 1–8 composited layers</span>
+}
+
+<span class="cm">// Color — all values numeric</span>
+{
+  <span class="key">h</span>: <span class="num">0</span>–<span class="num">360</span>        <span class="cm">// hue (wraps)</span>
+  <span class="key">s</span>: <span class="num">10</span>–<span class="num">100</span>       <span class="cm">// saturation (clamped)</span>
+  <span class="key">l</span>: <span class="num">5</span>–<span class="num">95</span>        <span class="cm">// lightness (clamped)</span>
+}
+
+<span class="cm">// Layer — core fields (all layers have these)</span>
+{
+  <span class="key">type</span>:              <span class="str">'circle'</span> | <span class="str">'ellipse'</span> | <span class="str">'rect'</span> | <span class="str">'polygon'</span> | <span class="str">'path'</span>
+                   | <span class="str">'dots_grid'</span> | <span class="str">'stripes'</span> | <span class="str">'crosshatch'</span>
+                   | <span class="str">'checkerboard'</span> | <span class="str">'waves'</span> | <span class="str">'zigzag'</span> | <span class="str">'hexgrid'</span>
+  <span class="key">cx</span>, <span class="key">cy</span>:           <span class="num">0</span>–<span class="num">1</span>        <span class="cm">// normalized position</span>
+  <span class="key">params</span>:           {}          <span class="cm">// type-specific (radius, size, …)</span>
+  <span class="key">fill</span>:             <span class="kw">Fill</span>        <span class="cm">// solid | linear | radial gradient</span>
+  <span class="key">stroke</span>:           <span class="kw">Stroke</span>
+  <span class="key">opacity</span>:          <span class="num">0.05</span>–<span class="num">1</span>
+  <span class="key">blendMode</span>:        <span class="kw">string</span>      <span class="cm">// CSS blend mode</span>
+  <span class="key">transform</span>:        <span class="kw">Transform</span>   <span class="cm">// rotation, scaleX/Y</span>
+  <span class="key">arrangement</span>:      <span class="str">'single'</span> | <span class="str">'grid'</span> | <span class="str">'radial'</span> | <span class="str">'scatter'</span>
+  <span class="key">arrangementParams</span>: {}
+
+  <span class="cm">// Optional advanced effects (any combination)</span>
+  <span class="key">displace</span>?:         <span class="cm">// feTurbulence + feDisplacementMap</span>
+  <span class="key">dash</span>?:             <span class="cm">// dashed stroke pattern</span>
+  <span class="key">blur</span>?:             <span class="cm">// feGaussianBlur</span>
+  <span class="key">colorShift</span>?:       <span class="cm">// hue-rotate + saturate</span>
+  <span class="key">mask</span>?:             <span class="cm">// radial or linear gradient mask</span>
+  <span class="key">morph</span>?:            <span class="cm">// feMorphology dilate/erode</span>
+  <span class="key">shadow</span>?:           <span class="cm">// drop shadow</span>
+  <span class="key">componentTransfer</span>?: <span class="cm">// per-channel gamma curves</span>
+  <span class="key">diffuseLight</span>?:     <span class="cm">// 3D diffuse lighting</span>
+  <span class="key">convolve</span>?:         <span class="cm">// emboss / sharpen / edge kernel</span>
+}</code></pre>
+
+    </section>
+
+    <!-- 03 Randomization -->
+    <section class="section" id="randomization">
+        <div class="section-label">03 — Randomization</div>
+        <h2 class="section-title">Randomization Foundation</h2>
+        <div class="section-body">
+            <p>All mutations use <strong style="color:#fff">Gaussian (Box-Muller) noise</strong> rather than uniform random. This produces a bell-curve distribution around the parent value — small tweaks are common, moderate changes are frequent, and radical jumps are rare. The result is evolution that feels smooth and aesthetically coherent rather than chaotic.</p>
+        </div>
+
+        <pre><code><span class="kw">function</span> <span class="fn">gauss</span>() {
+    <span class="cm">// Box-Muller transform → standard normal distribution</span>
+    <span class="kw">let</span> u = <span class="num">0</span>, v = <span class="num">0</span>;
+    <span class="kw">while</span> (u === <span class="num">0</span>) u = Math.<span class="fn">random</span>();
+    <span class="kw">while</span> (v === <span class="num">0</span>) v = Math.<span class="fn">random</span>();
+    <span class="kw">return</span> Math.<span class="fn">sqrt</span>(-<span class="num">2</span> * Math.<span class="fn">log</span>(u)) * Math.<span class="fn">cos</span>(<span class="num">2</span> * Math.PI * v);
+}
+
+<span class="cm">// Core nudge utility — all continuous mutations flow through this</span>
+<span class="kw">function</span> <span class="fn">nudge</span>(v, range, lo = -Infinity, hi = Infinity) {
+    <span class="kw">return</span> <span class="fn">clamp</span>(v + <span class="fn">gauss</span>() * range, lo, hi);
+}</code></pre>
+
+        <div class="callout">
+            <div class="callout-label">Why Gaussian?</div>
+            Uniform randomization would make a large mutation equally likely as a tiny one. Gaussian noise concentrates changes near zero, so most mutations are small refinements — exactly what you want when steering a design toward something you like.
+        </div>
+
+    </section>
+
+    <!-- 04 Tier 1 -->
+    <section class="section" id="tier1">
+        <div class="section-label">04 — Tier 1</div>
+        <h2 class="section-title">Color Mutation — <code>mutateColor()</code></h2>
+        <div class="section-body">
+            <p>Mutates a single HSL color. Each channel is nudged independently with type-specific bounds that keep colors vivid and readable across generations.</p>
+        </div>
+
+        <pre><code><span class="kw">function</span> <span class="fn">mutateColor</span>(c, range) {
+    <span class="kw">return</span> {
+        h: (c.h + <span class="fn">gauss</span>() * range * <span class="num">40</span> + <span class="num">360</span>) % <span class="num">360</span>,   <span class="cm">// wraps, ±40° * range</span>
+        s: <span class="fn">clamp</span>(c.s + <span class="fn">gauss</span>() * range * <span class="num">20</span>, <span class="num">10</span>, <span class="num">100</span>), <span class="cm">// clamped [10–100]</span>
+        l: <span class="fn">clamp</span>(c.l + <span class="fn">gauss</span>() * range * <span class="num">20</span>, <span class="num">5</span>, <span class="num">95</span>),   <span class="cm">// clamped [5–95]</span>
+    };
+}</code></pre>
+
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Channel</th><th>Mutation Scale</th><th>Bounds</th><th>Reason</th></tr></thead>
+                <tbody>
+                    <tr><td>Hue</td><td><code>range × 40°</code></td><td>Wraps at 360°</td><td>Color wheel is continuous</td></tr>
+                    <tr><td>Saturation</td><td><code>range × 20%</code></td><td>[10, 100]</td><td>Prevents fully grey drift</td></tr>
+                    <tr><td>Lightness</td><td><code>range × 20%</code></td><td>[5, 95]</td><td>Preserves contrast headroom</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- 05 Tier 2 -->
+    <section class="section" id="tier2">
+        <div class="section-label">05 — Tier 2</div>
+        <h2 class="section-title">Parameter Mutation — <code>mutateParams()</code></h2>
+        <div class="section-body">
+            <p>Mutates the type-specific <code>params</code> object of a layer. Each shape type has hand-tuned scale factors to prevent runaway drift — geometry types use small fractions of normalized coordinate space, while tiling types use larger pixel-space factors.</p>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Shape Type</th><th>Parameters</th><th>Scale Factor</th></tr></thead>
+                <tbody>
+                    <tr><td><code>circle</code></td><td><code>r</code> (radius)</td><td>0.05× → clamped [0.01, 0.5]</td></tr>
+                    <tr><td><code>ellipse</code></td><td><code>rx</code>, <code>ry</code></td><td>0.05× each independently</td></tr>
+                    <tr><td><code>rect</code></td><td><code>w</code>, <code>h</code>, <code>rx</code> (corner)</td><td>0.05× size, 0.02× corner</td></tr>
+                    <tr><td><code>polygon</code></td><td><code>r</code>, <code>sides</code></td><td>0.05×; sides jumps ±1 at 5% chance</td></tr>
+                    <tr><td><code>path</code></td><td>each point x/y</td><td>10% of current value</td></tr>
+                    <tr><td><code>dots_grid</code></td><td><code>spacing</code>, <code>r</code>, <code>jitter</code></td><td>6×, 2.5×, 0.1×</td></tr>
+                    <tr><td><code>stripes</code></td><td><code>spacing</code>, <code>lineWidth</code>, <code>angle</code></td><td>6×, 4×, 15° nudge</td></tr>
+                    <tr><td><code>waves</code> / <code>zigzag</code></td><td><code>spacing</code>, <code>amplitude</code>, <code>frequency</code></td><td>Multi-parameter tuning</td></tr>
+                    <tr><td><code>hexgrid</code> / <code>crosshatch</code></td><td>size, spacing, angle</td><td>Type-specific pixel-space factors</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="callout orange">
+            <div class="callout-label">Design Note</div>
+            Tiling types (<code>dots_grid</code>, <code>stripes</code>, etc.) use larger raw scale factors because their parameters live in pixel space, not the [0,1] normalized coordinate space used by geometry types.
+        </div>
+    </section>
+
+    <!-- 06 Tier 3 -->
+    <section class="section" id="tier3">
+        <div class="section-label">06 — Tier 3</div>
+        <h2 class="section-title">Layer Mutation — <code>mutateLayer()</code></h2>
+        <div class="section-body">
+            <p>The most complex tier. Each layer is mutated across three distinct categories.</p>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">A — Continuous Parameters (always applied)</div>
+            <p style="margin-bottom:12px;color:var(--text)">These are nudged on every mutation regardless of structure rate:</p>
+            <ul style="list-style:none;display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--text-dim)">
+                <li>→ Position <code>cx</code>, <code>cy</code> — nudged at <code>0.1×</code> scale</li>
+                <li>→ Fill alpha — nudged at <code>0.1×</code></li>
+                <li>→ Stroke width and alpha</li>
+                <li>→ Opacity</li>
+                <li>→ Transform: rotation (Gaussian ±15°), <code>scaleX</code>/<code>scaleY</code> (0.1×)</li>
+            </ul>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">B — Structural Changes (probabilistic)</div>
+            <pre><code><span class="cm">// Triggered by structRate slider (default 0.3)</span>
+<span class="kw">if</span> (Math.<span class="fn">random</span>() &lt; structRate * <span class="num">0.15</span>) l.blendMode   = <span class="fn">pick</span>(BLEND_MODES);
+<span class="kw">if</span> (Math.<span class="fn">random</span>() &lt; structRate * <span class="num">0.10</span>) l.type        = <span class="fn">pick</span>(TYPES);
+<span class="kw">if</span> (Math.<span class="fn">random</span>() &lt; structRate * <span class="num">0.10</span>) l.arrangement = <span class="fn">pick</span>(ARRANGEMENTS);
+<span class="kw">if</span> (Math.<span class="fn">random</span>() &lt; structRate * <span class="num">0.10</span>) l.fill.type   = <span class="fn">pick</span>([<span class="str">'solid'</span>, <span class="str">'linear'</span>, <span class="str">'radial'</span>]);</code></pre>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">C — Advanced Effects (spawn / mutate / remove)</div>
+            <p style="margin-bottom:12px;color:var(--text)">Every optional effect follows the same three-way logic:</p>
+            <pre><code><span class="cm">// Pattern repeated for every effect type:</span>
+<span class="kw">if</span> (l.displace != <span class="kw">null</span>) {
+    <span class="cm">// Mutate existing effect</span>
+    l.displace.scale    = <span class="fn">clamp</span>(<span class="fn">nudge</span>(...), <span class="num">1</span>, <span class="num">300</span>);
+    l.displace.baseFreq = <span class="fn">clamp</span>(<span class="fn">nudge</span>(...), <span class="num">0.0005</span>, <span class="num">0.13</span>);
+    l.displace.octaves  = <span class="fn">clamp</span>(Math.<span class="fn">round</span>(<span class="fn">nudge</span>(...)), <span class="num">1</span>, <span class="num">8</span>);
+    <span class="cm">// ~8% chance to remove it</span>
+    <span class="kw">if</span> (Math.<span class="fn">random</span>() &lt; structRate * <span class="num">0.08</span>) <span class="kw">delete</span> l.displace;
+} <span class="kw">else if</span> (flags.turbulence &amp;&amp; Math.<span class="fn">random</span>() &lt; structRate * <span class="num">0.15</span>) {
+    <span class="cm">// Spawn if feature flag enabled (~4.5% at default rate)</span>
+    l.displace = { scale: <span class="fn">rand</span>(<span class="num">10</span>, <span class="num">150</span>), ... };
+}</code></pre>
+
+            <div class="callout green">
+                <div class="callout-label">Spawn vs. Remove</div>
+                At the default structRate of 0.3, each effect has a ~4.5% chance to spawn and a ~2.4% chance to be removed per mutation. Existing effects always mutate — only their parameters change, never their presence unless the remove roll hits.
+            </div>
+        </div>
+    </section>
+
+    <!-- 07 Tier 4 -->
+    <section class="section" id="tier4">
+        <div class="section-label">07 — Tier 4</div>
+        <h2 class="section-title">Genome Mutation — <code>mutateGenome()</code></h2>
+        <div class="section-body">
+            <p>The top-level orchestrator. Always operates on a <code>deepClone()</code> of the parent so the original is never modified. Runs five sequential steps:</p>
+        </div>
+
+        <pre><code><span class="kw">function</span> <span class="fn">mutateGenome</span>(genome, opts = {}) {
+    <span class="kw">const</span> range      = opts.paramRange    ?? <span class="num">0.5</span>;
+    <span class="kw">const</span> structRate = opts.structureRate ?? <span class="num">0.3</span>;
+    <span class="kw">const</span> maxLayers  = opts.maxLayers    ?? <span class="num">8</span>;
+
+    <span class="kw">const</span> g = <span class="fn">deepClone</span>(genome);   <span class="cm">// non-destructive</span>
+
+    <span class="cm">// 1. Mutate every palette color</span>
+    g.palette = g.palette.<span class="fn">map</span>(c => <span class="fn">mutateColor</span>(c, range));
+
+    <span class="cm">// 2. Background gradient</span>
+    <span class="kw">if</span> (Math.<span class="fn">random</span>() &lt; range * <span class="num">0.3</span>)
+        g.background.angle = (g.background.angle + <span class="fn">gauss</span>() * <span class="num">30</span> + <span class="num">360</span>) % <span class="num">360</span>;
+    <span class="kw">if</span> (Math.<span class="fn">random</span>() &lt; structRate * <span class="num">0.1</span>)
+        g.background.type = <span class="fn">pick</span>([<span class="str">'solid'</span>, <span class="str">'linear'</span>, <span class="str">'radial'</span>]);
+
+    <span class="cm">// 3. Mutate each layer (Tier 3)</span>
+    <span class="kw">const</span> flags = <span class="fn">getFeatureFlags</span>();
+    g.layers = g.layers.<span class="fn">map</span>(l => <span class="fn">mutateLayer</span>(l, g.palette, range, structRate, maxLayers, flags));
+
+    <span class="cm">// 4. Add or remove a layer</span>
+    <span class="kw">if</span> (Math.<span class="fn">random</span>() &lt; structRate * <span class="num">0.6</span> &amp;&amp; g.layers.length &lt; maxLayers)
+        g.layers.<span class="fn">push</span>(<span class="fn">randomLayer</span>(g.palette.length));
+    <span class="kw">if</span> (Math.<span class="fn">random</span>() &lt; structRate * <span class="num">0.4</span> &amp;&amp; g.layers.length &gt; <span class="num">1</span>)
+        g.layers.<span class="fn">splice</span>(<span class="fn">randInt</span>(<span class="num">0</span>, g.layers.length - <span class="num">1</span>), <span class="num">1</span>);
+
+    <span class="cm">// 5. Add or remove a palette color</span>
+    <span class="kw">if</span> (Math.<span class="fn">random</span>() &lt; structRate * <span class="num">0.1</span> &amp;&amp; g.palette.length &lt; <span class="num">6</span>)
+        g.palette.<span class="fn">push</span>(<span class="fn">randomColor</span>());
+    <span class="kw">if</span> (Math.<span class="fn">random</span>() &lt; structRate * <span class="num">0.1</span> &amp;&amp; g.palette.length &gt; <span class="num">2</span>)
+        g.palette.<span class="fn">splice</span>(<span class="fn">randInt</span>(<span class="num">0</span>, g.palette.length - <span class="num">1</span>), <span class="num">1</span>);
+
+    <span class="kw">return</span> g;
+}</code></pre>
+
+        <div class="subsection">
+            <div class="subsection-title">Structural probability at default rate (structRate = 0.3)</div>
+            <ul class="prob-list">
+                <li class="prob-row"><span class="prob-label">Add a layer</span><span class="prob-formula">0.3 × 0.6</span><div class="prob-bar-wrap"><div class="prob-bar" style="width:100%;background:var(--green)"></div></div></li>
+                <li class="prob-row"><span class="prob-label">Remove a layer</span><span class="prob-formula">0.3 × 0.4</span><div class="prob-bar-wrap"><div class="prob-bar" style="width:80%;background:var(--orange)"></div></div></li>
+                <li class="prob-row"><span class="prob-label">Change blend mode</span><span class="prob-formula">0.3 × 0.15</span><div class="prob-bar-wrap"><div class="prob-bar" style="width:30%"></div></div></li>
+                <li class="prob-row"><span class="prob-label">Change shape type</span><span class="prob-formula">0.3 × 0.10</span><div class="prob-bar-wrap"><div class="prob-bar" style="width:20%"></div></div></li>
+                <li class="prob-row"><span class="prob-label">Spawn advanced effect</span><span class="prob-formula">0.3 × 0.15</span><div class="prob-bar-wrap"><div class="prob-bar" style="width:30%"></div></div></li>
+                <li class="prob-row"><span class="prob-label">Remove advanced effect</span><span class="prob-formula">0.3 × 0.08</span><div class="prob-bar-wrap"><div class="prob-bar" style="width:16%"></div></div></li>
+                <li class="prob-row"><span class="prob-label">Add palette color</span><span class="prob-formula">0.3 × 0.10</span><div class="prob-bar-wrap"><div class="prob-bar" style="width:20%"></div></div></li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- 08 Evolution Flow -->
+    <section class="section" id="flow">
+        <div class="section-label">08 — Evolution Flow</div>
+        <h2 class="section-title">Evolution Flow</h2>
+
+        <div class="subsection">
+            <div class="subsection-title">restart() — fresh grid</div>
+            <p style="color:var(--text);margin-bottom:12px">Fills all 9 cells with independent random genomes. Each call to <code>randomGenome()</code> creates a palette of 3–5 colors and 1–2 random layers.</p>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">evolveFrom(parentIdx) — user clicks a cell</div>
+            <pre><code><span class="kw">const</span> parent = genomes[parentIdx];
+newGenomes[<span class="num">4</span>] = <span class="fn">deepClone</span>(parent);         <span class="cm">// center = unchanged parent</span>
+<span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i &lt; <span class="num">9</span>; i++) {
+    <span class="kw">if</span> (i === <span class="num">4</span>) <span class="kw">continue</span>;
+    newGenomes[i] = <span class="fn">mutateGenome</span>(parent, opts); <span class="cm">// 8 independent mutations</span>
+}</code></pre>
+            <p style="color:var(--text-dim);font-size:14px">Each of the 8 surrounding cells is an independent mutation draw from the same parent. They share no state with each other.</p>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">breedFromGenome(template) — load a template</div>
+            <p style="color:var(--text);margin-bottom:12px">Identical to <code>evolveFrom()</code> but starts from a saved template genome. Also calls <code>enableExperimentalFlagsForGenome()</code> to automatically enable any feature flags the template requires.</p>
+        </div>
+    </section>
+
+    <!-- 09 Controls -->
+    <section class="section" id="controls">
+        <div class="section-label">09 — User Controls</div>
+        <h2 class="section-title">Mutation Controls</h2>
+        <div class="section-body">
+            <p>Three sliders govern the mutation engine. Settings are persisted to <code>localStorage</code> via <code>saveSliders()</code>/<code>loadSliders()</code>.</p>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Slider</th><th>Range</th><th>Default</th><th>Effect</th></tr></thead>
+                <tbody>
+                    <tr>
+                        <td><strong style="color:#fff">Param Range</strong></td>
+                        <td><code>0.05 – 2.0</code></td>
+                        <td><code>0.3</code></td>
+                        <td>Multiplier applied to every <code>nudge()</code> call — controls how far continuous parameters can drift per generation</td>
+                    </tr>
+                    <tr>
+                        <td><strong style="color:#fff">Structure Rate</strong></td>
+                        <td><code>0.05 – 1.0</code></td>
+                        <td><code>0.3</code></td>
+                        <td>Scales all structural change probabilities — layer add/remove, shape type change, effect spawn/remove, arrangement change</td>
+                    </tr>
+                    <tr>
+                        <td><strong style="color:#fff">Max Layers</strong></td>
+                        <td><code>2 – 8</code></td>
+                        <td><code>8</code></td>
+                        <td>Hard cap on the number of layers a genome can accumulate; layer addition is skipped once this limit is reached</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="callout">
+            <div class="callout-label">Tip</div>
+            Low Param Range + low Structure Rate → fine detail refinement. High Structure Rate → exploratory, wild divergence from the parent.
+        </div>
+    </section>
+
+    <!-- 10 Feature Flags -->
+    <section class="section" id="flags">
+        <div class="section-label">10 — Feature Flags</div>
+        <h2 class="section-title">Feature Flag System</h2>
+        <div class="section-body">
+            <p>Advanced SVG filter effects are gated behind feature flags. A flag controls whether an effect can be <em>spawned</em> on new layers during mutation. Existing effects on a layer always mutate regardless of flags — flags only govern spawn probability.</p>
+        </div>
+
+        <div class="flag-grid">
+            <div class="flag-card">
+                <div class="flag-name">turbulence</div>
+                <div class="flag-desc">feTurbulence + feDisplacementMap warping</div>
+                <span class="flag-tier standard">Standard</span>
+            </div>
+            <div class="flag-card">
+                <div class="flag-name">dash</div>
+                <div class="flag-desc">Dashed stroke patterns with gap control</div>
+                <span class="flag-tier standard">Standard</span>
+            </div>
+            <div class="flag-card">
+                <div class="flag-name">blur</div>
+                <div class="flag-desc">feGaussianBlur softening</div>
+                <span class="flag-tier standard">Standard</span>
+            </div>
+            <div class="flag-card">
+                <div class="flag-name">colorMatrix</div>
+                <div class="flag-desc">Hue rotation + saturation shift</div>
+                <span class="flag-tier standard">Standard</span>
+            </div>
+            <div class="flag-card">
+                <div class="flag-name">mask</div>
+                <div class="flag-desc">Radial or linear gradient mask</div>
+                <span class="flag-tier standard">Standard</span>
+            </div>
+            <div class="flag-card">
+                <div class="flag-name">morph</div>
+                <div class="flag-desc">feMorphology dilate / erode</div>
+                <span class="flag-tier experimental">Experimental</span>
+            </div>
+            <div class="flag-card">
+                <div class="flag-name">shadow</div>
+                <div class="flag-desc">Drop shadow with offset and blur</div>
+                <span class="flag-tier experimental">Experimental</span>
+            </div>
+            <div class="flag-card">
+                <div class="flag-name">componentTransfer</div>
+                <div class="flag-desc">Per-channel gamma curves</div>
+                <span class="flag-tier experimental">Experimental</span>
+            </div>
+            <div class="flag-card">
+                <div class="flag-name">diffuseLight</div>
+                <div class="flag-desc">3D diffuse point lighting</div>
+                <span class="flag-tier experimental">Experimental</span>
+            </div>
+            <div class="flag-card">
+                <div class="flag-name">convolve</div>
+                <div class="flag-desc">Convolution kernels (emboss, sharpen, edge)</div>
+                <span class="flag-tier experimental">Experimental</span>
+            </div>
+        </div>
+
+        <div class="callout orange">
+            <div class="callout-label">Template Loading</div>
+            When a template genome is loaded via <code>breedFromGenome()</code>, <code>enableExperimentalFlagsForGenome()</code> inspects the genome and automatically enables any flags required for its effects — so templates always render correctly even if your current flag settings differ.
+        </div>
+    </section>
+
+    <footer class="footer">
+        <p><a href="index.html">← Back to evolveSVG</a> &nbsp;·&nbsp; <a href="about.html">About</a></p>
+    </footer>
+
+</div>
+</body>
+</html>
