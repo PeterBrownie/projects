@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>evolveSVG</title>
+    <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "03a89f35132a4e8aa86bf1ed1b60541a"}'></script><!-- End Cloudflare Web Analytics -->
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body {
@@ -866,6 +867,7 @@
                 <div class="file-btn-grid">
                     <button class="action-btn secondary" id="copyBtn" disabled>Copy SVG</button>
                     <button class="action-btn secondary" id="downloadBtn" disabled>Download SVG</button>
+                    <button class="action-btn secondary" id="downloadPngBtn" disabled style="grid-column: 1 / -1">Download PNG</button>
                     <button class="action-btn secondary" id="loadSvgBtn" style="grid-column: 1 / -1">Load SVG…</button>
                     <button class="action-btn secondary" id="randomTemplateBtn" style="display:none; grid-column: 1 / -1">Random Template</button>
                 </div>
@@ -1970,10 +1972,12 @@ function setSelected(idx) {
         document.getElementById(`cell-${idx}`).classList.add('selected');
         document.getElementById('copyBtn').disabled = false;
         document.getElementById('downloadBtn').disabled = false;
+        document.getElementById('downloadPngBtn').disabled = false;
         // document.getElementById('exportHelp').textContent = 'Click selected cell again to evolve.';
     } else {
         document.getElementById('copyBtn').disabled = true;
         document.getElementById('downloadBtn').disabled = true;
+        document.getElementById('downloadPngBtn').disabled = true;
         // document.getElementById('exportHelp').textContent = 'Click a cell to select it, then click again to evolve.';
     }
 }
@@ -2100,6 +2104,39 @@ document.getElementById('downloadBtn').addEventListener('click', () => {
     a.download = `${generatePatternName(genome)}.svg`;
     a.click();
     URL.revokeObjectURL(a.href);
+});
+
+document.getElementById('downloadPngBtn').addEventListener('click', async () => {
+    if (selectedIdx < 0) return;
+    const btn = document.getElementById('downloadPngBtn');
+    const orig = btn.textContent;
+    btn.textContent = '…';
+    btn.disabled = true;
+
+    const PNG_W = 7680, PNG_H = 4320;
+    const genome = genomes[selectedIdx];
+    const svgStr = genomeToSVG(genome, CANONICAL_W, CANONICAL_H, 'png');
+    const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = PNG_W;
+        canvas.height = PNG_H;
+        canvas.getContext('2d').drawImage(img, 0, 0, PNG_W, PNG_H);
+        URL.revokeObjectURL(url);
+        canvas.toBlob(pngBlob => {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(pngBlob);
+            a.download = `${generatePatternName(genome)}.png`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+            btn.textContent = orig;
+            btn.disabled = false;
+        }, 'image/png');
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); btn.textContent = orig; btn.disabled = false; };
+    img.src = url;
 });
 
 // ─── Import SVG ────────────────────────────────────────────────────────────
