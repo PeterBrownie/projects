@@ -757,9 +757,65 @@
         .cell.selected .cell-label {
             color: #4a9eff;
         }
+        #mobile-warning-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.75);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        #mobile-warning-overlay.visible {
+            display: flex;
+        }
+        #mobile-warning-box {
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 28px 24px 20px;
+            max-width: 340px;
+            width: 100%;
+            color: #ccc;
+            font-size: 14px;
+            line-height: 1.55;
+            text-align: center;
+        }
+        #mobile-warning-box h3 {
+            color: #fff;
+            font-size: 16px;
+            margin-bottom: 12px;
+        }
+        #mobile-warning-box p {
+            margin-bottom: 20px;
+            color: #aaa;
+        }
+        #mobile-warning-dismiss {
+            background: #333;
+            border: 1px solid #555;
+            border-radius: 6px;
+            color: #ccc;
+            font-size: 13px;
+            padding: 8px 20px;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+        }
+        #mobile-warning-dismiss:hover {
+            background: #444;
+            color: #fff;
+        }
     </style>
 </head>
 <body>
+
+<div id="mobile-warning-overlay">
+    <div id="mobile-warning-box">
+        <h3>Works best on Desktop</h3>
+        <p>evolveSVG is designed for desktop use. On a phone, things may be hard to interact with.</p>
+        <button id="mobile-warning-dismiss">Ok, whatever.<br>(ignore & close)</button>
+    </div>
+</div>
 
 <div id="sidebar-wrapper">
     <div id="sidebar">
@@ -3021,6 +3077,18 @@ if (FS_SUPPORTED) {
 }
 buildGrid();
 restart();
+
+(function() {
+    const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
+    const narrowScreen = window.innerWidth < 768;
+    if (coarsePointer && narrowScreen) {
+        const overlay = document.getElementById('mobile-warning-overlay');
+        overlay.classList.add('visible');
+        document.getElementById('mobile-warning-dismiss').addEventListener('click', function() {
+            overlay.classList.remove('visible');
+        });
+    }
+})();
 
 </script>
 </body>
