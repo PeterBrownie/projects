@@ -338,7 +338,7 @@
             display: flex;
             flex-direction: column;
             gap: 8px;
-            overflow: hidden;
+            overflow: visible;
             max-height: 200px;
             transition: max-height 0.3s ease, opacity 0.3s ease;
             opacity: 1;
@@ -1055,7 +1055,7 @@
                     <span class="label-text" data-tooltip="Adds dash/gap patterns to strokes — turns wave lines, zigzags, and hexgrids into dotted or dashed textures.">Dashes ★   </span>
                 </label>
                 <label class="checkbox-label">
-                    <input type="checkbox" id="feat-blur" checked>
+                    <input type="checkbox" id="feat-blur">
                     <span class="label-text" data-tooltip="Blurs a layer before compositing, creating soft glows and atmospheric depth.">Blur</span>
                 </label>
                 <label class="checkbox-label">
@@ -1063,7 +1063,7 @@
                     <span class="label-text" data-tooltip="Rotates hue and shifts saturation on a layer independently from the palette.">Color Shift ★</span>
                 </label>
                 <label class="checkbox-label">
-                    <input type="checkbox" id="feat-mask" checked>
+                    <input type="checkbox" id="feat-mask">
                     <span class="label-text" data-tooltip="Applies a gradient mask to a layer, fading it radially or linearly — creates vignettes and directional reveals.">Mask</span>
                 </label>
             </div>
@@ -1072,29 +1072,29 @@
                 <div class="experimental-header">
                     <div class="control-group-title">Experimental Effects</div>
                     <label class="experimental-master-label">
-                        <input type="checkbox" id="feat-experimental-master">
+                        <input type="checkbox" id="feat-experimental-master" checked>
                         Enable
                     </label>
                 </div>
-                <div class="experimental-list collapsed" id="experimental-list">
+                <div class="experimental-list expanded" id="experimental-list">
                     <label class="checkbox-label">
-                        <input type="checkbox" id="feat-morph">
+                        <input type="checkbox" id="feat-morph" checked>
                         <span class="label-text" data-tooltip="Grows (dilate) or shrinks (erode) layer edges using morphological expansion — fattens shapes or carves them inward.">Morphology</span>
                     </label>
                     <label class="checkbox-label">
-                        <input type="checkbox" id="feat-shadow">
+                        <input type="checkbox" id="feat-shadow" checked>
                         <span class="label-text" data-tooltip="Adds a coloured drop shadow behind the layer, offset by a random amount and optionally blurred.">Drop Shadow</span>
                     </label>
                     <label class="checkbox-label">
-                        <input type="checkbox" id="feat-component-transfer">
+                        <input type="checkbox" id="feat-component-transfer" checked>
                         <span class="label-text" data-tooltip="Applies independent gamma curves to each colour channel — creates posterisation, tonal inversion, and channel-specific contrast shifts.">Channel Curves ★</span>
                     </label>
                     <label class="checkbox-label">
-                        <input type="checkbox" id="feat-diffuse-light">
+                        <input type="checkbox" id="feat-diffuse-light" checked>
                         <span class="label-text" data-tooltip="Simulates directional diffuse lighting on the layer surface using a distant light source, giving a 3D embossed appearance.">Diffuse Light</span>
                     </label>
                     <label class="checkbox-label">
-                        <input type="checkbox" id="feat-convolve">
+                        <input type="checkbox" id="feat-convolve" checked>
                         <span class="label-text" data-tooltip="Applies a convolution kernel to the layer — choose from emboss, sharpen, or edge-detect presets.">Convolve</span>
                     </label>
                 </div>
@@ -1366,7 +1366,7 @@ function randomGenome(numLayers = null) {
 
 // ─── SVG Generation ───────────────────────────────────────────────────────
 
-function genomeToSVG(genome, W = 640, H = 360, prefix = 'x', loose = false) {
+function genomeToSVG(genome, W = 640, H = 360, prefix = 'x', loose = false, renderW = W) {
     let localCounter = 0;
     const makeGradientId = () => `${prefix}g${++localCounter}`;
     const defs = [];
@@ -1375,7 +1375,7 @@ function genomeToSVG(genome, W = 640, H = 360, prefix = 'x', loose = false) {
     bodyParts.push(renderBackground(genome, W, H, defs, makeGradientId));
     for (const layer of genome.layers) {
         if (layer.hidden) continue;
-        bodyParts.push(renderLayer(layer, genome.palette, W, H, defs, makeGradientId));
+        bodyParts.push(renderLayer(layer, genome.palette, W, H, defs, makeGradientId, renderW));
     }
 
     const defsBlock = defs.length ? `<defs>${defs.join('')}</defs>` : '';
@@ -1401,7 +1401,7 @@ function getFeatureFlags() {
 
 // Builds a single chained SVG filter for all layer effects.
 // Returns the filter attribute string (empty if no effects).
-function buildLayerFilter(layer, palette, defs, makeGradientId) {
+function buildLayerFilter(layer, palette, defs, makeGradientId, svgW = 640, renderW = svgW) {
     const hasMorph     = layer.morph != null;
     const hasDisplace  = layer.displace != null;
     const hasBlur      = layer.blur != null;
@@ -1449,6 +1449,14 @@ function buildLayerFilter(layer, palette, defs, makeGradientId) {
     }
     if (hasDiffuse) {
         const { azimuth, elevation, scale: surfScale, strength } = layer.diffuseLight;
+        // At higher render resolutions, alpha edges are proportionally thinner in SVG
+        // coordinate space, making lighting edge effects look smaller. Compensate by
+        // blurring the bump map input so the effective edge width stays consistent.
+        const dlBlur = (renderW / svgW - 1) * 0.02;
+        if (dlBlur > 0.01) {
+            steps.push(`<feGaussianBlur in="${cur}" stdDeviation="${dlBlur.toFixed(2)}" result="dlblur"/>`);
+            cur = 'dlblur';
+        }
         steps.push(`<feDiffuseLighting in="${cur}" surfaceScale="${surfScale.toFixed(1)}" diffuseConstant="${strength.toFixed(2)}" result="diffuse"><feDistantLight azimuth="${azimuth.toFixed(1)}" elevation="${elevation.toFixed(1)}"/></feDiffuseLighting>`);
         steps.push(`<feComposite in="diffuse" in2="${cur}" operator="arithmetic" k1="1" k2="0" k3="0" k4="0" result="lit"/>`);
         cur = 'lit';
@@ -1460,6 +1468,12 @@ function buildLayerFilter(layer, palette, defs, makeGradientId) {
             edge:    '-1 -1 -1 -1 8 -1 -1 -1 -1',
         };
         const kernel = kernels[layer.convolve.type] || kernels.emboss;
+        // Pre-blur so the 3x3 kernel covers the same apparent area regardless of render resolution.
+        const cvBlur = (renderW / svgW - 1) * 0;
+        if (cvBlur > 0.01) {
+            steps.push(`<feGaussianBlur in="${cur}" stdDeviation="${cvBlur.toFixed(2)}" result="cvblur"/>`);
+            cur = 'cvblur';
+        }
         steps.push(`<feConvolveMatrix in="${cur}" order="3" kernelMatrix="${kernel}" preserveAlpha="true" result="conv"/>`);
         cur = 'conv';
     }
@@ -1577,7 +1591,7 @@ function shapePathForType(type, params, W) {
 
 // ── Tiling layer renderer ─────────────────────────────────────────────────
 
-function renderTilingLayer(layer, palette, W, H, defs, makeGradientId) {
+function renderTilingLayer(layer, palette, W, H, defs, makeGradientId, renderW = W) {
     const color = fillAttr(palette, layer.fill, W, defs, makeGradientId);
     const opacity = (layer.opacity ?? 1).toFixed(3);
     const blend = layer.blendMode || 'normal';
@@ -1701,14 +1715,14 @@ function renderTilingLayer(layer, palette, W, H, defs, makeGradientId) {
         default: return '';
     }
 
-    const filterAttr = buildLayerFilter(layer, palette, defs, makeGradientId);
+    const filterAttr = buildLayerFilter(layer, palette, defs, makeGradientId, W, renderW);
     const maskAttr   = buildLayerMask(layer, W, H, defs, makeGradientId);
     return `<g opacity="${opacity}" style="mix-blend-mode:${blend}" ${filterAttr} ${maskAttr}>${result}</g>`;
 }
 
-function renderLayer(layer, palette, W, H, defs, makeGradientId) {
+function renderLayer(layer, palette, W, H, defs, makeGradientId, renderW = W) {
     if (TILING_TYPES.has(layer.type)) {
-        return renderTilingLayer(layer, palette, W, H, defs, makeGradientId);
+        return renderTilingLayer(layer, palette, W, H, defs, makeGradientId, renderW);
     }
 
     const cx = layer.cx * W, cy = layer.cy * H;
@@ -1730,7 +1744,7 @@ function renderLayer(layer, palette, W, H, defs, makeGradientId) {
     const shapeEl = shapePathForType(layer.type, layer.params, W);
     if (!shapeEl) return '';
 
-    const filterAttr = buildLayerFilter(layer, palette, defs, makeGradientId);
+    const filterAttr = buildLayerFilter(layer, palette, defs, makeGradientId, W, renderW);
     const maskAttr   = buildLayerMask(layer, W, H, defs, makeGradientId);
 
     const instances = getInstances(layer, cx, cy, W, H);
@@ -3171,7 +3185,7 @@ async function rasterizeExpand() {
 
     // Always render SVG at CANONICAL_W×CANONICAL_H so feTurbulence coordinates
     // stay consistent with the grid view and across all zoom levels.
-    const svgStr = genomeToSVG(genomes[expandIdx], CANONICAL_W, CANONICAL_H, 'ex');
+    const svgStr = genomeToSVG(genomes[expandIdx], CANONICAL_W, CANONICAL_H, 'ex', false, targetW);
     const blob = new Blob([svgStr], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
 
@@ -3229,7 +3243,7 @@ async function saveExpandAsPng() {
     }
 
     // No suitable cache — render fresh at PNG dimensions.
-    const svgStr = genomeToSVG(genomes[expandIdx], CANONICAL_W, CANONICAL_H, 'save');
+    const svgStr = genomeToSVG(genomes[expandIdx], CANONICAL_W, CANONICAL_H, 'save', false, PNG_W);
     const blob = new Blob([svgStr], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
 
