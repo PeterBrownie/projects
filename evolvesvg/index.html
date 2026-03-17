@@ -716,6 +716,40 @@
         .layer-vis-btn:hover { background: rgba(255,255,255,0.08); color: #ccc; border-color: #666; }
         .layer-vis-btn.hidden { color: #555; border-color: #383838; }
         .layer-row.layer-hidden { opacity: 0.45; }
+        .layer-drag-handle {
+            cursor: grab;
+            color: #555;
+            font-size: 15px;
+            flex-shrink: 0;
+            padding: 0 1px;
+            user-select: none;
+            line-height: 1;
+        }
+        .layer-drag-handle:active { cursor: grabbing; }
+        .layer-drag-handle:hover { color: #888; }
+        .layer-row.dragging { opacity: 0.25; }
+        .layer-drop-indicator {
+            height: 2px;
+            background: #6699ff;
+            border-radius: 1px;
+            flex-shrink: 0;
+            margin: 1px 0;
+            pointer-events: none;
+        }
+        .layer-drag-ghost {
+            position: fixed;
+            pointer-events: none;
+            z-index: 99999;
+            opacity: 0.92;
+            box-shadow: 0 8px 28px rgba(0,0,0,0.75);
+            border-radius: 4px;
+            background: #2a2a2a;
+            border: 1px solid #6699ff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px;
+        }
         #layer-tooltip {
             display: none;
             position: fixed;
@@ -2211,6 +2245,7 @@ function evolveFrom(parentIdx) {
 
 let layerPanelCellIdx = -1;
 let layerPanelMouseLeaveHandler = null;
+let layerDragState = null;
 
 function openLayerPanel(cellIdx, anchorEl) {
     const panel = document.getElementById('layer-panel');
@@ -2310,6 +2345,12 @@ function populateLayerPanel(cellIdx) {
     genome.layers.forEach((layer, layerIdx) => {
         const row = document.createElement('div');
         row.className = 'layer-row' + (layer.hidden ? ' layer-hidden' : '');
+        row.dataset.layerIdx = layerIdx;
+
+        const dragHandle = document.createElement('span');
+        dragHandle.className = 'layer-drag-handle';
+        dragHandle.title = 'Drag to reorder';
+        dragHandle.innerHTML = '⠿';
 
         const canvas = document.createElement('canvas');
         canvas.className = 'layer-preview-canvas';
@@ -2336,12 +2377,106 @@ function populateLayerPanel(cellIdx) {
         if (genome.layers.length <= 1) delBtn.disabled = true;
         delBtn.addEventListener('click', () => deleteLayer(cellIdx, layerIdx));
 
+        dragHandle.addEventListener('pointerdown', (e) => startLayerDrag(e, cellIdx, layerIdx, row));
+
+        row.appendChild(dragHandle);
         row.appendChild(canvas);
         row.appendChild(label);
         row.appendChild(visBtn);
         row.appendChild(delBtn);
         list.appendChild(row);
     });
+}
+
+function startLayerDrag(e, cellIdx, srcIdx, row) {
+    e.preventDefault();
+    hideLayerTooltip();
+
+    const rect = row.getBoundingClientRect();
+
+    const ghost = document.createElement('div');
+    ghost.className = 'layer-drag-ghost';
+    ghost.style.width = rect.width + 'px';
+    ghost.style.left = rect.left + 'px';
+    ghost.style.top = rect.top + 'px';
+
+    const origCanvas = row.querySelector('.layer-preview-canvas');
+    if (origCanvas) {
+        const ghostCanvas = document.createElement('canvas');
+        ghostCanvas.className = 'layer-preview-canvas';
+        ghostCanvas.width = 120;
+        ghostCanvas.height = 80;
+        ghostCanvas.getContext('2d').drawImage(origCanvas, 0, 0);
+        ghost.appendChild(ghostCanvas);
+    }
+    const ghostLabel = document.createElement('span');
+    ghostLabel.className = 'layer-type-label';
+    ghostLabel.textContent = row.querySelector('.layer-type-label').textContent;
+    ghost.appendChild(ghostLabel);
+
+    document.body.appendChild(ghost);
+    row.classList.add('dragging');
+
+    layerDragState = {
+        cellIdx, srcIdx, ghost, row,
+        offsetY: e.clientY - rect.top,
+        targetIdx: srcIdx,
+        list: document.getElementById('layer-panel-list')
+    };
+
+    document.addEventListener('pointermove', onLayerDragMove);
+    document.addEventListener('pointerup', onLayerDragEnd);
+}
+
+function onLayerDragMove(e) {
+    if (!layerDragState) return;
+    const { ghost, offsetY, list, srcIdx } = layerDragState;
+
+    ghost.style.top = (e.clientY - offsetY) + 'px';
+
+    const rows = [...list.querySelectorAll('.layer-row')];
+    const existing = list.querySelector('.layer-drop-indicator');
+    if (existing) existing.remove();
+
+    let insertBefore = null;
+    for (const r of rows) {
+        const rRect = r.getBoundingClientRect();
+        if (e.clientY < rRect.top + rRect.height / 2) { insertBefore = r; break; }
+    }
+
+    const indicator = document.createElement('div');
+    indicator.className = 'layer-drop-indicator';
+    if (insertBefore) {
+        list.insertBefore(indicator, insertBefore);
+        layerDragState.targetIdx = parseInt(insertBefore.dataset.layerIdx);
+    } else {
+        list.appendChild(indicator);
+        layerDragState.targetIdx = genomes[layerDragState.cellIdx].layers.length;
+    }
+}
+
+function onLayerDragEnd() {
+    if (!layerDragState) return;
+    const { cellIdx, srcIdx, ghost, row, list, targetIdx } = layerDragState;
+
+    ghost.remove();
+    row.classList.remove('dragging');
+    const indicator = list.querySelector('.layer-drop-indicator');
+    if (indicator) indicator.remove();
+
+    document.removeEventListener('pointermove', onLayerDragMove);
+    document.removeEventListener('pointerup', onLayerDragEnd);
+    layerDragState = null;
+
+    if (targetIdx === srcIdx || targetIdx === srcIdx + 1) return;
+
+    const layers = genomes[cellIdx].layers;
+    const [moved] = layers.splice(srcIdx, 1);
+    layers.splice(targetIdx > srcIdx ? targetIdx - 1 : targetIdx, 0, moved);
+
+    cellCache[cellIdx] = null;
+    renderCell(cellIdx);
+    populateLayerPanel(cellIdx);
 }
 
 function toggleLayerVisibility(cellIdx, layerIdx) {
