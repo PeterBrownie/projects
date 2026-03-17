@@ -727,21 +727,16 @@
         }
         .layer-drag-handle:active { cursor: grabbing; }
         .layer-drag-handle:hover { color: #888; }
-        .layer-row.dragging { opacity: 0.25; }
-        .layer-drop-indicator {
-            height: 2px;
-            background: #6699ff;
-            border-radius: 1px;
-            flex-shrink: 0;
-            margin: 1px 0;
-            pointer-events: none;
+        .layer-row.dragging { opacity: 0; }
+        #layer-panel-list.is-dragging .layer-row {
+            transition: transform 0.15s ease;
         }
         .layer-drag-ghost {
             position: fixed;
             pointer-events: none;
             z-index: 99999;
             opacity: 0.92;
-            box-shadow: 0 8px 28px rgba(0,0,0,0.75);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.8);
             border-radius: 4px;
             background: #2a2a2a;
             border: 1px solid #6699ff;
@@ -749,6 +744,8 @@
             align-items: center;
             gap: 8px;
             padding: 5px;
+            transform: scale(1.02);
+            will-change: top;
         }
         #layer-tooltip {
             display: none;
@@ -2417,11 +2414,18 @@ function startLayerDrag(e, cellIdx, srcIdx, row) {
     document.body.appendChild(ghost);
     row.classList.add('dragging');
 
+    const list = document.getElementById('layer-panel-list');
+    const allRows = [...list.querySelectorAll('.layer-row')];
+    const slotHeight = allRows.length >= 2
+        ? allRows[1].getBoundingClientRect().top - allRows[0].getBoundingClientRect().top
+        : rect.height + 6;
+    list.classList.add('is-dragging');
+
     layerDragState = {
         cellIdx, srcIdx, ghost, row,
         offsetY: e.clientY - rect.top,
         targetIdx: srcIdx,
-        list: document.getElementById('layer-panel-list')
+        slotHeight, list
     };
 
     document.addEventListener('pointermove', onLayerDragMove);
@@ -2430,29 +2434,32 @@ function startLayerDrag(e, cellIdx, srcIdx, row) {
 
 function onLayerDragMove(e) {
     if (!layerDragState) return;
-    const { ghost, offsetY, list, srcIdx } = layerDragState;
+    const { ghost, offsetY, list, srcIdx, row, slotHeight } = layerDragState;
 
     ghost.style.top = (e.clientY - offsetY) + 'px';
 
     const rows = [...list.querySelectorAll('.layer-row')];
-    const existing = list.querySelector('.layer-drop-indicator');
-    if (existing) existing.remove();
 
-    let insertBefore = null;
-    for (const r of rows) {
-        const rRect = r.getBoundingClientRect();
-        if (e.clientY < rRect.top + rRect.height / 2) { insertBefore = r; break; }
+    // Determine where the dragged item would be inserted (as a DOM index)
+    let targetIdx = rows.length;
+    for (let i = 0; i < rows.length; i++) {
+        if (rows[i] === row) continue;
+        const mid = rows[i].getBoundingClientRect();
+        if (e.clientY < mid.top + mid.height / 2) {
+            targetIdx = parseInt(rows[i].dataset.layerIdx);
+            break;
+        }
     }
+    layerDragState.targetIdx = targetIdx;
 
-    const indicator = document.createElement('div');
-    indicator.className = 'layer-drop-indicator';
-    if (insertBefore) {
-        list.insertBefore(indicator, insertBefore);
-        layerDragState.targetIdx = parseInt(insertBefore.dataset.layerIdx);
-    } else {
-        list.appendChild(indicator);
-        layerDragState.targetIdx = genomes[layerDragState.cellIdx].layers.length;
-    }
+    // Slide other rows to open a gap at the target position
+    rows.forEach((r, i) => {
+        if (r === row) return;
+        let shift = 0;
+        if (targetIdx > srcIdx && i > srcIdx && i < targetIdx) shift = -slotHeight;
+        else if (targetIdx <= srcIdx && i >= targetIdx && i < srcIdx) shift = slotHeight;
+        r.style.transform = shift ? `translateY(${shift}px)` : '';
+    });
 }
 
 function onLayerDragEnd() {
@@ -2461,8 +2468,8 @@ function onLayerDragEnd() {
 
     ghost.remove();
     row.classList.remove('dragging');
-    const indicator = list.querySelector('.layer-drop-indicator');
-    if (indicator) indicator.remove();
+    list.classList.remove('is-dragging');
+    [...list.querySelectorAll('.layer-row')].forEach(r => r.style.transform = '');
 
     document.removeEventListener('pointermove', onLayerDragMove);
     document.removeEventListener('pointerup', onLayerDragEnd);
