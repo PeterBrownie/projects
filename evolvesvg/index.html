@@ -1487,7 +1487,7 @@ function getFeatureFlags() {
 
 // Builds a single chained SVG filter for all layer effects.
 // Returns the filter attribute string (empty if no effects).
-function buildLayerFilter(layer, palette, defs, makeGradientId, svgW = 640, renderW = svgW) {
+function buildLayerFilter(layer, palette, defs, makeGradientId, svgW = 640, renderW = svgW, svgH = svgW * 9 / 16) {
     const hasMorph     = layer.morph != null;
     const hasDisplace  = layer.displace != null;
     const hasBlur      = layer.blur != null;
@@ -1577,7 +1577,16 @@ function buildLayerFilter(layer, palette, defs, makeGradientId, svgW = 640, rend
         steps.push(`<feMerge><feMergeNode in="shadowOffset"/><feMergeNode in="${cur}"/></feMerge>`);
     }
 
-    defs.push(`<filter id="${fid}" x="-30%" y="-30%" width="160%" height="160%">${steps.join('')}</filter>`);
+    // Displacement filters use userSpaceOnUse so the filter region is bounded by the SVG
+    // viewport regardless of element size. This prevents Chrome from trying to allocate
+    // an enormous filter buffer for tiling layers (whose objectBoundingBox region scales
+    // to 70k+ pixels wide at 12x), which silently breaks feTurbulence at extreme scales.
+    // Padding of 30% of each viewport dimension covers the max possible displacement
+    // (scale/2 ≤ 150 SVG units << 384px padding).
+    const filterRegionAttr = hasDisplace
+        ? `filterUnits="userSpaceOnUse" x="${(-svgW * 0.3).toFixed(1)}" y="${(-svgH * 0.3).toFixed(1)}" width="${(svgW * 1.6).toFixed(1)}" height="${(svgH * 1.6).toFixed(1)}"`
+        : `x="-30%" y="-30%" width="160%" height="160%"`;
+    defs.push(`<filter id="${fid}" ${filterRegionAttr}>${steps.join('')}</filter>`);
     return `filter="url(#${fid})"`;
 }
 
@@ -1801,7 +1810,7 @@ function renderTilingLayer(layer, palette, W, H, defs, makeGradientId, renderW =
         default: return '';
     }
 
-    const filterAttr = buildLayerFilter(layer, palette, defs, makeGradientId, W, renderW);
+    const filterAttr = buildLayerFilter(layer, palette, defs, makeGradientId, W, renderW, H);
     const maskAttr   = buildLayerMask(layer, W, H, defs, makeGradientId);
     return `<g opacity="${opacity}" style="mix-blend-mode:${blend}" ${filterAttr} ${maskAttr}>${result}</g>`;
 }
@@ -1830,7 +1839,7 @@ function renderLayer(layer, palette, W, H, defs, makeGradientId, renderW = W) {
     const shapeEl = shapePathForType(layer.type, layer.params, W);
     if (!shapeEl) return '';
 
-    const filterAttr = buildLayerFilter(layer, palette, defs, makeGradientId, W, renderW);
+    const filterAttr = buildLayerFilter(layer, palette, defs, makeGradientId, W, renderW, H);
     const maskAttr   = buildLayerMask(layer, W, H, defs, makeGradientId);
 
     const instances = getInstances(layer, cx, cy, W, H);
@@ -3296,7 +3305,7 @@ async function rasterizeExpand() {
             const offscreen = document.createElement('canvas');
             offscreen.width = targetW;
             offscreen.height = targetH;
-            offscreen.getContext('2d').drawImage(img, 0, 0, targetW, targetH);
+            offscreen.getContext('2d', { willReadFrequently: true }).drawImage(img, 0, 0, targetW, targetH);
             exTierCache[tierIdx] = offscreen;
             exCanvas.width = targetW;
             exCanvas.height = targetH;
@@ -3362,7 +3371,7 @@ async function downloadPngAtTier(tierIdx) {
         const canvas = document.createElement('canvas');
         canvas.width = targetW;
         canvas.height = targetH;
-        canvas.getContext('2d').drawImage(img, 0, 0, targetW, targetH);
+        canvas.getContext('2d', { willReadFrequently: true }).drawImage(img, 0, 0, targetW, targetH);
         URL.revokeObjectURL(url);
         triggerPngDownload(canvas, filename, finish);
     };
