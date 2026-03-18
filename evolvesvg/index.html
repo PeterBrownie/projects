@@ -946,6 +946,24 @@
             filter: drop-shadow(0 0 3px rgba(128,128,128,0.9));
         }
 
+        #sidebar-save-menu {
+            display: none;
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 0;
+            background: rgba(18,18,18,0.97);
+            border: 1px solid #555;
+            border-radius: 7px;
+            padding: 6px 0;
+            min-width: 185px;
+            width: 100%;
+            z-index: 500;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+            pointer-events: auto;
+            overflow: hidden;
+        }
+        #sidebar-save-menu.open { display: block; }
         #expand-more-wrap {
             position: relative;
         }
@@ -1287,9 +1305,18 @@
                 <div class="control-group-title">Save / Load Options</div>
                 <input type="file" id="loadSvgInput" accept=".svg" style="display:none">
                 <div class="file-btn-grid">
-                    <button class="action-btn secondary" id="copyBtn" disabled>Copy SVG</button>
-                    <button class="action-btn secondary" id="downloadBtn" disabled>Download SVG</button>
-                    <button class="action-btn secondary" id="downloadPngBtn" disabled style="grid-column: 1 / -1">Download PNG</button>
+                    <div id="sidebar-save-wrap" style="grid-column: 1 / -1; position: relative;">
+                        <button class="action-btn secondary" id="saveImageBtn" disabled style="width: 100%">Save Image</button>
+                        <div id="sidebar-save-menu">
+                            <div class="download-menu-title">Save as SVG</div>
+                            <div class="download-menu-item" id="sidebar-copy-svg">Copy SVG Code</div>
+                            <div class="download-menu-item" id="sidebar-download-svg">Download SVG</div>
+                            <div class="download-menu-divider"></div>
+                            <div class="download-menu-title">Save as PNG</div>
+                            <div id="sidebar-save-png-items"></div>
+                            <div class="download-menu-item" id="sidebar-expand-for-png">More options…<span class="dim-label">Expand view</span></div>
+                        </div>
+                    </div>
                     <button class="action-btn secondary" id="loadSvgBtn" style="grid-column: 1 / -1">Load SVG…</button>
                     <button class="action-btn secondary" id="randomTemplateBtn" style="display:none; grid-column: 1 / -1">Random Template</button>
                 </div>
@@ -1332,7 +1359,7 @@
         <div id="expand-more-wrap">
             <button id="expand-more" title="Download PNG…">⋯</button>
             <div id="expand-download-menu">
-                <div class="download-menu-title">LOD Options</div>
+                <div class="download-menu-title">Detail Options</div>
                 <label class="download-menu-extreme-row">
                     <input type="checkbox" id="expand-extreme-detail">
                     <span>Extreme Detail</span>
@@ -2446,14 +2473,11 @@ function setSelected(idx) {
     selectedIdx = idx;
     if (idx >= 0) {
         document.getElementById(`cell-${idx}`).classList.add('selected');
-        document.getElementById('copyBtn').disabled = false;
-        document.getElementById('downloadBtn').disabled = false;
-        document.getElementById('downloadPngBtn').disabled = false;
+        document.getElementById('saveImageBtn').disabled = false;
         // document.getElementById('exportHelp').textContent = 'Click selected cell again to evolve.';
     } else {
-        document.getElementById('copyBtn').disabled = true;
-        document.getElementById('downloadBtn').disabled = true;
-        document.getElementById('downloadPngBtn').disabled = true;
+        document.getElementById('saveImageBtn').disabled = true;
+        closeSidebarSaveMenu();
         // document.getElementById('exportHelp').textContent = 'Click a cell to select it, then click again to evolve.';
     }
 }
@@ -2863,19 +2887,83 @@ function extractGenomeFromSVG(svgText) {
 }
 
 // Export
-document.getElementById('copyBtn').addEventListener('click', () => {
+function buildSidebarSaveMenu() {
+    const container = document.getElementById('sidebar-save-png-items');
+    container.innerHTML = '';
+    const nonExtremeTiers = EX_TIERS.length - 1; // exclude extreme (last) tier
+    for (let i = 0; i < nonExtremeTiers; i++) {
+        const [w, h] = getExTierDims(i);
+        const item = document.createElement('div');
+        item.className = 'download-menu-item';
+        item.innerHTML = `<span>${TIER_LABELS[i] || h + 'p'}</span><span class="dim-label">${w}×${h}</span>`;
+        item.addEventListener('click', () => downloadSidebarPngAtTier(i));
+        container.appendChild(item);
+    }
+}
+
+function toggleSidebarSaveMenu() {
+    const menu = document.getElementById('sidebar-save-menu');
+    if (menu.classList.contains('open')) {
+        closeSidebarSaveMenu();
+    } else {
+        buildSidebarSaveMenu();
+        menu.classList.add('open');
+    }
+}
+
+function closeSidebarSaveMenu() {
+    document.getElementById('sidebar-save-menu').classList.remove('open');
+}
+
+async function downloadSidebarPngAtTier(tierIdx) {
     if (selectedIdx < 0) return;
+    closeSidebarSaveMenu();
+    const [targetW, targetH] = getExTierDims(tierIdx);
+    const genome = genomes[selectedIdx];
+    const filename = `${generatePatternName(genome)}.png`;
+    const svgStr = genomeToSVG(genome, CANONICAL_W, CANONICAL_H, 'save', false, targetW);
+    const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = targetW;
+        canvas.height = targetH;
+        canvas.getContext('2d').drawImage(img, 0, 0, targetW, targetH);
+        URL.revokeObjectURL(url);
+        triggerPngDownload(canvas, filename, () => {});
+    };
+    img.onerror = () => URL.revokeObjectURL(url);
+    img.src = url;
+}
+
+document.getElementById('saveImageBtn').addEventListener('click', e => {
+    e.stopPropagation();
+    toggleSidebarSaveMenu();
+});
+
+document.getElementById('sidebar-copy-svg').addEventListener('click', () => {
+    if (selectedIdx < 0) return;
+    closeSidebarSaveMenu();
     const svg = genomeToSVG(genomes[selectedIdx], 640, 360, 'ex');
     navigator.clipboard.writeText(svg).then(() => {
-        const btn = document.getElementById('copyBtn');
+        const btn = document.getElementById('saveImageBtn');
         const orig = btn.textContent;
         btn.textContent = 'Copied!';
         setTimeout(() => btn.textContent = orig, 1500);
     });
 });
 
-document.getElementById('downloadBtn').addEventListener('click', () => {
+document.getElementById('sidebar-expand-for-png').addEventListener('click', () => {
     if (selectedIdx < 0) return;
+    closeSidebarSaveMenu();
+    openExpand(selectedIdx);
+    setTimeout(() => toggleDownloadMenu(), 80);
+});
+
+document.getElementById('sidebar-download-svg').addEventListener('click', () => {
+    if (selectedIdx < 0) return;
+    closeSidebarSaveMenu();
     const genome = genomes[selectedIdx];
     const svg = svgWithGenomeMeta(genomeToSVG(genome, 1920, 1080, 'ex'), genome);
     const blob = new Blob([svg], { type: 'image/svg+xml' });
@@ -2884,39 +2972,6 @@ document.getElementById('downloadBtn').addEventListener('click', () => {
     a.download = `${generatePatternName(genome)}.svg`;
     a.click();
     URL.revokeObjectURL(a.href);
-});
-
-document.getElementById('downloadPngBtn').addEventListener('click', async () => {
-    if (selectedIdx < 0) return;
-    const btn = document.getElementById('downloadPngBtn');
-    const orig = btn.textContent;
-    btn.textContent = '…';
-    btn.disabled = true;
-
-    const PNG_W = 7680, PNG_H = 4320;
-    const genome = genomes[selectedIdx];
-    const svgStr = genomeToSVG(genome, CANONICAL_W, CANONICAL_H, 'png');
-    const blob = new Blob([svgStr], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
-    const img = new Image();
-    img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = PNG_W;
-        canvas.height = PNG_H;
-        canvas.getContext('2d').drawImage(img, 0, 0, PNG_W, PNG_H);
-        URL.revokeObjectURL(url);
-        canvas.toBlob(pngBlob => {
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(pngBlob);
-            a.download = `${generatePatternName(genome)}.png`;
-            a.click();
-            URL.revokeObjectURL(a.href);
-            btn.textContent = orig;
-            btn.disabled = false;
-        }, 'image/png');
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); btn.textContent = orig; btn.disabled = false; };
-    img.src = url;
 });
 
 // ─── Import SVG ────────────────────────────────────────────────────────────
@@ -3968,6 +4023,7 @@ document.getElementById('expand-reset').addEventListener('click', fitExpandView)
 document.getElementById('expand-close').addEventListener('click', closeExpand);
 document.getElementById('expand-extreme-detail').addEventListener('change', e => setExtremeDetail(e.target.checked));
 document.addEventListener('click', e => { if (!e.target.closest('#expand-more-wrap')) closeDownloadMenu(); });
+document.addEventListener('click', e => { if (!e.target.closest('#sidebar-save-wrap')) closeSidebarSaveMenu(); });
 document.addEventListener('keydown', e => {
     if (e.key === 'Escape') closeExpand();
     if (e.key === ' ' && document.getElementById('expand-overlay').classList.contains('visible')) {
