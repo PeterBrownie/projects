@@ -16,6 +16,21 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
         }
 
+        #firefox-notice {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 11px;
+            color: rgba(255,255,255,0.25);
+            padding: 4px 0;
+            pointer-events: none;
+            z-index: 100;
+            letter-spacing: 0.02em;
+        }
+
         #sidebar-wrapper {
             display: flex;
             height: 100%;
@@ -832,6 +847,9 @@
             z-index: 2001;
             pointer-events: none;
         }
+        #expand-layers-btn {
+            position: static;
+        }
         #expand-controls button {
             pointer-events: auto;
             width: 32px;
@@ -841,6 +859,7 @@
             color: #bbb;
             border-radius: 5px;
             cursor: pointer;
+            opacity: 1;
             font-size: 15px;
             display: flex;
             align-items: center;
@@ -1323,6 +1342,7 @@
                 <div id="download-tier-items"></div>
             </div>
         </div>
+        <button id="expand-layers-btn" class="layers-btn" title="Edit layers">☰</button>
         <button id="expand-reset" title="Reset zoom (double-click)">⊡</button>
         <button id="expand-close" title="Close (Esc)">✕</button>
     </div>
@@ -1346,6 +1366,8 @@
 </div>
 
 <button id="fullscreen-btn" title="Toggle fullscreen">⛶</button>
+
+<div id="firefox-notice">FYI - evolveSVG is computationally and visually superior on Chrome, when compared to Firefox.</div>
 
 <div id="grid-container">
     <div id="grid"></div>
@@ -2343,6 +2365,11 @@ function renderCell(idx) {
     applyTransformToWrapper(wrappers[idx]);
     updateColorDice(idx);
     rasterizeCell(idx);
+    if (expandIdx === idx && document.getElementById('expand-overlay').classList.contains('visible')) {
+        exTierCache = {};
+        exExtremeTierIssueDetected = null;
+        rasterizeExpand();
+    }
 }
 
 async function rasterizeCell(idx) {
@@ -3653,6 +3680,7 @@ function setExtremeDetail(enabled) {
 }
 
 function closeExpand() {
+    closeLayerPanel();
     document.getElementById('expand-overlay').classList.remove('visible');
     exWrapper.innerHTML = '';
     exCanvas = null;
@@ -3670,57 +3698,150 @@ function closeExpand() {
     hint.classList.remove('dismissing');
 }
 
-function tileVariance(data, imgW, x0, y0, w, h) {
-    let sum = 0, sumSq = 0, count = 0;
+// ── Helpers for extreme LOD issue detection ──────────────────────────────
+
+function hue2rgb(p, q, t) {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1/6) return p + (q - p) * 6 * t;
+    if (t < 1/2) return q;
+    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+    return p;
+}
+
+// Amplify saturation of every pixel by `factor` (HSL space). Achromatic pixels unchanged.
+function amplifySaturation(data, factor) {
+    const out = new Uint8ClampedArray(data.length);
+    for (let i = 0; i < data.length; i += 4) {
+        const r = data[i] / 255, g = data[i+1] / 255, b = data[i+2] / 255;
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        const l = (max + min) / 2;
+        if (max === min) {
+            out[i] = data[i]; out[i+1] = data[i+1]; out[i+2] = data[i+2]; out[i+3] = data[i+3];
+            continue;
+        }
+        const d = max - min;
+        const s = Math.min(1, (l > 0.5 ? d / (2 - max - min) : d / (max + min)) * factor);
+        let h;
+        if      (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+        else if (max === g) h = (b - r) / d + 2;
+        else                h = (r - g) / d + 4;
+        h /= 6;
+        const q2 = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p  = 2 * l - q2;
+        out[i]   = Math.round(hue2rgb(p, q2, h + 1/3) * 255);
+        out[i+1] = Math.round(hue2rgb(p, q2, h)       * 255);
+        out[i+2] = Math.round(hue2rgb(p, q2, h - 1/3) * 255);
+        out[i+3] = data[i+3];
+    }
+    return out;
+}
+
+// Compute per-tile stats in one pass: R/G/B means, luminance variance, per-channel variances.
+function tileStats(data, imgW, x0, y0, w, h) {
+    let rS=0, gS=0, bS=0, lumS=0, rSq=0, gSq=0, bSq=0, lumSq=0, n=0;
     for (let y = y0; y < y0 + h; y++) {
         for (let x = x0; x < x0 + w; x++) {
             const i = (y * imgW + x) * 4;
-            const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-            sum += lum;
-            sumSq += lum * lum;
-            count++;
+            const r = data[i], g = data[i+1], b = data[i+2];
+            rS += r; gS += g; bS += b;
+            rSq += r*r; gSq += g*g; bSq += b*b;
+            const lum = 0.299*r + 0.587*g + 0.114*b;
+            lumS += lum; lumSq += lum*lum;
+            n++;
         }
     }
-    const mean = sum / count;
-    return sumSq / count - mean * mean;
+    const rM=rS/n, gM=gS/n, bM=bS/n, lumM=lumS/n;
+    return {
+        r: rM, g: gM, b: bM,
+        lumVar: lumSq/n - lumM*lumM,
+        rVar: rSq/n - rM*rM,
+        gVar: gSq/n - gM*gM,
+        bVar: bSq/n - bM*bM,
+    };
+}
+
+// Variance of the per-pixel absolute luminance difference between two images.
+// High value = spatially structured differences (missing textured layer).
+function tileDiffVariance(exData, refData, imgW, x0, y0, w, h) {
+    let s=0, sq=0, n=0;
+    for (let y = y0; y < y0 + h; y++) {
+        for (let x = x0; x < x0 + w; x++) {
+            const i = (y * imgW + x) * 4;
+            const exL  = 0.299*exData[i]  + 0.587*exData[i+1]  + 0.114*exData[i+2];
+            const refL = 0.299*refData[i] + 0.587*refData[i+1] + 0.114*refData[i+2];
+            const d = Math.abs(exL - refL);
+            s += d; sq += d*d; n++;
+        }
+    }
+    const m = s/n;
+    return sq/n - m*m;
 }
 
 function detectExtremeLodIssue(extremeCanvas, refCanvas) {
-    const CMP_W = 640, CMP_H = 360;
+    const CMP_W = 1280, CMP_H = 720;
     const TILE_COLS = 16, TILE_ROWS = 9;
-    const tileW = CMP_W / TILE_COLS, tileH = CMP_H / TILE_ROWS;
+    const tileW = CMP_W / TILE_COLS, tileH = CMP_H / TILE_ROWS; // 80×80 per tile
+    const CROP = 20; // pixels shaved from each edge → analyze center 40×40 of each tile
+    const cropW = tileW - CROP * 2, cropH = tileH - CROP * 2;
 
     const cmp = document.createElement('canvas');
-    cmp.width = CMP_W;
-    cmp.height = CMP_H;
+    cmp.width = CMP_W; cmp.height = CMP_H;
     const ctx = cmp.getContext('2d');
 
     ctx.drawImage(extremeCanvas, 0, 0, CMP_W, CMP_H);
-    const exData = ctx.getImageData(0, 0, CMP_W, CMP_H).data;
-
+    const exRaw = ctx.getImageData(0, 0, CMP_W, CMP_H).data;
     ctx.drawImage(refCanvas, 0, 0, CMP_W, CMP_H);
-    const refData = ctx.getImageData(0, 0, CMP_W, CMP_H).data;
+    const refRaw = ctx.getImageData(0, 0, CMP_W, CMP_H).data;
+
+    // Pre-compute saturation-amplified versions once for the whole image
+    const exAmp  = amplifySaturation(exRaw,  7); // tunable: amplification factor
+    const refAmp = amplifySaturation(refRaw, 7);
 
     let suspiciousTiles = 0;
     for (let tr = 0; tr < TILE_ROWS; tr++) {
         for (let tc = 0; tc < TILE_COLS; tc++) {
-            const x0 = tc * tileW, y0 = tr * tileH;
-            const exVar = tileVariance(exData, CMP_W, x0, y0, tileW, tileH);
-            const refVar = tileVariance(refData, CMP_W, x0, y0, tileW, tileH);
-            // Flag tiles where reference has meaningful texture but extreme has much less
-            if (refVar > 50 && exVar < refVar * 0.5) suspiciousTiles++;
+            // Center crop: skip CROP pixels on each edge of the 80×80 tile
+            const x0 = tc * tileW + CROP, y0 = tr * tileH + CROP;
+            const exS  = tileStats(exRaw,  CMP_W, x0, y0, cropW, cropH);
+            const refS = tileStats(refRaw, CMP_W, x0, y0, cropW, cropH);
+
+            // Check 1: luminance variance drop — missing displacement/texture layers
+            if (refS.lumVar > 50 && exS.lumVar < refS.lumVar * 0.5) {
+                suspiciousTiles++; continue;
+            }
+
+            // Check 2: per-channel mean delta — missing tone/color layers (uniform or semi-transparent)
+            if (Math.abs(exS.r - refS.r) > 15 ||    // tunable: channel delta threshold (0–255)
+                Math.abs(exS.g - refS.g) > 15 ||
+                Math.abs(exS.b - refS.b) > 15) {
+                suspiciousTiles++; continue;
+            }
+
+            // Check 3: saturation-amplified color variance drop — missing subtle hue-shift layers
+            const exAmpS  = tileStats(exAmp,  CMP_W, x0, y0, cropW, cropH);
+            const refAmpS = tileStats(refAmp, CMP_W, x0, y0, cropW, cropH);
+            const exColorVar  = Math.max(exAmpS.rVar,  exAmpS.gVar,  exAmpS.bVar);
+            const refColorVar = Math.max(refAmpS.rVar, refAmpS.gVar, refAmpS.bVar);
+            if (refColorVar > 150 && exColorVar < refColorVar * 0.5) { // tunable
+                suspiciousTiles++; continue;
+            }
+
+            // Check 4: structured difference variance — missing textured layers at any scale/contrast
+            if (tileDiffVariance(exRaw, refRaw, CMP_W, x0, y0, cropW, cropH) > 200) { // tunable
+                suspiciousTiles++; continue;
+            }
         }
     }
 
-    const suspiciousRatio = suspiciousTiles / (TILE_COLS * TILE_ROWS);
-    return suspiciousRatio > 0.1; // >10% of tiles flagged = likely dropped layer(s)
+    return suspiciousTiles / (TILE_COLS * TILE_ROWS) > 0.1; // tunable: suspicious tile fraction
 }
 
 function showCpuHint(isRendering = false) {
     clearTimeout(cpuHintAutoHideTimer);
     cpuHintAutoHideTimer = null;
     const hint = document.getElementById('expand-cpu-hint');
-    hint.querySelector('.cpu-hint-body').textContent = 'Missing or incomplete layers? GPU rendering can fail at this resolution. CPU rendering is slower but should produce a complete image. Your browser may say this page is unresponsive during CPU generation.';
+    hint.querySelector('.cpu-hint-body').textContent = 'Missing or incomplete layers? GPU rendering in browser can fail at this resolution. CPU rendering is slower but should produce a complete image. This page may be unresponsive during CPU rendering.';
     document.getElementById('expand-cpu-render-btn').style.display = '';
     if (hint.classList.contains('hidden')) {
         hint.classList.remove('hidden', 'dismissing');
@@ -3734,7 +3855,7 @@ function showCpuHint(isRendering = false) {
 function showCpuSuccess() {
     clearTimeout(cpuHintAutoHideTimer);
     const hint = document.getElementById('expand-cpu-hint');
-    hint.querySelector('.cpu-hint-body').textContent = 'Image rendered with CPU.';
+    hint.querySelector('.cpu-hint-body').textContent = 'Image rendered with CPU!';
     document.getElementById('expand-cpu-render-btn').style.display = 'none';
     if (hint.classList.contains('hidden')) {
         hint.classList.remove('hidden', 'dismissing');
@@ -3840,6 +3961,7 @@ exViewport.addEventListener('wheel', e => {
 exViewport.addEventListener('dblclick', fitExpandView);
 
 document.getElementById('expand-more').addEventListener('click', e => { e.stopPropagation(); toggleDownloadMenu(); });
+document.getElementById('expand-layers-btn').addEventListener('click', e => { e.stopPropagation(); openLayerPanel(expandIdx, document.getElementById('expand-layers-btn')); });
 document.getElementById('expand-reset').addEventListener('click', fitExpandView);
 document.getElementById('expand-close').addEventListener('click', closeExpand);
 document.getElementById('expand-extreme-detail').addEventListener('change', e => setExtremeDetail(e.target.checked));
@@ -4102,6 +4224,10 @@ document.addEventListener('mousedown', e => {
         });
     }
 })();
+
+if (/Firefox/i.test(navigator.userAgent)) {
+    document.getElementById('firefox-notice').style.display = 'block';
+}
 
 </script>
 </body>
