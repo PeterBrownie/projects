@@ -3946,6 +3946,8 @@ exViewport.addEventListener('wheel', e => {
     updateLodIndicator();
     clearTimeout(exZoomSettleTimer);
     if (newTierIdx !== exDisplayedTier) {
+        const leavingExtreme = extremeDetailEnabled && newTierIdx !== EX_TIERS.length - 1;
+        if (leavingExtreme) { hideCpuHint(); exCpuRenderRequested = false; }
         if (exTierCache[newTierIdx]) {
             rasterizeExpand(); // cached — switch immediately, no delay
         } else {
