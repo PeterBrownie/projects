@@ -3409,6 +3409,29 @@ function openExpand(idx) {
     rasterizeExpand();
 }
 
+async function ensureTierCached(tierIdx, gen) {
+    if (exTierCache[tierIdx]) return;
+    const [w, h] = getExTierDims(tierIdx);
+    const svgStr = genomeToSVG(genomes[expandIdx], CANONICAL_W, CANONICAL_H, 'ex', false, w);
+    const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    await new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+            if (exRasterGen !== gen) { URL.revokeObjectURL(url); resolve(); return; }
+            const offscreen = document.createElement('canvas');
+            offscreen.width = w;
+            offscreen.height = h;
+            offscreen.getContext('2d').drawImage(img, 0, 0, w, h);
+            exTierCache[tierIdx] = offscreen;
+            URL.revokeObjectURL(url);
+            resolve();
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+        img.src = url;
+    });
+}
+
 async function rasterizeExpand() {
     if (expandIdx < 0 || !exCanvas) return;
     const tierIdx = getExTierIdx();
@@ -3436,6 +3459,14 @@ async function rasterizeExpand() {
     if (isExtremeTier && useCpuRender) resetCpuHintButton(true);
     await new Promise(resolve => setTimeout(resolve, 120));
     const gen = ++exRasterGen;
+
+    // Before rendering the extreme tier, ensure the tier directly below it is cached
+    // so detectExtremeLodIssue always has a valid reference to compare against.
+    if (isExtremeTier && !exTierCache[tierIdx - 1]) {
+        await ensureTierCached(tierIdx - 1, gen);
+        if (exRasterGen !== gen) return; // aborted while pre-rendering reference
+    }
+
     const [targetW, targetH] = getExTierDims(tierIdx);
 
     // Always render SVG at CANONICAL_W×CANONICAL_H so feTurbulence coordinates
