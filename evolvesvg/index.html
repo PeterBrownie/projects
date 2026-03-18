@@ -990,6 +990,89 @@
         #expand-lod .lod-bar-extreme { display: none; }
         #expand-lod.extreme-enabled .lod-bar-extreme { display: block; }
 
+        /* ── CPU rendering hint toast ── */
+        #expand-cpu-hint {
+            position: absolute;
+            bottom: 64px;
+            left: 20px;
+            width: 284px;
+            background: rgba(13,13,13,0.96);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 13px 14px 12px;
+            z-index: 2010;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 6px 28px rgba(0,0,0,0.55);
+            pointer-events: auto;
+            animation: cpu-hint-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+        #expand-cpu-hint.hidden { display: none; }
+        #expand-cpu-hint.dismissing { animation: cpu-hint-out 0.22s ease-in both; }
+        @keyframes cpu-hint-in {
+            from { transform: translateX(calc(-100% - 28px)); opacity: 0; }
+            to   { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes cpu-hint-out {
+            from { transform: translateX(0); opacity: 1; }
+            to   { transform: translateX(calc(-100% - 28px)); opacity: 0; }
+        }
+        .cpu-hint-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 7px;
+        }
+        .cpu-hint-title {
+            font-size: 10.5px;
+            font-weight: 600;
+            color: #e09030;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+        #expand-cpu-hint-close {
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.3);
+            cursor: pointer;
+            font-size: 13px;
+            padding: 0;
+            line-height: 1;
+            transition: color 0.15s;
+        }
+        #expand-cpu-hint-close:hover { color: rgba(255,255,255,0.7); }
+        .cpu-hint-body {
+            font-size: 11.5px;
+            color: rgba(255,255,255,0.48);
+            line-height: 1.55;
+            margin-bottom: 11px;
+        }
+        #expand-cpu-render-btn {
+            width: 100%;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.13);
+            border-radius: 6px;
+            color: rgba(255,255,255,0.75);
+            font-size: 12px;
+            font-weight: 500;
+            padding: 7px 10px;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s, color 0.15s;
+            letter-spacing: 0.02em;
+        }
+        #expand-cpu-render-btn:hover:not(:disabled) {
+            background: rgba(255,255,255,0.13);
+            border-color: rgba(255,255,255,0.27);
+            color: #fff;
+        }
+        #expand-cpu-render-btn:disabled { cursor: default; }
+        #expand-cpu-render-btn.is-rendering {
+            color: #e09030;
+            border-color: rgba(224,144,48,0.4);
+            background: rgba(224,144,48,0.07);
+            animation: lod-pulse 0.75s ease-in-out infinite;
+            pointer-events: none;
+        }
+
         .cell-label {
             position: absolute;
             bottom: 4px;
@@ -1244,6 +1327,14 @@
         <span id="lod-rendering-label">Rendering…</span>
     </div>
     <div id="expand-hint">Scroll to zoom &bull; Drag to pan &bull; Double-click to fit &bull; Esc to close</div>
+    <div id="expand-cpu-hint" class="hidden">
+        <div class="cpu-hint-header">
+            <span class="cpu-hint-title">⚠ Extreme Detail</span>
+            <button id="expand-cpu-hint-close">✕</button>
+        </div>
+        <div class="cpu-hint-body">Noticing missing or incomplete layers? GPU rendering can silently drop complex filters at this resolution. CPU rendering is slower but may produce a complete image.</div>
+        <button id="expand-cpu-render-btn">Try CPU Rendering</button>
+    </div>
 </div>
 
 <button id="fullscreen-btn" title="Toggle fullscreen">⛶</button>
@@ -1538,7 +1629,8 @@ function buildLayerFilter(layer, palette, defs, makeGradientId, svgW = 640, rend
         // At higher render resolutions, alpha edges are proportionally thinner in SVG
         // coordinate space, making lighting edge effects look smaller. Compensate by
         // blurring the bump map input so the effective edge width stays consistent.
-        const dlBlur = (renderW / svgW - 1) * (renderW / svgW >= 12 ? 0.005 : 0.015);
+        const dlBlurBase = 0.00001; // baseline blur at lowest LOD (scale=1) — tune this
+        const dlBlur = dlBlurBase + (renderW / svgW - 1) * (renderW / svgW >= 12 ? 0.005 : 0.015);
         if (dlBlur > 0.01) {
             steps.push(`<feGaussianBlur in="${cur}" stdDeviation="${dlBlur.toFixed(2)}" result="dlblur"/>`);
             cur = 'dlblur';
@@ -3194,6 +3286,9 @@ let exDragging = false, exDidPan = false;
 let exDragStartX = 0, exDragStartY = 0, exDragStartPanX = 0, exDragStartPanY = 0;
 let exCanvas = null, exRasterGen = 0, exZoomSettleTimer = null, exRafPending = false;
 let exTierCache = {}; // tierIdx → offscreen canvas
+let exCpuRenderRequested = false;
+let cpuHintAutoHideTimer = null;
+let exExtremeTierIssueDetected = null; // null=unknown, true=issue found, false=looks ok
 let exRenderingTier = -1, exDisplayedTier = -1;
 const exWrapper = document.getElementById('expand-svg-wrapper');
 
@@ -3274,6 +3369,7 @@ function openExpand(idx) {
 async function rasterizeExpand() {
     if (expandIdx < 0 || !exCanvas) return;
     const tierIdx = getExTierIdx();
+    const isExtremeTier = extremeDetailEnabled && tierIdx === EX_TIERS.length - 1;
 
     // Serve from cache if this tier has already been rendered
     if (exTierCache[tierIdx]) {
@@ -3283,11 +3379,17 @@ async function rasterizeExpand() {
         exCanvas.getContext('2d').drawImage(cached, 0, 0);
         exDisplayedTier = tierIdx;
         updateLodIndicator();
+        if (isExtremeTier && exExtremeTierIssueDetected !== false) setTimeout(() => showCpuHint(), 50);
         return;
     }
 
+    // Consume the CPU flag now so concurrent calls don't accidentally inherit it
+    const useCpuRender = exCpuRenderRequested;
+    exCpuRenderRequested = false;
+
     exRenderingTier = tierIdx;
     updateLodIndicator();
+    if (isExtremeTier && useCpuRender) resetCpuHintButton(true);
     await new Promise(resolve => setTimeout(resolve, 120));
     const gen = ++exRasterGen;
     const [targetW, targetH] = getExTierDims(tierIdx);
@@ -3305,7 +3407,8 @@ async function rasterizeExpand() {
             const offscreen = document.createElement('canvas');
             offscreen.width = targetW;
             offscreen.height = targetH;
-            offscreen.getContext('2d', { willReadFrequently: false }).drawImage(img, 0, 0, targetW, targetH);
+            // willReadFrequently forces CPU/software rendering — only when user explicitly requests it
+            offscreen.getContext('2d', { willReadFrequently: useCpuRender }).drawImage(img, 0, 0, targetW, targetH);
             exTierCache[tierIdx] = offscreen;
             exCanvas.width = targetW;
             exCanvas.height = targetH;
@@ -3314,6 +3417,17 @@ async function rasterizeExpand() {
             exRenderingTier = -1;
             exDisplayedTier = tierIdx;
             updateLodIndicator();
+            if (isExtremeTier) {
+                resetCpuHintButton();
+                if (useCpuRender) {
+                    exExtremeTierIssueDetected = false;
+                    setTimeout(() => showCpuSuccess(), 50);
+                } else {
+                    const refCanvas = exTierCache[tierIdx - 1] ?? null;
+                    exExtremeTierIssueDetected = refCanvas ? detectExtremeLodIssue(offscreen, refCanvas) : null;
+                    if (exExtremeTierIssueDetected !== false) setTimeout(() => showCpuHint(), 50);
+                }
+            }
             resolve();
         };
         img.onerror = () => { URL.revokeObjectURL(url); resolve(); };
@@ -3371,7 +3485,7 @@ async function downloadPngAtTier(tierIdx) {
         const canvas = document.createElement('canvas');
         canvas.width = targetW;
         canvas.height = targetH;
-        canvas.getContext('2d', { willReadFrequently: false }).drawImage(img, 0, 0, targetW, targetH);
+        canvas.getContext('2d', { willReadFrequently: true }).drawImage(img, 0, 0, targetW, targetH);
         URL.revokeObjectURL(url);
         triggerPngDownload(canvas, filename, finish);
     };
@@ -3469,9 +3583,118 @@ function closeExpand() {
     exTierCache = {};
     exRenderingTier = -1;
     exDisplayedTier = -1;
+    exCpuRenderRequested = false;
+    exExtremeTierIssueDetected = null;
+    clearTimeout(cpuHintAutoHideTimer);
+    cpuHintAutoHideTimer = null;
     clearTimeout(exZoomSettleTimer);
     document.body.classList.remove('expand-panning');
+    const hint = document.getElementById('expand-cpu-hint');
+    hint.classList.add('hidden');
+    hint.classList.remove('dismissing');
 }
+
+function tileVariance(data, imgW, x0, y0, w, h) {
+    let sum = 0, sumSq = 0, count = 0;
+    for (let y = y0; y < y0 + h; y++) {
+        for (let x = x0; x < x0 + w; x++) {
+            const i = (y * imgW + x) * 4;
+            const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+            sum += lum;
+            sumSq += lum * lum;
+            count++;
+        }
+    }
+    const mean = sum / count;
+    return sumSq / count - mean * mean;
+}
+
+function detectExtremeLodIssue(extremeCanvas, refCanvas) {
+    const CMP_W = 640, CMP_H = 360;
+    const TILE_COLS = 16, TILE_ROWS = 9;
+    const tileW = CMP_W / TILE_COLS, tileH = CMP_H / TILE_ROWS;
+
+    const cmp = document.createElement('canvas');
+    cmp.width = CMP_W;
+    cmp.height = CMP_H;
+    const ctx = cmp.getContext('2d');
+
+    ctx.drawImage(extremeCanvas, 0, 0, CMP_W, CMP_H);
+    const exData = ctx.getImageData(0, 0, CMP_W, CMP_H).data;
+
+    ctx.drawImage(refCanvas, 0, 0, CMP_W, CMP_H);
+    const refData = ctx.getImageData(0, 0, CMP_W, CMP_H).data;
+
+    let suspiciousTiles = 0;
+    for (let tr = 0; tr < TILE_ROWS; tr++) {
+        for (let tc = 0; tc < TILE_COLS; tc++) {
+            const x0 = tc * tileW, y0 = tr * tileH;
+            const exVar = tileVariance(exData, CMP_W, x0, y0, tileW, tileH);
+            const refVar = tileVariance(refData, CMP_W, x0, y0, tileW, tileH);
+            // Flag tiles where reference has meaningful texture but extreme has much less
+            if (refVar > 50 && exVar < refVar * 0.5) suspiciousTiles++;
+        }
+    }
+
+    const suspiciousRatio = suspiciousTiles / (TILE_COLS * TILE_ROWS);
+    return suspiciousRatio > 0.1; // >10% of tiles flagged = likely dropped layer(s)
+}
+
+function showCpuHint(isRendering = false) {
+    clearTimeout(cpuHintAutoHideTimer);
+    cpuHintAutoHideTimer = null;
+    const hint = document.getElementById('expand-cpu-hint');
+    hint.querySelector('.cpu-hint-body').textContent = 'Noticing missing or incomplete layers? GPU rendering can silently drop complex filters at this resolution. CPU rendering is slower but should produce a complete image.';
+    document.getElementById('expand-cpu-render-btn').style.display = '';
+    if (hint.classList.contains('hidden')) {
+        hint.classList.remove('hidden', 'dismissing');
+        void hint.offsetWidth; // restart animation
+    } else {
+        hint.classList.remove('dismissing');
+    }
+    resetCpuHintButton(isRendering);
+}
+
+function showCpuSuccess() {
+    clearTimeout(cpuHintAutoHideTimer);
+    const hint = document.getElementById('expand-cpu-hint');
+    hint.querySelector('.cpu-hint-body').textContent = 'Image rendered with CPU.';
+    document.getElementById('expand-cpu-render-btn').style.display = 'none';
+    if (hint.classList.contains('hidden')) {
+        hint.classList.remove('hidden', 'dismissing');
+        void hint.offsetWidth; // restart animation
+    } else {
+        hint.classList.remove('dismissing');
+    }
+    cpuHintAutoHideTimer = setTimeout(() => { cpuHintAutoHideTimer = null; hideCpuHint(); }, 5000);
+}
+
+function resetCpuHintButton(isRendering = false) {
+    const btn = document.getElementById('expand-cpu-render-btn');
+    btn.classList.toggle('is-rendering', isRendering);
+    btn.disabled = isRendering;
+    btn.textContent = isRendering ? 'Rendering…' : 'Try CPU Rendering';
+}
+
+function hideCpuHint() {
+    const hint = document.getElementById('expand-cpu-hint');
+    if (hint.classList.contains('hidden')) return;
+    hint.classList.add('dismissing');
+    hint.addEventListener('animationend', () => {
+        hint.classList.add('hidden');
+        hint.classList.remove('dismissing');
+    }, { once: true });
+}
+
+document.getElementById('expand-cpu-hint-close').addEventListener('click', hideCpuHint);
+
+document.getElementById('expand-cpu-render-btn').addEventListener('click', () => {
+    const tierIdx = getExTierIdx();
+    exCpuRenderRequested = true;
+    exExtremeTierIssueDetected = null;
+    delete exTierCache[tierIdx]; // force a fresh render with CPU path
+    rasterizeExpand();
+});
 
 // Viewport drag
 const exViewport = document.getElementById('expand-viewport');
