@@ -3644,7 +3644,7 @@ function showCpuHint(isRendering = false) {
     clearTimeout(cpuHintAutoHideTimer);
     cpuHintAutoHideTimer = null;
     const hint = document.getElementById('expand-cpu-hint');
-    hint.querySelector('.cpu-hint-body').textContent = 'Noticing missing or incomplete layers? GPU rendering can silently drop complex filters at this resolution. CPU rendering is slower but should produce a complete image.';
+    hint.querySelector('.cpu-hint-body').textContent = 'Missing or incomplete layers? GPU rendering can fail at this resolution. CPU rendering is slower but should produce a complete image. Your browser may say this page is unresponsive during CPU generation.';
     document.getElementById('expand-cpu-render-btn').style.display = '';
     if (hint.classList.contains('hidden')) {
         hint.classList.remove('hidden', 'dismissing');
