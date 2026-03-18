@@ -869,11 +869,15 @@
             width: 3px;
             height: 12px;
             border-radius: 2px;
-            background: rgba(255,255,255,0.4);
-            transition: background 0.25s, height 0.15s, width 0.15s;
+            background: rgba(255,255,255,0.7);
+            backdrop-filter: contrast(6);
+            transition: background 0.25s, height 0.15s, width 0.15s, filter 0.4s ease;
+        }
+        #expand-lod .lod-bar.lod-needs-shadow {
+            filter: drop-shadow(0 0 3px rgba(128,128,128,0.9));
         }
         #expand-lod .lod-bar.lod-cached {
-            background: rgba(255,255,255,0.45);
+            background: rgba(255,255,255,0.85);
         }
         #expand-lod .lod-bar.lod-current {
             width: 4px;
@@ -912,11 +916,15 @@
             left: 50%;
             transform: translateX(-50%);
             font-size: 11px;
-            color: rgba(255,255,255,0.8);
+            color: #fff;
             pointer-events: none;
             z-index: 2001;
             white-space: nowrap;
             mix-blend-mode: difference;
+            transition: filter 0.4s ease;
+        }
+        #expand-hint.lod-needs-shadow {
+            filter: drop-shadow(0 0 3px rgba(128,128,128,0.9));
         }
 
         #expand-more-wrap {
@@ -3303,11 +3311,46 @@ function updateLodIndicator() {
     document.getElementById('lod-rendering-label').classList.toggle('active', exRenderingTier !== -1);
 }
 
+function sampleCanvasLuminance(screenCx, screenCy, vpRect) {
+    if (!exCanvas || exDisplayedTier < 0) return null;
+    const scaleX = exCanvas.width / EX_W;
+    const scaleY = exCanvas.height / EX_H;
+    const cx = ((screenCx - vpRect.left) - exPanX) / exZoom * scaleX;
+    const cy = ((screenCy - vpRect.top)  - exPanY) / exZoom * scaleY;
+    const SW = 20, SH = 20;
+    const srcW = SW * scaleX, srcH = SH * scaleY;
+    const tmp = document.createElement('canvas');
+    tmp.width = SW; tmp.height = SH;
+    tmp.getContext('2d').drawImage(exCanvas, cx - srcW / 2, cy - srcH / 2, srcW, srcH, 0, 0, SW, SH);
+    const data = tmp.getContext('2d').getImageData(0, 0, SW, SH).data;
+    let sum = 0;
+    for (let i = 0; i < data.length; i += 4)
+        sum += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+    return sum / (data.length / 4) / 255;
+}
+
+function isMidGray(lum) {
+    return lum === null || (lum >= 0.28 && lum <= 0.72);
+}
+
+function updateLodShadow() {
+    const vpRect = document.getElementById('expand-viewport').getBoundingClientRect();
+    document.querySelectorAll('#expand-lod .lod-bar').forEach(bar => {
+        const r = bar.getBoundingClientRect();
+        const lum = sampleCanvasLuminance(r.left + r.width / 2, r.top + r.height / 2, vpRect);
+        bar.classList.toggle('lod-needs-shadow', isMidGray(lum));
+    });
+    const hr = document.getElementById('expand-hint').getBoundingClientRect();
+    const hLum = sampleCanvasLuminance(hr.left + hr.width / 2, hr.top + hr.height / 2, vpRect);
+    document.getElementById('expand-hint').classList.toggle('lod-needs-shadow', isMidGray(hLum));
+}
+
 function applyExpandTransform() {
     if (exRafPending) return;
     exRafPending = true;
     requestAnimationFrame(() => {
         exWrapper.style.transform = `translate(${exPanX}px,${exPanY}px) scale(${exZoom})`;
+        updateLodShadow();
         exRafPending = false;
     });
 }
@@ -3379,6 +3422,7 @@ async function rasterizeExpand() {
         exCanvas.getContext('2d').drawImage(cached, 0, 0);
         exDisplayedTier = tierIdx;
         updateLodIndicator();
+        updateLodShadow();
         if (isExtremeTier && exExtremeTierIssueDetected !== false) setTimeout(() => showCpuHint(), 50);
         return;
     }
@@ -3417,6 +3461,7 @@ async function rasterizeExpand() {
             exRenderingTier = -1;
             exDisplayedTier = tierIdx;
             updateLodIndicator();
+            updateLodShadow();
             if (isExtremeTier) {
                 resetCpuHintButton();
                 if (useCpuRender) {
