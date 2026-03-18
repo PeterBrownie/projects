@@ -3305,7 +3305,7 @@ async function rasterizeExpand() {
             const offscreen = document.createElement('canvas');
             offscreen.width = targetW;
             offscreen.height = targetH;
-            offscreen.getContext('2d', { willReadFrequently: true }).drawImage(img, 0, 0, targetW, targetH);
+            offscreen.getContext('2d', { willReadFrequently: false }).drawImage(img, 0, 0, targetW, targetH);
             exTierCache[tierIdx] = offscreen;
             exCanvas.width = targetW;
             exCanvas.height = targetH;
@@ -3371,7 +3371,7 @@ async function downloadPngAtTier(tierIdx) {
         const canvas = document.createElement('canvas');
         canvas.width = targetW;
         canvas.height = targetH;
-        canvas.getContext('2d', { willReadFrequently: true }).drawImage(img, 0, 0, targetW, targetH);
+        canvas.getContext('2d', { willReadFrequently: false }).drawImage(img, 0, 0, targetW, targetH);
         URL.revokeObjectURL(url);
         triggerPngDownload(canvas, filename, finish);
     };
