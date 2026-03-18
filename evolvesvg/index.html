@@ -3,7 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>evolveSVG</title>
+    <title>evolveSVG — Generative SVG Art Evolution</title>
+    <meta name="description" content="evolveSVG is an interactive generative art tool that evolves SVG patterns using a genetic algorithm. Select, mutate, and breed procedural designs with layered SVG filters, turbulence, and blend modes — rendered in real time in your browser.">
+    <meta name="keywords" content="generative art, SVG art, genetic algorithm, procedural art, interactive art, browser art, svg generator, evolutionary art, creative coding, pattern generator">
+    <meta name="author" content="Peter Brown">
+    <link rel="canonical" href="https://peterbrown.space/evolvesvg/">
+    <meta property="og:title" content="evolveSVG — Generative SVG Art Evolution">
+    <meta property="og:description" content="Evolve procedural SVG patterns in real time using a genetic algorithm. Breed, mutate, and render layered generative art with SVG filters and blend modes.">
+    <meta property="og:url" content="https://peterbrown.space/evolvesvg/">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="evolveSVG — Generative SVG Art Evolution">
+    <meta name="twitter:description" content="Evolve procedural SVG patterns in real time using a genetic algorithm. Breed, mutate, and render layered generative art with SVG filters and blend modes.">
     <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "03a89f35132a4e8aa86bf1ed1b60541a"}'></script><!-- End Cloudflare Web Analytics -->
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -473,6 +484,48 @@
         }
         #fullscreen-btn:hover { background: rgba(0,0,0,0.75); color: rgba(255,255,255,0.75); border-color: rgba(255,255,255,0.35); }
 
+        #info-btn {
+            background: none;
+            border: none;
+            color: #5f5f5f;
+            cursor: pointer;
+            font-size: 11px;
+            padding: 0;
+            line-height: 1;
+            vertical-align: middle;
+            transition: color 0.15s;
+        }
+        #info-btn:hover { color: #b8b8b8; }
+
+        #info-popup {
+            display: none;
+            position: fixed;
+            bottom: 50px;
+            left: 16px;
+            width: 300px;
+            background: rgba(18,18,18,0.97);
+            border: 1px solid #444;
+            border-radius: 9px;
+            padding: 16px 18px;
+            z-index: 9999;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.7);
+            color: #ccc;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        #info-popup.open { display: block; }
+        #info-popup h2 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        #info-popup p { margin-bottom: 10px; }
+        #info-popup p:last-child { margin-bottom: 0; }
+        #info-popup a { color: #7ab4e8; text-decoration: none; }
+        #info-popup a:hover { text-decoration: underline; }
+
         #reset-view {
             position: absolute;
             top: 10px;
@@ -882,18 +935,13 @@
             height: 20px;
             z-index: 2001;
             pointer-events: none;
-            mix-blend-mode: difference;
         }
         #expand-lod .lod-bar {
             width: 3px;
             height: 12px;
             border-radius: 2px;
             background: rgba(255,255,255,0.7);
-            backdrop-filter: contrast(6);
-            transition: background 0.25s, height 0.15s, width 0.15s, filter 0.4s ease;
-        }
-        #expand-lod .lod-bar.lod-needs-shadow {
-            filter: drop-shadow(0 0 3px rgba(128,128,128,0.9));
+            transition: background 0.4s ease, height 0.15s, width 0.15s;
         }
         #expand-lod .lod-bar.lod-cached {
             background: rgba(255,255,255,0.85);
@@ -907,6 +955,9 @@
             background: #e09030;
             animation: lod-pulse 0.75s ease-in-out infinite;
         }
+        #expand-lod .lod-bar.lod-on-light { background: rgba(0,0,0,0.45); }
+        #expand-lod .lod-bar.lod-on-light.lod-cached { background: rgba(0,0,0,0.6); }
+        #expand-lod .lod-bar.lod-on-light.lod-current { background: rgba(0,0,0,0.85); }
         #lod-rendering-label {
             color: #e09030;
             font-size: 12px;
@@ -935,16 +986,23 @@
             left: 50%;
             transform: translateX(-50%);
             font-size: 11px;
-            color: #fff;
             pointer-events: none;
             z-index: 2001;
             white-space: nowrap;
-            mix-blend-mode: difference;
-            transition: filter 0.4s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
-        #expand-hint.lod-needs-shadow {
-            filter: drop-shadow(0 0 3px rgba(128,128,128,0.9));
+        .hint-phrase {
+            color: rgba(255,255,255,0.8);
+            transition: color 0.4s ease;
         }
+        .hint-phrase.lod-on-light { color: rgba(0,0,0,0.6); }
+        .hint-sep {
+            color: rgba(255,255,255,0.3);
+            transition: color 0.4s ease;
+        }
+        .hint-sep.lod-on-light { color: rgba(0,0,0,0.25); }
 
         #sidebar-save-menu {
             display: none;
@@ -1341,7 +1399,7 @@
         </div>
 
         <div class="credit-note">
-            Made by <a href="https://github.com/PeterBrownie/sudoku/" target="_blank" rel="noopener noreferrer">Peter Brown</a><br>
+            Made by <a href="https://github.com/PeterBrownie/sudoku/" target="_blank" rel="noopener noreferrer">Peter Brown</a> <button id="info-btn" title="About evolveSVG">ⓘ</button><br>
             Inspired by Emergent Garden. <a href="https://www.youtube.com/@EmergentGarden" target="_blank" rel="noopener noreferrer">YouTube</a><br>See his original project: <a href="https://github.com/MaxRobinsonTheGreat/hyperdimensions" target="_blank" rel="noopener noreferrer">GitHub</a>
         </div>
     </div>
@@ -1381,7 +1439,15 @@
         <div class="lod-bar lod-bar-extreme" data-tier="4"></div>
         <span id="lod-rendering-label">Rendering…</span>
     </div>
-    <div id="expand-hint">Scroll to zoom &bull; Drag to pan &bull; Double-click to fit &bull; Esc to close</div>
+    <div id="expand-hint">
+        <span class="hint-phrase">Scroll to zoom</span>
+        <span class="hint-sep">&bull;</span>
+        <span class="hint-phrase">Drag to pan</span>
+        <span class="hint-sep">&bull;</span>
+        <span class="hint-phrase">Double-click to fit</span>
+        <span class="hint-sep">&bull;</span>
+        <span class="hint-phrase">Esc to close</span>
+    </div>
     <div id="expand-cpu-hint" class="hidden">
         <div class="cpu-hint-header">
             <span class="cpu-hint-title">⚠ Extreme Detail</span>
@@ -1393,6 +1459,15 @@
 </div>
 
 <button id="fullscreen-btn" title="Toggle fullscreen">⛶</button>
+
+<button id="info-btn" title="About evolveSVG">i</button>
+<div id="info-popup">
+    <h2>evolveSVG</h2>
+    <p>A generative art tool that evolves SVG patterns using a <strong>genetic algorithm</strong>. Each generation, you select the patterns you like — the tool breeds, mutates, and recombines them into new designs.</p>
+    <p>Patterns are built from layered SVG primitives with <strong>procedural filters</strong> including feTurbulence, feDisplacementMap, feGaussianBlur, blend modes, and color transforms — all rendered live in the browser.</p>
+    <p>Zoom into the expanded view for up to <strong>16K resolution</strong> rasterization. Save as SVG or PNG at any quality level.</p>
+    <p>Made by <a href="https://peterbrown.space" target="_blank" rel="noopener">Peter Brown</a>. Inspired by <a href="https://www.youtube.com/@EmergentGarden" target="_blank" rel="noopener">Emergent Garden</a>.</p>
+</div>
 
 <div id="firefox-notice">FYI - evolveSVG is computationally and visually superior on Chrome, when compared to Firefox.</div>
 
@@ -3393,17 +3468,23 @@ function updateLodIndicator() {
     document.getElementById('lod-rendering-label').classList.toggle('active', exRenderingTier !== -1);
 }
 
-function sampleCanvasLuminance(screenCx, screenCy, vpRect) {
+function sampleCanvasLuminance(screenCx, screenCy, vpRect, SW = 20, SH = 20) {
     if (!exCanvas || exDisplayedTier < 0) return null;
     const scaleX = exCanvas.width / EX_W;
     const scaleY = exCanvas.height / EX_H;
     const cx = ((screenCx - vpRect.left) - exPanX) / exZoom * scaleX;
     const cy = ((screenCy - vpRect.top)  - exPanY) / exZoom * scaleY;
-    const SW = 20, SH = 20;
-    const srcW = SW * scaleX, srcH = SH * scaleY;
+    // Divide by exZoom so the sample always covers a fixed screen-space area regardless of zoom
+    const srcW = SW * scaleX / exZoom, srcH = SH * scaleY / exZoom;
+    // Clamp source rect to canvas bounds so out-of-range areas don't bleed in as black
+    const sx0 = Math.max(0, cx - srcW / 2);
+    const sy0 = Math.max(0, cy - srcH / 2);
+    const sx1 = Math.min(exCanvas.width,  cx + srcW / 2);
+    const sy1 = Math.min(exCanvas.height, cy + srcH / 2);
+    if (sx1 <= sx0 || sy1 <= sy0) return null;
     const tmp = document.createElement('canvas');
     tmp.width = SW; tmp.height = SH;
-    tmp.getContext('2d').drawImage(exCanvas, cx - srcW / 2, cy - srcH / 2, srcW, srcH, 0, 0, SW, SH);
+    tmp.getContext('2d').drawImage(exCanvas, sx0, sy0, sx1 - sx0, sy1 - sy0, 0, 0, SW, SH);
     const data = tmp.getContext('2d').getImageData(0, 0, SW, SH).data;
     let sum = 0;
     for (let i = 0; i < data.length; i += 4)
@@ -3411,20 +3492,19 @@ function sampleCanvasLuminance(screenCx, screenCy, vpRect) {
     return sum / (data.length / 4) / 255;
 }
 
-function isMidGray(lum) {
-    return lum === null || (lum >= 0.28 && lum <= 0.72);
-}
-
-function updateLodShadow() {
+function updateLodColor() {
+    if (!exCanvas || exDisplayedTier < 0) return;
     const vpRect = document.getElementById('expand-viewport').getBoundingClientRect();
     document.querySelectorAll('#expand-lod .lod-bar').forEach(bar => {
         const r = bar.getBoundingClientRect();
         const lum = sampleCanvasLuminance(r.left + r.width / 2, r.top + r.height / 2, vpRect);
-        bar.classList.toggle('lod-needs-shadow', isMidGray(lum));
+        bar.classList.toggle('lod-on-light', lum !== null && lum > 0.5);
     });
-    const hr = document.getElementById('expand-hint').getBoundingClientRect();
-    const hLum = sampleCanvasLuminance(hr.left + hr.width / 2, hr.top + hr.height / 2, vpRect);
-    document.getElementById('expand-hint').classList.toggle('lod-needs-shadow', isMidGray(hLum));
+    document.querySelectorAll('#expand-hint .hint-phrase, #expand-hint .hint-sep').forEach(el => {
+        const r = el.getBoundingClientRect();
+        const lum = sampleCanvasLuminance(r.left + r.width / 2, r.top + r.height / 2, vpRect);
+        el.classList.toggle('lod-on-light', lum !== null && lum > 0.5);
+    });
 }
 
 function applyExpandTransform() {
@@ -3432,7 +3512,7 @@ function applyExpandTransform() {
     exRafPending = true;
     requestAnimationFrame(() => {
         exWrapper.style.transform = `translate(${exPanX}px,${exPanY}px) scale(${exZoom})`;
-        updateLodShadow();
+        updateLodColor();
         exRafPending = false;
     });
 }
@@ -3519,6 +3599,9 @@ async function rasterizeExpand() {
     const tierIdx = getExTierIdx();
     const isExtremeTier = extremeDetailEnabled && tierIdx === EX_TIERS.length - 1;
 
+    // Hide CPU hint whenever we land on a non-extreme tier, regardless of how zoom changed
+    if (!isExtremeTier) { hideCpuHint(); exCpuRenderRequested = false; }
+
     // Serve from cache if this tier has already been rendered
     if (exTierCache[tierIdx]) {
         const cached = exTierCache[tierIdx];
@@ -3527,7 +3610,7 @@ async function rasterizeExpand() {
         exCanvas.getContext('2d').drawImage(cached, 0, 0);
         exDisplayedTier = tierIdx;
         updateLodIndicator();
-        updateLodShadow();
+        updateLodColor();
         if (isExtremeTier && exExtremeTierIssueDetected !== false) setTimeout(() => showCpuHint(), 50);
         return;
     }
@@ -3574,7 +3657,7 @@ async function rasterizeExpand() {
             exRenderingTier = -1;
             exDisplayedTier = tierIdx;
             updateLodIndicator();
-            updateLodShadow();
+            updateLodColor();
             if (isExtremeTier) {
                 resetCpuHintButton();
                 if (useCpuRender) {
@@ -4001,8 +4084,6 @@ exViewport.addEventListener('wheel', e => {
     updateLodIndicator();
     clearTimeout(exZoomSettleTimer);
     if (newTierIdx !== exDisplayedTier) {
-        const leavingExtreme = extremeDetailEnabled && newTierIdx !== EX_TIERS.length - 1;
-        if (leavingExtreme) { hideCpuHint(); exCpuRenderRequested = false; }
         if (exTierCache[newTierIdx]) {
             rasterizeExpand(); // cached — switch immediately, no delay
         } else {
@@ -4162,6 +4243,15 @@ document.getElementById('toggleSidebar').addEventListener('click', () => {
 });
 
 document.getElementById('float-restart').addEventListener('click', restart);
+
+document.getElementById('info-btn').addEventListener('click', e => {
+    e.stopPropagation();
+    document.getElementById('info-popup').classList.toggle('open');
+});
+document.addEventListener('click', e => {
+    if (!e.target.closest('#info-btn') && !e.target.closest('#info-popup'))
+        document.getElementById('info-popup').classList.remove('open');
+});
 
 const fullscreenBtn = document.getElementById('fullscreen-btn');
 fullscreenBtn.addEventListener('click', () => {
