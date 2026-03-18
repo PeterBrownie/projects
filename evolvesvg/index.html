@@ -1387,13 +1387,13 @@ function randomGenome(numLayers = null) {
         // 7: Cyan / Sky (210-240°)
         ['Azure','Cerulean','Skyline','Cyan','Aquamarine','Frost','Zenith','Arctic','Glacier','Crystalline','Nimbus','Breeze','Halcyon','Zephyr','Celeste'],
         // 8: Blue (240-270°)
-        ['Cobalt','Sapphire','Ultramarine','Indigo','Navy','Lapis','Royal','Midnight','Cadet','Electric','Hyacinth','Delft','Admiral','Blueprint','Aegean'],
+        ['Cobalt','Sapphire','Ultramarine','Indigo','Navy','Lapis','Royal','Midnight','Cadet','Electric','Hyacinth','Delft','Admiral','Blueprint','Aegean','Ocean','Deep Sea'],
         // 9: Blue-Violet (270-300°)
-        ['Violet','Iris','Periwinkle','Lavender','Wisteria','Twilight','Amethyst','Heliotrope','Cornflower','Plum','Byzantium','Thistle','Dusk','Cosmic','Prism'],
+        ['Violet','Iris','Periwinkle','Lavender','Wisteria','Twilight','Amethyst','Heliotrope','Plum','Byzantium','Thistle','Dusk','Cosmic','Prism'],
         // 10: Purple / Magenta (300-330°)
-        ['Plum','Mulberry','Mauve','Orchid','Aubergine','Fuchsia','Grape','Heather','Thistle','Boysenberry','Tyrian','Puce','Damask','Amaranth','Sangria'],
+        ['Plum','Mulberry','Mauve','Orchid','Aubergine','Fuchsia','Grape','Heather','Thistle','Boysenberry','Tyrian','Puce','Damask','Amaranth','Sangria','Royal'],
         // 11: Pink / Rose (330-360°)
-        ['Rose','Blush','Carnation','Magenta','Flamingo','Peony','Cerise','Coral','Taffy','Quartz','Blossom','Confetti','Punch','Cameo','Petal'],
+        ['Rose','Blush','Carnation','Magenta','Flamingo','Peony','Cerise','Coral','Taffy','Quartz','Blossom','Confetti','Punch','Cameo','Petal','Bubblegum'],
     ];
 
     // Lightness-based descriptors (picked when lightness is very high or very low)
@@ -1407,7 +1407,7 @@ function randomGenome(numLayers = null) {
         'Current','Mirage','Breath','Trace','Reverie','Specter','Canopy','Hollow','Aura','Torrent',
         'Prism','Dusk','Fringe','Crest','Flux','Spiral','Radiance','Lumen','Shimmer','Halo',
         'Gradient','Static','Horizon','Cavern','Vale','Summit','Basin','Fold','Lattice','Ember',
-        'Vein','Plume','Crown','Petal','Mire','Blaze','Swell','Quiver','Ripple','Nebula',
+        'Vein','Plume','Crown','Petal','Mire','Blaze','Swell','Quiver','Ripple','Nebula','Stuff','Spawn','Peter','Nico','Max','Alex'
     ];
 
     function pickFrom(arr, seed) {
@@ -1538,7 +1538,7 @@ function buildLayerFilter(layer, palette, defs, makeGradientId, svgW = 640, rend
         // At higher render resolutions, alpha edges are proportionally thinner in SVG
         // coordinate space, making lighting edge effects look smaller. Compensate by
         // blurring the bump map input so the effective edge width stays consistent.
-        const dlBlur = (renderW / svgW - 1) * 0.02;
+        const dlBlur = (renderW / svgW - 1) * (renderW / svgW >= 12 ? 0.005 : 0.015);
         if (dlBlur > 0.01) {
             steps.push(`<feGaussianBlur in="${cur}" stdDeviation="${dlBlur.toFixed(2)}" result="dlblur"/>`);
             cur = 'dlblur';
