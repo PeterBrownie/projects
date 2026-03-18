@@ -96,6 +96,37 @@
 		.card:hover .card-arrow {
 			color: #aaa;
 		}
+		.card-buttons {
+			margin-top: auto;
+			padding-top: 12px;
+			display: flex;
+			gap: 8px;
+		}
+		.card-btn {
+			font-size: 0.85rem;
+			padding: 6px 14px;
+			border-radius: 6px;
+			text-decoration: none;
+			transition: background 0.2s, color 0.2s;
+		}
+		.card-btn-primary {
+			background: #2e2e4e;
+			color: #bbb;
+			border: 1px solid #3a3a5e;
+		}
+		.card-btn-primary:hover {
+			background: #3a3a6e;
+			color: #eee;
+		}
+		.card-btn-secondary {
+			background: transparent;
+			color: #666;
+			border: 1px solid #333;
+		}
+		.card-btn-secondary:hover {
+			background: #1a1a2a;
+			color: #aaa;
+		}
 	</style>
 </head>
 <body>
@@ -116,12 +147,15 @@
 			<p class="card-desc">Math-based cage puzzle. Choose grid size from 4×4 to 8×8 with uniquely solvable puzzles.</p>
 			<span class="card-arrow">Play →</span>
 		</a>
-		<a href="https://peterbrown.space/evolvesvg" class="card">
+		<div class="card">
 			<div class="card-icon">🎨</div>
 			<p class="card-title">evolveSVG</p>
 			<p class="card-desc">Evolve generative SVG art through mutation and selection. Bookmark and export your favorites.</p>
-			<span class="card-arrow">Explore →</span>
-		</a>
+			<div class="card-buttons">
+				<a href="https://peterbrown.space/evolvesvg" class="card-btn card-btn-primary">Explore →</a>
+				<a href="https://peterbrown.space/evolvesvg/about.html" class="card-btn card-btn-secondary">About</a>
+			</div>
+		</div>
 	</div>
 </body>
 </html>

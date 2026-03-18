@@ -863,21 +863,22 @@
             height: 20px;
             z-index: 2001;
             pointer-events: none;
+            mix-blend-mode: difference;
         }
         #expand-lod .lod-bar {
             width: 3px;
             height: 12px;
             border-radius: 2px;
-            background: rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.4);
             transition: background 0.25s, height 0.15s, width 0.15s;
         }
         #expand-lod .lod-bar.lod-cached {
-            background: rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.45);
         }
         #expand-lod .lod-bar.lod-current {
             width: 4px;
             height: 20px;
-            background: rgba(255,255,255,0.85);
+            background: #fff;
         }
         #expand-lod .lod-bar.lod-rendering {
             background: #e09030;
@@ -911,11 +912,83 @@
             left: 50%;
             transform: translateX(-50%);
             font-size: 11px;
-            color: rgba(255,255,255,0.2);
+            color: rgba(255,255,255,0.8);
             pointer-events: none;
             z-index: 2001;
             white-space: nowrap;
+            mix-blend-mode: difference;
         }
+
+        #expand-more-wrap {
+            position: relative;
+        }
+        #expand-download-menu {
+            display: none;
+            position: absolute;
+            top: calc(100% + 6px);
+            right: 0;
+            background: rgba(18,18,18,0.97);
+            border: 1px solid #555;
+            border-radius: 7px;
+            padding: 6px 0;
+            min-width: 185px;
+            z-index: 2010;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+            pointer-events: auto;
+            overflow: hidden;
+        }
+        #expand-download-menu.open { display: block; }
+        .download-menu-title {
+            font-size: 10px;
+            color: #777;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 2px 12px 6px;
+            border-bottom: 1px solid #2e2e2e;
+            margin-bottom: 2px;
+        }
+        .download-menu-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 7px 12px;
+            cursor: pointer;
+            color: #ccc;
+            font-size: 13px;
+            gap: 12px;
+            transition: background 0.1s;
+        }
+        .download-menu-item:hover { background: rgba(255,255,255,0.07); color: #fff; }
+        .download-menu-item .dim-label { color: #555; font-size: 11px; font-variant-numeric: tabular-nums; }
+        .download-menu-item.cached .dim-label { color: #4a8a60; }
+        .download-menu-divider {
+            height: 1px;
+            background: #2e2e2e;
+            margin: 4px 0;
+        }
+        .download-menu-item.is-loading { pointer-events: none; }
+        .download-menu-item.is-loading .dim-label {
+            color: #e09030 !important;
+            animation: lod-pulse 0.75s ease-in-out infinite;
+        }
+        .download-menu-extreme-row {
+            display: flex !important;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 12px !important;
+            font-size: 12px !important;
+            color: rgba(255,255,255,0.4) !important;
+            cursor: pointer;
+            user-select: none;
+            transition: color 0.15s;
+            justify-content: flex-start !important;
+        }
+        .download-menu-extreme-row:hover { color: rgba(255,255,255,0.7) !important; background: rgba(255,255,255,0.05); }
+        .download-menu-extreme-row input { accent-color: #e09030; cursor: pointer; margin: 0; }
+        .download-menu-extreme-row.active { color: #e09030 !important; }
+        #expand-lod .lod-bar-extreme { display: none; }
+        #expand-lod.extreme-enabled .lod-bar-extreme { display: block; }
 
         .cell-label {
             position: absolute;
@@ -1146,7 +1219,19 @@
         <div id="expand-svg-wrapper"></div>
     </div>
     <div id="expand-controls">
-        <button id="expand-save" title="Save as PNG">↓</button>
+        <div id="expand-more-wrap">
+            <button id="expand-more" title="Download PNG…">⋯</button>
+            <div id="expand-download-menu">
+                <div class="download-menu-title">LOD Options</div>
+                <label class="download-menu-extreme-row">
+                    <input type="checkbox" id="expand-extreme-detail">
+                    <span>Extreme Detail</span>
+                </label>
+                <div class="download-menu-divider"></div>
+                <div class="download-menu-title">Download PNG</div>
+                <div id="download-tier-items"></div>
+            </div>
+        </div>
         <button id="expand-reset" title="Reset zoom (double-click)">⊡</button>
         <button id="expand-close" title="Close (Esc)">✕</button>
     </div>
@@ -1155,6 +1240,7 @@
         <div class="lod-bar" data-tier="1"></div>
         <div class="lod-bar" data-tier="2"></div>
         <div class="lod-bar" data-tier="3"></div>
+        <div class="lod-bar lod-bar-extreme" data-tier="4"></div>
         <span id="lod-rendering-label">Rendering…</span>
     </div>
     <div id="expand-hint">Scroll to zoom &bull; Drag to pan &bull; Double-click to fit &bull; Esc to close</div>
@@ -3067,12 +3153,26 @@ const EX_W = 1280, EX_H = 720;
 // Zoom tiers: each defines a zoom range and a pixel scale multiplier relative to EX_W/EX_H.
 // Increase a tier's scale for more detail in that zoom range. MAX_EX_RASTER caps all tiers.
 const MAX_EX_RASTER = 32768;
-const EX_TIERS = [
-    { maxZoom: 1, scale: 1 },  
-    { maxZoom: 3,  scale: 3 }, 
-    { maxZoom: 7,    scale: 6 },
-    { maxZoom: Infinity, scale: 9 }, 
-];
+let extremeDetailEnabled = false;
+function buildExTiers() {
+    if (extremeDetailEnabled) {
+        return [
+            { maxZoom: 1,        scale: 1  },
+            { maxZoom: 3,        scale: 3  },
+            { maxZoom: 7,        scale: 6  },
+            { maxZoom: 12,       scale: 9  },
+            { maxZoom: Infinity, scale: 12 },
+        ];
+    }
+    return [
+        { maxZoom: 1,        scale: 1 },
+        { maxZoom: 3,        scale: 3 },
+        { maxZoom: 7,        scale: 6 },
+        { maxZoom: Infinity, scale: 9 },
+    ];
+}
+let EX_TIERS = buildExTiers();
+const TIER_LABELS = ['720p', '4K', '8K', '12K', '16K ★'];
 function getExTierIdx() {
     return EX_TIERS.findIndex(t => exZoom < t.maxZoom);
 }
@@ -3212,52 +3312,145 @@ async function rasterizeExpand() {
     });
 }
 
-async function saveExpandAsPng() {
+function triggerPngDownload(canvas, filename, onDone) {
+    canvas.toBlob(pngBlob => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(pngBlob);
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(a.href);
+        if (onDone) onDone();
+    }, 'image/png');
+}
+
+async function downloadPngAtTier(tierIdx) {
     if (expandIdx < 0) return;
-    const btn = document.getElementById('expand-save');
-    btn.textContent = '…';
-    btn.disabled = true;
 
-    const PNG_W = 7680, PNG_H = 4320;
-
-    const triggerDownload = canvas => {
-        canvas.toBlob(pngBlob => {
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(pngBlob);
-            a.download = `${generatePatternName(genomes[expandIdx])}.png`;
-            a.click();
-            URL.revokeObjectURL(a.href);
-            btn.textContent = '↓';
-            btn.disabled = false;
-        }, 'image/png');
-    };
-
-    // Use the highest cached LOD if it exceeds the default PNG resolution —
-    // it was rendered at genuinely higher quality (more filter sample points).
-    for (let i = EX_TIERS.length - 1; i >= 0; i--) {
-        const cached = exTierCache[i];
-        if (cached && cached.width * cached.height > PNG_W * PNG_H) {
-            triggerDownload(cached);
-            return;
-        }
+    // Show inline loading state — keep menu open so user has feedback
+    const items = document.querySelectorAll('#download-tier-items .download-menu-item');
+    const loadingItem = items[tierIdx];
+    const dimLabel = loadingItem?.querySelector('.dim-label');
+    const origDimText = dimLabel?.textContent;
+    if (loadingItem) {
+        loadingItem.classList.add('is-loading');
+        if (dimLabel) dimLabel.textContent = 'Rendering…';
     }
 
-    // No suitable cache — render fresh at PNG dimensions.
-    const svgStr = genomeToSVG(genomes[expandIdx], CANONICAL_W, CANONICAL_H, 'save', false, PNG_W);
+    const moreBtn = document.getElementById('expand-more');
+    moreBtn.disabled = true;
+    const finish = () => {
+        moreBtn.disabled = false;
+        closeDownloadMenu();
+    };
+
+    const [targetW, targetH] = getExTierDims(tierIdx);
+    const filename = `${generatePatternName(genomes[expandIdx])}.png`;
+
+    // Use cached raster if available at this tier
+    const cached = exTierCache[tierIdx];
+    if (cached) {
+        triggerPngDownload(cached, filename, finish);
+        return;
+    }
+
+    // Render fresh at this tier's dimensions
+    const svgStr = genomeToSVG(genomes[expandIdx], CANONICAL_W, CANONICAL_H, 'save', false, targetW);
     const blob = new Blob([svgStr], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
-
     const img = new Image();
     img.onload = () => {
         const canvas = document.createElement('canvas');
-        canvas.width = PNG_W;
-        canvas.height = PNG_H;
-        canvas.getContext('2d').drawImage(img, 0, 0, PNG_W, PNG_H);
+        canvas.width = targetW;
+        canvas.height = targetH;
+        canvas.getContext('2d').drawImage(img, 0, 0, targetW, targetH);
         URL.revokeObjectURL(url);
-        triggerDownload(canvas);
+        triggerPngDownload(canvas, filename, finish);
     };
-    img.onerror = () => { URL.revokeObjectURL(url); btn.textContent = '↓'; btn.disabled = false; };
+    img.onerror = () => { URL.revokeObjectURL(url); finish(); };
     img.src = url;
+}
+
+function buildDownloadMenu(animateHeight = true) {
+    const container = document.getElementById('download-tier-items');
+    const menu = document.getElementById('expand-download-menu');
+
+    if (animateHeight) {
+        const prevH = menu.offsetHeight;
+        menu.style.transition = 'none';
+        menu.style.height = prevH + 'px';
+    }
+
+    container.innerHTML = '';
+    EX_TIERS.forEach((_, i) => {
+        const [w, h] = getExTierDims(i);
+        const item = document.createElement('div');
+        item.className = 'download-menu-item' + (exTierCache[i] ? ' cached' : '');
+        item.innerHTML = `<span>${TIER_LABELS[i] || h + 'p'}</span><span class="dim-label">${w}×${h}</span>`;
+        item.addEventListener('click', () => downloadPngAtTier(i));
+        container.appendChild(item);
+    });
+
+    if (animateHeight) {
+        requestAnimationFrame(() => {
+            const newH = menu.scrollHeight;
+            menu.style.transition = 'height 0.2s ease';
+            menu.style.height = newH + 'px';
+            menu.addEventListener('transitionend', () => {
+                menu.style.height = '';
+                menu.style.transition = '';
+            }, { once: true });
+        });
+    }
+}
+
+function toggleDownloadMenu() {
+    const menu = document.getElementById('expand-download-menu');
+    if (menu.classList.contains('open')) {
+        menu.classList.remove('open');
+    } else {
+        buildDownloadMenu();
+        menu.classList.add('open');
+    }
+}
+
+function closeDownloadMenu() {
+    document.getElementById('expand-download-menu').classList.remove('open');
+}
+
+function setExtremeDetail(enabled) {
+    extremeDetailEnabled = enabled;
+    EX_TIERS = buildExTiers();
+    document.getElementById('expand-lod').classList.toggle('extreme-enabled', enabled);
+    document.querySelector('.download-menu-extreme-row').classList.toggle('active', enabled);
+
+    // If the menu is open, update it live with animation
+    if (document.getElementById('expand-download-menu').classList.contains('open')) {
+        if (enabled) {
+            // Grow: add the item first, then animate height up
+            buildDownloadMenu();
+        } else {
+            // Shrink: animate height down while 16K item is still in the DOM,
+            // then silently swap the content once it's hidden
+            const menu = document.getElementById('expand-download-menu');
+            const lastItem = document.querySelector('#download-tier-items .download-menu-item:last-child');
+            const targetH = menu.offsetHeight - (lastItem ? lastItem.offsetHeight : 0);
+            menu.style.transition = 'none';
+            menu.style.height = menu.offsetHeight + 'px';
+            requestAnimationFrame(() => {
+                menu.style.transition = 'height 0.2s ease';
+                menu.style.height = targetH + 'px';
+                menu.addEventListener('transitionend', () => {
+                    menu.style.height = '';
+                    menu.style.transition = '';
+                    buildDownloadMenu(false);
+                }, { once: true });
+            });
+        }
+    }
+
+    exDisplayedTier = -1;
+    updateLodIndicator();
+    if (expandIdx >= 0 && exCanvas) rasterizeExpand();
 }
 
 function closeExpand() {
@@ -3338,9 +3531,11 @@ exViewport.addEventListener('wheel', e => {
 // Double-click to fit
 exViewport.addEventListener('dblclick', fitExpandView);
 
-document.getElementById('expand-save').addEventListener('click', saveExpandAsPng);
+document.getElementById('expand-more').addEventListener('click', e => { e.stopPropagation(); toggleDownloadMenu(); });
 document.getElementById('expand-reset').addEventListener('click', fitExpandView);
 document.getElementById('expand-close').addEventListener('click', closeExpand);
+document.getElementById('expand-extreme-detail').addEventListener('change', e => setExtremeDetail(e.target.checked));
+document.addEventListener('click', e => { if (!e.target.closest('#expand-more-wrap')) closeDownloadMenu(); });
 document.addEventListener('keydown', e => {
     if (e.key === 'Escape') closeExpand();
     if (e.key === ' ' && document.getElementById('expand-overlay').classList.contains('visible')) {
