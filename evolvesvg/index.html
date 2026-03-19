@@ -1432,7 +1432,7 @@
         </div>
 
         <div class="credit-note">
-            Made by <a href="https://github.com/PeterBrownie/sudoku/" target="_blank" rel="noopener noreferrer">Peter Brown</a> <button id="info-btn" title="About evolveSVG">ⓘ</button><br>
+            Made by <a href="https://github.com/PeterBrownie/projects/" target="_blank" rel="noopener noreferrer">Peter Brown</a> <button id="info-btn" title="About evolveSVG">ⓘ</button><br>
             Inspired by Emergent Garden. <a href="https://www.youtube.com/@EmergentGarden" target="_blank" rel="noopener noreferrer">YouTube</a><br>See his original project: <a href="https://github.com/MaxRobinsonTheGreat/hyperdimensions" target="_blank" rel="noopener noreferrer">GitHub</a>
         </div>
     </div>
@@ -4153,9 +4153,12 @@ function refreshCellRects() {
 refreshCellRects();
 new ResizeObserver(() => {
     refreshCellRects();
+    const expandOpen = expandIdx >= 0 && document.getElementById('expand-overlay').classList.contains('visible');
     for (let i = 0; i < 9; i++) {
         cellCache[i] = null;
-        if (genomes[i]) renderCell(i);
+        // Skip renderCell for the expanded cell when expand is open — its genome hasn't
+        // changed (only the viewport resized), and renderCell would wipe exTierCache.
+        if (genomes[i] && !(expandOpen && i === expandIdx)) renderCell(i);
     }
 }).observe(gridContainer);
 let isPanning = false;
@@ -4313,9 +4316,13 @@ document.addEventListener('fullscreenchange', () => {
     }
     requestAnimationFrame(() => requestAnimationFrame(() => {
         refreshCellRects();
+        const expandOpen = expandIdx >= 0 && document.getElementById('expand-overlay').classList.contains('visible');
         for (let i = 0; i < 9; i++) {
             cellCache[i] = null;
-            if (genomes[i]) renderCell(i);
+            // Skip renderCell for the expanded cell when expand is open — its genome hasn't
+            // changed (only fullscreen toggled), and renderCell would wipe exTierCache,
+            // discarding any CPU-rendered extreme LOD that completed during the freeze.
+            if (genomes[i] && !(expandOpen && i === expandIdx)) renderCell(i);
         }
     }));
 });
