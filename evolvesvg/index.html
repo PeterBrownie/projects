@@ -3623,6 +3623,93 @@ async function ensureTierCached(tierIdx, gen) {
     });
 }
 
+// Renders an SVG string to a new canvas of size w×h.
+// Returns the canvas, or null if exRasterGen !== gen by the time the image loads.
+function svgStrToCanvas(svgStr, w, h, gen) {
+    return new Promise(resolve => {
+        const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+        const url  = URL.createObjectURL(blob);
+        const img  = new Image();
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            if (exRasterGen !== gen) { resolve(null); return; }
+            const c = document.createElement('canvas');
+            c.width = w; c.height = h;
+            c.getContext('2d').drawImage(img, 0, 0, w, h);
+            resolve(c);
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+        img.src = url;
+    });
+}
+
+// Renders svgStr (CANONICAL_W×CANONICAL_H coordinate space) at targetW×targetH by
+// splitting into numCols×numRows tiles, each rendered at a GPU-manageable size.
+//
+// Why tiling works: a per-tile viewBox tells the browser to show only that portion of
+// the SVG, which clips its internal filter buffers to the tile viewport size instead of
+// the full output size. feTurbulence and other filters still operate in the same
+// absolute SVG coordinate space, so values are pixel-perfect with a single full render.
+//
+// Overlap on shared edges (in SVG user units) covers the maximum displacement radius
+// so displaced pixels near tile boundaries sample from within the extended region
+// rather than outside the tile, preventing visible seams. Only the inner non-overlap
+// strip is blitted onto the final canvas.
+//
+// Returns the composited offscreen canvas, or null if the render was aborted.
+async function rasterizeExpandTiled(svgStr, targetW, targetH, numCols, numRows, gen) {
+    const pxScale   = targetW / CANONICAL_W;            // pixels per SVG user unit
+    const svgTileW  = CANONICAL_W / numCols;            // user units per tile (x)
+    const svgTileH  = CANONICAL_H / numRows;            // user units per tile (y)
+    const nomTileW  = Math.round(svgTileW * pxScale);  // nominal tile pixel width
+    const nomTileH  = Math.round(svgTileH * pxScale);  // nominal tile pixel height
+    // 80 user-unit overlap on each shared edge covers the max displacement radius
+    // (displace.scale up to 150 → radius up to 75 user units).
+    const overlap   = 80;
+
+    const offscreen = document.createElement('canvas');
+    offscreen.width  = targetW;
+    offscreen.height = targetH;
+    const ctx = offscreen.getContext('2d');
+
+    for (let row = 0; row < numRows; row++) {
+        for (let col = 0; col < numCols; col++) {
+            if (exRasterGen !== gen) return null;
+
+            const hasL = col > 0, hasR = col < numCols - 1;
+            const hasT = row > 0, hasB = row < numRows - 1;
+
+            // Extended viewBox in SVG user units, including overlap on shared edges
+            const vbX = col * svgTileW - (hasL ? overlap : 0);
+            const vbY = row * svgTileH - (hasT ? overlap : 0);
+            const vbW = svgTileW + (hasL ? overlap : 0) + (hasR ? overlap : 0);
+            const vbH = svgTileH + (hasT ? overlap : 0) + (hasB ? overlap : 0);
+
+            const tilePxW = Math.round(vbW * pxScale);
+            const tilePxH = Math.round(vbH * pxScale);
+
+            // Patch root SVG viewBox and intrinsic dimensions for this tile.
+            // genomeToSVG always produces these exact attribute strings, so literal
+            // replacement is safe and avoids touching inner element attributes.
+            const tiledSvg = svgStr
+                .replace(`viewBox="0 0 ${CANONICAL_W} ${CANONICAL_H}"`,
+                         `viewBox="${vbX} ${vbY} ${vbW} ${vbH}"`)
+                .replace(`xmlns="http://www.w3.org/2000/svg" width="${CANONICAL_W}" height="${CANONICAL_H}"`,
+                         `xmlns="http://www.w3.org/2000/svg" width="${tilePxW}" height="${tilePxH}"`);
+
+            const tileCanvas = await svgStrToCanvas(tiledSvg, tilePxW, tilePxH, gen);
+            if (!tileCanvas) return null; // aborted
+
+            // Blit only the inner (non-overlap) strip onto the destination
+            const cropX = hasL ? Math.round(overlap * pxScale) : 0;
+            const cropY = hasT ? Math.round(overlap * pxScale) : 0;
+            ctx.drawImage(tileCanvas, cropX, cropY, nomTileW, nomTileH,
+                          col * nomTileW, row * nomTileH, nomTileW, nomTileH);
+        }
+    }
+    return offscreen;
+}
+
 async function rasterizeExpand() {
     if (expandIdx < 0 || !exCanvas) return;
     const tierIdx = getExTierIdx();
@@ -3644,13 +3731,12 @@ async function rasterizeExpand() {
         return;
     }
 
-    // Consume the CPU flag now so concurrent calls don't accidentally inherit it
-    const useCpuRender = exCpuRenderRequested;
+    // Consume (and discard) the CPU flag — tiled GPU rendering is now the extreme-tier
+    // path, so willReadFrequently is no longer needed there.
     exCpuRenderRequested = false;
 
     exRenderingTier = tierIdx;
     updateLodIndicator();
-    if (isExtremeTier && useCpuRender) resetCpuHintButton(true);
     await new Promise(resolve => setTimeout(resolve, 120));
     const gen = ++exRasterGen;
 
@@ -3666,43 +3752,32 @@ async function rasterizeExpand() {
     // Always render SVG at CANONICAL_W×CANONICAL_H so feTurbulence coordinates
     // stay consistent with the grid view and across all zoom levels.
     const svgStr = genomeToSVG(genomes[expandIdx], CANONICAL_W, CANONICAL_H, 'ex', false, targetW);
-    const blob = new Blob([svgStr], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(blob);
 
-    await new Promise(resolve => {
-        const img = new Image();
-        img.onload = () => {
-            if (exRasterGen !== gen) { URL.revokeObjectURL(url); resolve(); return; }
-            const offscreen = document.createElement('canvas');
-            offscreen.width = targetW;
-            offscreen.height = targetH;
-            // willReadFrequently forces CPU/software rendering — only when user explicitly requests it
-            offscreen.getContext('2d', { willReadFrequently: useCpuRender }).drawImage(img, 0, 0, targetW, targetH);
-            exTierCache[tierIdx] = offscreen;
-            exCanvas.width = targetW;
-            exCanvas.height = targetH;
-            exCanvas.getContext('2d').drawImage(offscreen, 0, 0);
-            URL.revokeObjectURL(url);
-            exRenderingTier = -1;
-            exDisplayedTier = tierIdx;
-            updateLodIndicator();
-            updateLodColor();
-            if (isExtremeTier) {
-                resetCpuHintButton();
-                if (useCpuRender) {
-                    exExtremeTierIssueDetected = false;
-                    setTimeout(() => showCpuSuccess(), 50);
-                } else {
-                    const refCanvas = exTierCache[tierIdx - 1] ?? null;
-                    exExtremeTierIssueDetected = refCanvas ? detectExtremeLodIssue(offscreen, refCanvas) : null;
-                    if (exExtremeTierIssueDetected !== false) setTimeout(() => showCpuHint(), 50);
-                }
-            }
-            resolve();
-        };
-        img.onerror = () => { URL.revokeObjectURL(url); resolve(); };
-        img.src = url;
-    });
+    // Extreme tier uses tiled GPU rendering (4×4 tiles at ~4K each) to keep filter
+    // buffers within GPU limits. Lower tiers render in a single pass — they're small
+    // enough that the full draw stays within budget.
+    let offscreen;
+    if (isExtremeTier) {
+        offscreen = await rasterizeExpandTiled(svgStr, targetW, targetH, 4, 4, gen);
+    } else {
+        offscreen = await svgStrToCanvas(svgStr, targetW, targetH, gen);
+    }
+    if (!offscreen || exRasterGen !== gen) return;
+
+    exTierCache[tierIdx] = offscreen;
+    exCanvas.width  = targetW;
+    exCanvas.height = targetH;
+    exCanvas.getContext('2d').drawImage(offscreen, 0, 0);
+    exRenderingTier  = -1;
+    exDisplayedTier  = tierIdx;
+    updateLodIndicator();
+    updateLodColor();
+    if (isExtremeTier) {
+        resetCpuHintButton();
+        const refCanvas = exTierCache[tierIdx - 1] ?? null;
+        exExtremeTierIssueDetected = refCanvas ? detectExtremeLodIssue(offscreen, refCanvas) : null;
+        if (exExtremeTierIssueDetected !== false) setTimeout(() => showCpuHint(), 50);
+    }
 }
 
 function triggerPngDownload(canvas, filename, onDone) {
