@@ -1099,6 +1099,77 @@
             color: #e09030 !important;
             animation: lod-pulse 0.75s ease-in-out infinite;
         }
+
+        /* Death-mode export progress overlay — z-index must exceed #expand-controls (2001) */
+        #death-export-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.72);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2100;
+            backdrop-filter: blur(6px);
+        }
+        #death-export-modal {
+            background: #141414;
+            border: 1px solid #2c2c2c;
+            border-radius: 12px;
+            padding: 22px 26px 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            align-items: center;
+            min-width: 280px;
+        }
+        #death-export-modal-title {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            color: #aaa;
+            text-transform: uppercase;
+        }
+        #death-export-tile-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5px;
+            width: 100%;
+        }
+        .death-export-cell {
+            aspect-ratio: 16/9;
+            border-radius: 3px;
+            background: #222;
+            border: 1px solid #333;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .death-export-cell.rendering {
+            background: #5a2800;
+            border-color: #c05810;
+            animation: death-cell-pulse 0.7s ease-in-out infinite;
+        }
+        .death-export-cell.writing {
+            background: #00304a;
+            border-color: #1890d0;
+            animation: death-cell-pulse 0.7s ease-in-out infinite;
+        }
+        .death-export-cell.ready {
+            background: #182e1e;
+            border-color: #2a6a3a;
+        }
+        .death-export-cell.done {
+            background: #1a4228;
+            border-color: #38b058;
+        }
+        @keyframes death-cell-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.45; }
+        }
+        #death-export-status {
+            font-size: 11px;
+            color: #555;
+            text-align: center;
+            min-height: 1em;
+        }
         .download-menu-extreme-row {
             display: flex !important;
             align-items: center;
@@ -1116,6 +1187,38 @@
         .download-menu-extreme-row.active { color: #e09030 !important; }
         #expand-lod .lod-bar-extreme { display: none; }
         #expand-lod.extreme-enabled .lod-bar-extreme { display: block; }
+        .download-menu-death-row {
+            display: none !important;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 12px !important;
+            font-size: 12px !important;
+            color: rgba(255,255,255,0.4) !important;
+            cursor: pointer;
+            user-select: none;
+            transition: color 0.15s;
+            justify-content: flex-start !important;
+        }
+        #expand-download-menu.extreme-active .download-menu-death-row { display: flex !important; }
+        .download-menu-death-row:hover { color: rgba(255,255,255,0.7) !important; background: rgba(255,255,255,0.05); }
+        .download-menu-death-row input { accent-color: #c03838; cursor: pointer; margin: 0; }
+        .download-menu-death-row.active { color: #c03838 !important; }
+        .death-browser-notice {
+            display: none;
+            font-size: 10px;
+            color: #555;
+            padding: 1px 8px 5px 22px;
+            line-height: 1.35;
+        }
+        /* Show checkbox notice only when the death row is visible (extreme-active) and on Firefox */
+        .is-firefox #expand-download-menu.extreme-active #death-checkbox-notice { display: block; }
+        .download-menu-item.death-browser-disabled {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+        /* Download item notice shown inline via JS (already display:block when appended) */
+        #expand-lod .lod-bar-death { display: none; }
+        #expand-lod.death-enabled .lod-bar-death { display: block; }
 
         /* ── CPU rendering hint toast ── */
         #expand-cpu-hint {
@@ -1455,6 +1558,11 @@
                     <input type="checkbox" id="expand-extreme-detail">
                     <span>Extreme Detail</span>
                 </label>
+                <label class="download-menu-death-row">
+                    <input type="checkbox" id="expand-death-detail">
+                    <span>Detail of Death</span>
+                </label>
+                <div class="death-browser-notice" id="death-checkbox-notice">Chrome required for Detail of Death</div>
                 <div class="download-menu-divider"></div>
                 <div class="download-menu-title">Download PNG</div>
                 <div id="download-tier-items"></div>
@@ -1470,6 +1578,7 @@
         <div class="lod-bar" data-tier="2"></div>
         <div class="lod-bar" data-tier="3"></div>
         <div class="lod-bar lod-bar-extreme" data-tier="4"></div>
+        <div class="lod-bar lod-bar-death" data-tier="5"></div>
         <span id="lod-rendering-label">Rendering…</span>
     </div>
     <div id="expand-hint">
@@ -2435,6 +2544,7 @@ const MAX_RASTER_H = 1080;
 // Keeping this fixed ensures feTurbulence and other filter effects produce an
 // identical pattern regardless of zoom level, sidebar state, or which view is active.
 const CANONICAL_W = 1280, CANONICAL_H = 720;
+const IS_FIREFOX = /Firefox\/\d/.test(navigator.userAgent);
 
 // ─── Viewport (shared across all cells) ──────────────────────────────────
 let viewZoom = 1;
@@ -3449,14 +3559,25 @@ const EX_W = 1280, EX_H = 720;
 // Increase a tier's scale for more detail in that zoom range. MAX_EX_RASTER caps all tiers.
 const MAX_EX_RASTER = 32768;
 let extremeDetailEnabled = false;
+let deathEnabled = false;
 function buildExTiers() {
+    if (deathEnabled) {
+        return [
+            { maxZoom: 1,        scale: 1  },
+            { maxZoom: 3,        scale: 3  },
+            { maxZoom: 7,        scale: 6  },
+            { maxZoom: 12,       scale: 9  },
+            { maxZoom: 20,       scale: 12, tiled: true, detectIssue: true },
+            { maxZoom: Infinity, scale: 24, death: true },
+        ];
+    }
     if (extremeDetailEnabled) {
         return [
             { maxZoom: 1,        scale: 1  },
             { maxZoom: 3,        scale: 3  },
             { maxZoom: 7,        scale: 6  },
             { maxZoom: 12,       scale: 9  },
-            { maxZoom: Infinity, scale: 12 },
+            { maxZoom: Infinity, scale: 12, tiled: true, detectIssue: true },
         ];
     }
     return [
@@ -3467,7 +3588,7 @@ function buildExTiers() {
     ];
 }
 let EX_TIERS = buildExTiers();
-const TIER_LABELS = ['720p', '4K', '8K', '12K', '16K ★'];
+const TIER_LABELS = ['720p', '4K', '8K', '12K', '16K ★', 'Detail of Death ☠'];
 function getExTierIdx() {
     return EX_TIERS.findIndex(t => exZoom < t.maxZoom);
 }
@@ -3632,7 +3753,7 @@ function svgStrToCanvas(svgStr, w, h, gen) {
         const img  = new Image();
         img.onload = () => {
             URL.revokeObjectURL(url);
-            if (exRasterGen !== gen) { resolve(null); return; }
+            if (gen !== null && exRasterGen !== gen) { resolve(null); return; }
             const c = document.createElement('canvas');
             c.width = w; c.height = h;
             c.getContext('2d').drawImage(img, 0, 0, w, h);
@@ -3710,54 +3831,125 @@ async function rasterizeExpandTiled(svgStr, targetW, targetH, numCols, numRows, 
     return offscreen;
 }
 
+// Renders SVG tiles into individual canvases positioned absolutely within exWrapper,
+// appearing progressively as each tile completes. Returns the tile canvas array,
+// or null if the render was aborted (exRasterGen !== gen).
+async function rasterizeExpandDeath(svgStr, targetW, targetH, numCols, numRows, gen) {
+    const pxScale  = targetW / CANONICAL_W;
+    const svgTileW = CANONICAL_W / numCols;
+    const svgTileH = CANONICAL_H / numRows;
+    const nomTileW = Math.round(svgTileW * pxScale);
+    const nomTileH = Math.round(svgTileH * pxScale);
+    const overlap  = 80;
+    const tiles    = [];
+
+    for (let row = 0; row < numRows; row++) {
+        for (let col = 0; col < numCols; col++) {
+            if (exRasterGen !== gen) return null;
+
+            const hasL = col > 0, hasR = col < numCols - 1;
+            const hasT = row > 0, hasB = row < numRows - 1;
+
+            const vbX = col * svgTileW - (hasL ? overlap : 0);
+            const vbY = row * svgTileH - (hasT ? overlap : 0);
+            const vbW = svgTileW + (hasL ? overlap : 0) + (hasR ? overlap : 0);
+            const vbH = svgTileH + (hasT ? overlap : 0) + (hasB ? overlap : 0);
+
+            const tilePxW = Math.round(vbW * pxScale);
+            const tilePxH = Math.round(vbH * pxScale);
+
+            const tiledSvg = svgStr
+                .replace(`viewBox="0 0 ${CANONICAL_W} ${CANONICAL_H}"`,
+                         `viewBox="${vbX} ${vbY} ${vbW} ${vbH}"`)
+                .replace(`xmlns="http://www.w3.org/2000/svg" width="${CANONICAL_W}" height="${CANONICAL_H}"`,
+                         `xmlns="http://www.w3.org/2000/svg" width="${tilePxW}" height="${tilePxH}"`);
+
+            const rawTile = await svgStrToCanvas(tiledSvg, tilePxW, tilePxH, gen);
+            if (!rawTile) return null;
+
+            // Crop overlap border into the final display canvas
+            const cropX = hasL ? Math.round(overlap * pxScale) : 0;
+            const cropY = hasT ? Math.round(overlap * pxScale) : 0;
+            const tileCanvas = document.createElement('canvas');
+            tileCanvas.width  = nomTileW;
+            tileCanvas.height = nomTileH;
+            tileCanvas.getContext('2d').drawImage(rawTile, cropX, cropY, nomTileW, nomTileH, 0, 0, nomTileW, nomTileH);
+            tileCanvas.className = 'death-tile';
+            // Position within exWrapper's EX_W×EX_H CSS-pixel coordinate space
+            tileCanvas.style.cssText = `position:absolute;left:${col*svgTileW}px;top:${row*svgTileH}px;width:${svgTileW}px;height:${svgTileH}px;display:block;`;
+
+            exWrapper.appendChild(tileCanvas);
+            tiles.push(tileCanvas);
+        }
+    }
+    return tiles;
+}
+
+// Removes all death-mode tile canvases from exWrapper.
+function clearDeathTiles() {
+    for (const el of exWrapper.querySelectorAll('.death-tile')) el.remove();
+}
+
 async function rasterizeExpand() {
     if (expandIdx < 0 || !exCanvas) return;
     const tierIdx = getExTierIdx();
-    const isExtremeTier = extremeDetailEnabled && tierIdx === EX_TIERS.length - 1;
+    const { tiled: usesTiling = false, detectIssue = false, death = false } = EX_TIERS[tierIdx];
 
-    // Hide CPU hint whenever we land on a non-extreme tier, regardless of how zoom changed
-    if (!isExtremeTier) { hideCpuHint(); exCpuRenderRequested = false; }
+    // Hide CPU hint whenever we land on a tier that doesn't use tiled rendering
+    if (!usesTiling && !death) { hideCpuHint(); exCpuRenderRequested = false; }
 
     // Serve from cache if this tier has already been rendered
     if (exTierCache[tierIdx]) {
+        clearDeathTiles();
         const cached = exTierCache[tierIdx];
-        exCanvas.width = cached.width;
-        exCanvas.height = cached.height;
-        exCanvas.getContext('2d').drawImage(cached, 0, 0);
+        if (death) {
+            // Re-attach tile canvases to the wrapper
+            for (const tile of cached) exWrapper.appendChild(tile);
+        } else {
+            exCanvas.width = cached.width;
+            exCanvas.height = cached.height;
+            exCanvas.getContext('2d').drawImage(cached, 0, 0);
+        }
         exDisplayedTier = tierIdx;
         updateLodIndicator();
-        updateLodColor();
-        if (isExtremeTier && exExtremeTierIssueDetected !== false) setTimeout(() => showCpuHint(), 50);
+        if (!death) updateLodColor();
+        if (detectIssue && exExtremeTierIssueDetected !== false) setTimeout(() => showCpuHint(), 50);
         return;
     }
 
-    // Consume (and discard) the CPU flag — tiled GPU rendering is now the extreme-tier
-    // path, so willReadFrequently is no longer needed there.
     exCpuRenderRequested = false;
-
     exRenderingTier = tierIdx;
     updateLodIndicator();
     await new Promise(resolve => setTimeout(resolve, 120));
     const gen = ++exRasterGen;
 
-    // Before rendering the extreme tier, ensure the tier directly below it is cached
+    // Before rendering a tier with issue detection, ensure the tier directly below it is cached
     // so detectExtremeLodIssue always has a valid reference to compare against.
-    if (isExtremeTier && !exTierCache[tierIdx - 1]) {
+    if (detectIssue && !exTierCache[tierIdx - 1]) {
         await ensureTierCached(tierIdx - 1, gen);
-        if (exRasterGen !== gen) return; // aborted while pre-rendering reference
+        if (exRasterGen !== gen) return;
     }
 
     const [targetW, targetH] = getExTierDims(tierIdx);
-
-    // Always render SVG at CANONICAL_W×CANONICAL_H so feTurbulence coordinates
-    // stay consistent with the grid view and across all zoom levels.
     const svgStr = genomeToSVG(genomes[expandIdx], CANONICAL_W, CANONICAL_H, 'ex', false, targetW);
 
-    // Extreme tier uses tiled GPU rendering (4×4 tiles at ~4K each) to keep filter
-    // buffers within GPU limits. Lower tiers render in a single pass — they're small
-    // enough that the full draw stays within budget.
+    if (death) {
+        // Death-mode: render as 4×4 tile canvases positioned in the wrapper.
+        // Each tile stays within browser canvas size limits; no compositing canvas needed.
+        clearDeathTiles();
+        const tiles = await rasterizeExpandDeath(svgStr, targetW, targetH, 4, 4, gen);
+        if (!tiles || exRasterGen !== gen) { clearDeathTiles(); return; }
+        exTierCache[tierIdx] = tiles;
+        exRenderingTier = -1;
+        exDisplayedTier = tierIdx;
+        updateLodIndicator();
+        return;
+    }
+
+    // Standard and tiled-extreme tiers: render to a single offscreen canvas then blit to exCanvas.
+    clearDeathTiles();
     let offscreen;
-    if (isExtremeTier) {
+    if (usesTiling) {
         offscreen = await rasterizeExpandTiled(svgStr, targetW, targetH, 4, 4, gen);
     } else {
         offscreen = await svgStrToCanvas(svgStr, targetW, targetH, gen);
@@ -3772,12 +3964,166 @@ async function rasterizeExpand() {
     exDisplayedTier  = tierIdx;
     updateLodIndicator();
     updateLodColor();
-    if (isExtremeTier) {
+    if (usesTiling && detectIssue) {
         resetCpuHintButton();
         const refCanvas = exTierCache[tierIdx - 1] ?? null;
         exExtremeTierIssueDetected = refCanvas ? detectExtremeLodIssue(offscreen, refCanvas) : null;
         if (exExtremeTierIssueDetected !== false) setTimeout(() => showCpuHint(), 50);
     }
+}
+
+// Composites Death-mode tile canvases into a single PNG file, streaming it directly
+// to disk via the File System Access API so the full 530MP image is never held in
+// ── Death-mode export progress overlay ─────────────────────────────────────
+let _deathExportOverlay = null;
+let _deathExportCells   = [];
+
+function showDeathExportProgress() {
+    document.getElementById('fullscreen-btn').style.visibility = 'hidden';
+    if (!_deathExportOverlay) {
+        _deathExportOverlay = document.createElement('div');
+        _deathExportOverlay.id = 'death-export-overlay';
+        _deathExportOverlay.innerHTML = `
+            <div id="death-export-modal">
+                <div id="death-export-modal-title">☠ Exporting Death-mode PNG</div>
+                <div id="death-export-tile-grid"></div>
+                <div id="death-export-status">Preparing…</div>
+            </div>`;
+        document.getElementById('expand-overlay').appendChild(_deathExportOverlay);
+    }
+    const grid = _deathExportOverlay.querySelector('#death-export-tile-grid');
+    grid.innerHTML = '';
+    _deathExportCells = [];
+    for (let i = 0; i < 16; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'death-export-cell';
+        grid.appendChild(cell);
+        _deathExportCells.push(cell);
+    }
+    _deathExportOverlay.style.display = 'flex';
+}
+
+function updateDeathExportTile(idx, state) {
+    const cell = _deathExportCells[idx];
+    if (!cell) return;
+    cell.className = `death-export-cell ${state}`;
+    const statusEl = _deathExportOverlay?.querySelector('#death-export-status');
+    if (!statusEl) return;
+    const doneCount = _deathExportCells.filter(c => c.classList.contains('done')).length;
+    if      (state === 'rendering') statusEl.textContent = `Rendering tile ${idx + 1} of 16…`;
+    else if (state === 'writing')   statusEl.textContent = `Streaming tile ${idx + 1} of 16…`;
+    else if (state === 'done')      statusEl.textContent = doneCount === 16 ? 'Finalizing…' : `Written ${doneCount} of 16 tiles`;
+}
+
+function hideDeathExportProgress() {
+    if (_deathExportOverlay) _deathExportOverlay.style.display = 'none';
+    document.getElementById('fullscreen-btn').style.visibility = '';
+}
+
+// ── Streaming PNG encoder for Death-mode tiles ──────────────────────────────
+// memory. Processes one tile-row (~528 MB of pixel data) at a time, feeds scanlines
+// into a zlib CompressionStream, and back-fills the IDAT length via seek() once done.
+// Returns true on success, false if the user cancelled or the API is unavailable
+// (caller should fall back to 16 individual tile downloads).
+async function downloadDeathTilesAsPng(tiles, cols, rows, suggestedName, onProgress = null) {
+    let fh;
+    try {
+        fh = await window.showSaveFilePicker({
+            suggestedName: `${suggestedName}.png`,
+            types: [{ description: 'PNG image', accept: { 'image/png': ['.png'] } }],
+        });
+    } catch { return false; }
+
+    const wr = await fh.createWritable();
+    let pos = 0;
+    const push = async d => { await wr.write(d); pos += d.byteLength; };
+
+    const tw = tiles[0].width, th = tiles[0].height;
+    const W = tw * cols, H = th * rows;
+
+    // CRC32 (used for PNG chunk checksums)
+    const crcTab = new Uint32Array(256);
+    for (let i = 0; i < 256; i++) {
+        let c = i;
+        for (let k = 0; k < 8; k++) c = (c & 1) ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+        crcTab[i] = c;
+    }
+    const updCrc = (crc, buf) => { for (const b of buf) crc = crcTab[(crc ^ b) & 0xFF] ^ (crc >>> 8); return crc; };
+    const u32   = n => new Uint8Array([(n>>>24)&255,(n>>>16)&255,(n>>>8)&255,n&255]);
+    const enc   = s => new TextEncoder().encode(s);
+    const writeChunk = async (type, data) => {
+        const t = enc(type); let crc = 0xFFFFFFFF;
+        crc = updCrc(crc, t); crc = updCrc(crc, data);
+        await push(u32(data.length)); await push(t); await push(data);
+        await push(u32((crc ^ 0xFFFFFFFF) >>> 0));
+    };
+
+    // PNG signature + IHDR
+    await push(new Uint8Array([137,80,78,71,13,10,26,10]));
+    const ihdr = new Uint8Array(13), dv = new DataView(ihdr.buffer);
+    dv.setUint32(0, W); dv.setUint32(4, H);
+    ihdr[8] = 8; ihdr[9] = 2; // 8-bit depth, RGB colour type
+    await writeChunk('IHDR', ihdr);
+
+    // IDAT — write placeholder length now, fill it in via seek() after compression
+    const lenPos = pos;
+    await push(new Uint8Array(4));
+    const idatType = enc('IDAT');
+    await push(idatType);
+    let idatCrc = updCrc(0xFFFFFFFF, idatType); // CRC spans type + data
+    let idatLen = 0;
+
+    const cs = new CompressionStream('deflate'); // zlib framing — required by PNG spec
+    const csWriter = cs.writable.getWriter();
+    const csReader = cs.readable.getReader();
+
+    // Drain compressed output straight to the file as it arrives
+    const drain = async () => {
+        for (;;) {
+            const { done, value } = await csReader.read();
+            if (done) break;
+            await push(value);
+            idatCrc = updCrc(idatCrc, value);
+            idatLen += value.byteLength;
+        }
+    };
+
+    // Feed PNG scanlines tile-row by tile-row to keep peak memory around ~528 MB
+    const feed = async () => {
+        for (let tr = 0; tr < rows; tr++) {
+            const pixData = [];
+            for (let tc = 0; tc < cols; tc++) {
+                const tileIdx = tr * cols + tc;
+                onProgress?.(tileIdx, 'writing');
+                pixData.push(tiles[tileIdx].getContext('2d').getImageData(0, 0, tw, th).data);
+            }
+            for (let y = 0; y < th; y++) {
+                const row = new Uint8Array(1 + W * 3); // filter byte + RGB
+                for (let tc = 0; tc < cols; tc++) {
+                    const src = pixData[tc];
+                    for (let x = 0; x < tw; x++) {
+                        const si = (y * tw + x) * 4, di = 1 + (tc * tw + x) * 3;
+                        row[di] = src[si]; row[di+1] = src[si+1]; row[di+2] = src[si+2];
+                    }
+                }
+                await csWriter.write(row);
+            }
+            // Mark this tile row as fully written
+            for (let tc = 0; tc < cols; tc++) onProgress?.(tr * cols + tc, 'done');
+        }
+        await csWriter.close();
+    };
+
+    await Promise.all([drain(), feed()]);
+
+    // Back-fill the IDAT length and write IEND
+    await push(u32((idatCrc ^ 0xFFFFFFFF) >>> 0));
+    await wr.seek(lenPos);
+    await wr.write(u32(idatLen));
+    await wr.seek(pos);
+    await writeChunk('IEND', new Uint8Array(0));
+    await wr.close();
+    return true;
 }
 
 function triggerPngDownload(canvas, filename, onDone) {
@@ -3814,6 +4160,66 @@ async function downloadPngAtTier(tierIdx) {
     const [targetW, targetH] = getExTierDims(tierIdx);
     const filename = `${generatePatternName(genomes[expandIdx])}.png`;
 
+    const baseName = filename.replace(/\.png$/, '');
+
+    // Death-mode: stream all tiles into a single PNG via File System Access API,
+    // falling back to 16 individual tile downloads if the API is unavailable.
+    if (EX_TIERS[tierIdx].death) {
+        const cachedTiles = Array.isArray(exTierCache[tierIdx]) ? exTierCache[tierIdx] : null;
+
+        showDeathExportProgress();
+
+        const onTileProgress = (idx, state) => updateDeathExportTile(idx, state);
+
+        const downloadTiles = async (tiles) => {
+            const ok = await downloadDeathTilesAsPng(tiles, 4, 4, baseName, onTileProgress);
+            hideDeathExportProgress();
+            if (!ok) {
+                for (let i = 0; i < tiles.length; i++) {
+                    const row = Math.floor(i / 4), col = i % 4;
+                    await new Promise(resolve => triggerPngDownload(tiles[i], `${baseName}-death-r${row}c${col}.png`, resolve));
+                }
+            }
+            finish();
+        };
+
+        if (cachedTiles) {
+            downloadTiles(cachedTiles);
+        } else {
+            // Render tiles fresh for download (no gen guard — download is fire-and-forget)
+            const svgStr = genomeToSVG(genomes[expandIdx], CANONICAL_W, CANONICAL_H, 'save', false, targetW);
+            const pxScale = targetW / CANONICAL_W, overlap = 80;
+            const svgTileW = CANONICAL_W / 4, svgTileH = CANONICAL_H / 4;
+            const nomTileW = Math.round(svgTileW * pxScale), nomTileH = Math.round(svgTileH * pxScale);
+            const freshTiles = [];
+            for (let row = 0; row < 4; row++) {
+                for (let col = 0; col < 4; col++) {
+                    const tileIdx = row * 4 + col;
+                    updateDeathExportTile(tileIdx, 'rendering');
+                    const hasL = col > 0, hasR = col < 3, hasT = row > 0, hasB = row < 3;
+                    const vbX = col*svgTileW - (hasL ? overlap : 0), vbY = row*svgTileH - (hasT ? overlap : 0);
+                    const vbW = svgTileW + (hasL ? overlap : 0) + (hasR ? overlap : 0);
+                    const vbH = svgTileH + (hasT ? overlap : 0) + (hasB ? overlap : 0);
+                    const tilePxW = Math.round(vbW * pxScale), tilePxH = Math.round(vbH * pxScale);
+                    const tiledSvg = svgStr
+                        .replace(`viewBox="0 0 ${CANONICAL_W} ${CANONICAL_H}"`, `viewBox="${vbX} ${vbY} ${vbW} ${vbH}"`)
+                        .replace(`xmlns="http://www.w3.org/2000/svg" width="${CANONICAL_W}" height="${CANONICAL_H}"`, `xmlns="http://www.w3.org/2000/svg" width="${tilePxW}" height="${tilePxH}"`);
+                    const raw = await svgStrToCanvas(tiledSvg, tilePxW, tilePxH, null);
+                    if (!raw) { hideDeathExportProgress(); finish(); return; }
+                    const cropX = hasL ? Math.round(overlap * pxScale) : 0;
+                    const cropY = hasT ? Math.round(overlap * pxScale) : 0;
+                    const c = document.createElement('canvas');
+                    c.width = nomTileW; c.height = nomTileH;
+                    c.getContext('2d').drawImage(raw, cropX, cropY, nomTileW, nomTileH, 0, 0, nomTileW, nomTileH);
+                    updateDeathExportTile(tileIdx, 'ready');
+                    freshTiles.push(c);
+                }
+            }
+            downloadTiles(freshTiles);
+        }
+        return;
+    }
+
     // Use cached raster if available at this tier
     const cached = exTierCache[tierIdx];
     if (cached) {
@@ -3849,13 +4255,23 @@ function buildDownloadMenu(animateHeight = true) {
     }
 
     container.innerHTML = '';
-    EX_TIERS.forEach((_, i) => {
+    EX_TIERS.forEach((tier, i) => {
         const [w, h] = getExTierDims(i);
         const item = document.createElement('div');
-        item.className = 'download-menu-item' + (exTierCache[i] ? ' cached' : '');
+        const firefoxBlocked = IS_FIREFOX && tier.death;
+        item.className = 'download-menu-item'
+            + (exTierCache[i] ? ' cached' : '')
+            + (firefoxBlocked ? ' death-browser-disabled' : '');
         item.innerHTML = `<span>${TIER_LABELS[i] || h + 'p'}</span><span class="dim-label">${w}×${h}</span>`;
-        item.addEventListener('click', () => downloadPngAtTier(i));
+        if (!firefoxBlocked) item.addEventListener('click', () => downloadPngAtTier(i));
         container.appendChild(item);
+        if (firefoxBlocked) {
+            const notice = document.createElement('div');
+            notice.className = 'death-browser-notice';
+            notice.style.display = 'block';
+            notice.textContent = 'Chrome required for Detail of Death';
+            container.appendChild(notice);
+        }
     });
 
     if (animateHeight) {
@@ -3886,10 +4302,19 @@ function closeDownloadMenu() {
 }
 
 function setExtremeDetail(enabled) {
+    // Turning off extreme also turns off Death
+    if (!enabled && deathEnabled) {
+        deathEnabled = false;
+        document.getElementById('expand-death-detail').checked = false;
+        document.getElementById('expand-lod').classList.remove('death-enabled');
+        document.querySelector('.download-menu-death-row').classList.remove('active');
+    }
+
     extremeDetailEnabled = enabled;
     EX_TIERS = buildExTiers();
     document.getElementById('expand-lod').classList.toggle('extreme-enabled', enabled);
     document.querySelector('.download-menu-extreme-row').classList.toggle('active', enabled);
+    document.getElementById('expand-download-menu').classList.toggle('extreme-active', enabled);
 
     // If the menu is open, update it live with animation
     if (document.getElementById('expand-download-menu').classList.contains('open')) {
@@ -3899,6 +4324,39 @@ function setExtremeDetail(enabled) {
         } else {
             // Shrink: animate height down while 16K item is still in the DOM,
             // then silently swap the content once it's hidden
+            const menu = document.getElementById('expand-download-menu');
+            const lastItem = document.querySelector('#download-tier-items .download-menu-item:last-child');
+            const targetH = menu.offsetHeight - (lastItem ? lastItem.offsetHeight : 0);
+            menu.style.transition = 'none';
+            menu.style.height = menu.offsetHeight + 'px';
+            requestAnimationFrame(() => {
+                menu.style.transition = 'height 0.2s ease';
+                menu.style.height = targetH + 'px';
+                menu.addEventListener('transitionend', () => {
+                    menu.style.height = '';
+                    menu.style.transition = '';
+                    buildDownloadMenu(false);
+                }, { once: true });
+            });
+        }
+    }
+
+    exDisplayedTier = -1;
+    updateLodIndicator();
+    if (expandIdx >= 0 && exCanvas) rasterizeExpand();
+}
+
+function setDeathDetail(enabled) {
+    deathEnabled = enabled;
+    EX_TIERS = buildExTiers();
+    document.getElementById('expand-lod').classList.toggle('death-enabled', enabled);
+    document.querySelector('.download-menu-death-row').classList.toggle('active', enabled);
+
+    // If the menu is open, update it live with animation
+    if (document.getElementById('expand-download-menu').classList.contains('open')) {
+        if (enabled) {
+            buildDownloadMenu();
+        } else {
             const menu = document.getElementById('expand-download-menu');
             const lastItem = document.querySelector('#download-tier-items .download-menu-item:last-child');
             const targetH = menu.offsetHeight - (lastItem ? lastItem.offsetHeight : 0);
@@ -4080,6 +4538,9 @@ function detectExtremeLodIssue(extremeCanvas, refCanvas) {
 }
 
 function showCpuHint(isRendering = false) {
+    // Tiled GPU rendering has made CPU fallback unnecessary — suppress the popup
+    // for now without removing the underlying detection logic.
+    return;
     clearTimeout(cpuHintAutoHideTimer);
     cpuHintAutoHideTimer = null;
     const hint = document.getElementById('expand-cpu-hint');
@@ -4207,6 +4668,11 @@ document.getElementById('expand-layers-btn').addEventListener('click', e => { e.
 document.getElementById('expand-reset').addEventListener('click', fitExpandView);
 document.getElementById('expand-close').addEventListener('click', closeExpand);
 document.getElementById('expand-extreme-detail').addEventListener('change', e => setExtremeDetail(e.target.checked));
+document.getElementById('expand-death-detail').addEventListener('change', e => setDeathDetail(e.target.checked));
+if (IS_FIREFOX) {
+    document.documentElement.classList.add('is-firefox');
+    document.getElementById('expand-death-detail').disabled = true;
+}
 document.addEventListener('click', e => { if (!e.target.closest('#expand-more-wrap')) closeDownloadMenu(); });
 document.addEventListener('click', e => { if (!e.target.closest('#sidebar-save-wrap')) closeSidebarSaveMenu(); });
 document.addEventListener('keydown', e => {
