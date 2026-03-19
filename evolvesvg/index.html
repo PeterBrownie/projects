@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>evolveSVG — Generative SVG Art Evolution</title>
     <meta name="description" content="evolveSVG is an interactive generative art tool that evolves SVG patterns using a genetic algorithm. Select, mutate, and breed procedural designs with layered SVG filters, turbulence, and blend modes — rendered in real time in your browser.">
-    <meta name="keywords" content="generative art, SVG art, genetic algorithm, procedural art, interactive art, browser art, svg generator, evolutionary art, creative coding, pattern generator">
+    <meta name="keywords" content="SVG generator, SVG pattern creator, SVG patterns, custom SVG patterns, vector art generator, vector pattern generator, generative art, SVG art, genetic algorithm, procedural art, interactive art, browser art, svg generator, evolutionary art, creative coding, pattern generator">
     <meta name="author" content="Peter Brown">
     <link rel="canonical" href="https://peterbrown.space/evolvesvg/">
-    <meta property="og:title" content="evolveSVG — Generative SVG Art Evolution">
+    <meta property="og:title" content="evolveSVG — Algorithmic SVG Art Evolution">
     <meta property="og:description" content="Evolve procedural SVG patterns in real time using a genetic algorithm. Breed, mutate, and render layered generative art with SVG filters and blend modes.">
     <meta property="og:url" content="https://peterbrown.space/evolvesvg/">
     <meta property="og:type" content="website">
@@ -514,13 +514,37 @@
             font-size: 13px;
             line-height: 1.6;
         }
-        #info-popup.open { display: block; }
+        @keyframes info-slide-in {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        #info-popup.open {
+            display: block;
+            animation: info-slide-in 0.25s ease forwards;
+        }
+        #info-popup-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
         #info-popup h2 {
             font-size: 14px;
             font-weight: 600;
             color: #fff;
-            margin-bottom: 8px;
+            margin-bottom: 0;
         }
+        #info-popup-close {
+            background: none;
+            border: none;
+            color: #555;
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 1;
+            padding: 0 0 0 8px;
+            transition: color 0.15s;
+        }
+        #info-popup-close:hover { color: #ccc; }
         #info-popup p { margin-bottom: 10px; }
         #info-popup p:last-child { margin-bottom: 0; }
         #info-popup a { color: #7ab4e8; text-decoration: none; }
@@ -1241,6 +1265,15 @@
 </head>
 <body>
 
+<div id="info-popup">
+    <div id="info-popup-header">
+        <h2>evolveSVG</h2>
+        <button id="info-popup-close" title="Close">✕</button>
+    </div>
+    <p>A generative art tool that breeds abstract patterns through interactive evolution. Images are algorithmically generated, not ai-generated. Export SVGs or incredible 16k PNGs.</p>
+    <p>Made by <a href="https://peterbrown.space" target="_blank" rel="noopener">Peter Brown</a>. Inspired by <a href="https://www.youtube.com/@EmergentGarden" target="_blank" rel="noopener">Emergent Garden</a>.</p>
+</div>
+
 <div id="mobile-warning-overlay">
     <div id="mobile-warning-box">
         <h3>Works best on Desktop</h3>
@@ -1364,7 +1397,7 @@
                 <input type="file" id="loadSvgInput" accept=".svg" style="display:none">
                 <div class="file-btn-grid">
                     <div id="sidebar-save-wrap" style="grid-column: 1 / -1; position: relative;">
-                        <button class="action-btn secondary" id="saveImageBtn" disabled style="width: 100%">Save Image</button>
+                        <button class="action-btn secondary" id="saveImageBtn" disabled style="width: 100%">Save Options...</button>
                         <div id="sidebar-save-menu">
                             <div class="download-menu-title">Save as SVG</div>
                             <div class="download-menu-item" id="sidebar-copy-svg">Copy SVG Code</div>
@@ -1460,14 +1493,6 @@
 
 <button id="fullscreen-btn" title="Toggle fullscreen">⛶</button>
 
-<button id="info-btn" title="About evolveSVG">i</button>
-<div id="info-popup">
-    <h2>evolveSVG</h2>
-    <p>A generative art tool that evolves SVG patterns using a <strong>genetic algorithm</strong>. Each generation, you select the patterns you like — the tool breeds, mutates, and recombines them into new designs.</p>
-    <p>Patterns are built from layered SVG primitives with <strong>procedural filters</strong> including feTurbulence, feDisplacementMap, feGaussianBlur, blend modes, and color transforms — all rendered live in the browser.</p>
-    <p>Zoom into the expanded view for up to <strong>16K resolution</strong> rasterization. Save as SVG or PNG at any quality level.</p>
-    <p>Made by <a href="https://peterbrown.space" target="_blank" rel="noopener">Peter Brown</a>. Inspired by <a href="https://www.youtube.com/@EmergentGarden" target="_blank" rel="noopener">Emergent Garden</a>.</p>
-</div>
 
 <div id="firefox-notice">FYI - evolveSVG is computationally and visually superior on Chrome, when compared to Firefox.</div>
 
@@ -4244,14 +4269,30 @@ document.getElementById('toggleSidebar').addEventListener('click', () => {
 
 document.getElementById('float-restart').addEventListener('click', restart);
 
+function closeInfoPopup() {
+    document.getElementById('info-popup').classList.remove('open');
+    localStorage.setItem('evolveSVG_info_seen', '1');
+}
+
+document.getElementById('info-popup-close').addEventListener('click', e => { e.stopPropagation(); closeInfoPopup(); });
+
 document.getElementById('info-btn').addEventListener('click', e => {
     e.stopPropagation();
-    document.getElementById('info-popup').classList.toggle('open');
+    const popup = document.getElementById('info-popup');
+    if (popup.classList.contains('open')) {
+        closeInfoPopup();
+    } else {
+        popup.classList.add('open');
+    }
 });
 document.addEventListener('click', e => {
     if (!e.target.closest('#info-btn') && !e.target.closest('#info-popup'))
-        document.getElementById('info-popup').classList.remove('open');
+        closeInfoPopup();
 });
+
+if (!localStorage.getItem('evolveSVG_info_seen')) {
+    document.getElementById('info-popup').classList.add('open');
+}
 
 const fullscreenBtn = document.getElementById('fullscreen-btn');
 fullscreenBtn.addEventListener('click', () => {
