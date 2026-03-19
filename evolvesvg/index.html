@@ -1786,8 +1786,12 @@ function buildLayerFilter(layer, palette, defs, makeGradientId, svgW = 640, rend
         // At higher render resolutions, alpha edges are proportionally thinner in SVG
         // coordinate space, making lighting edge effects look smaller. Compensate by
         // blurring the bump map input so the effective edge width stays consistent.
-        const dlBlurBase = 0.00001; // baseline blur at lowest LOD (scale=1) — tune this
-        const dlBlur = dlBlurBase + (renderW / svgW - 1) * (renderW / svgW >= 12 ? 0.005 : 0.015);
+        // Per-LOD blur multiplier: dlBlur = (scale - 1) * multiplier.
+        // Keys are the tier scales (renderW/svgW ≈ 1, 3, 6, 9, 12).
+        const DL_BLUR_MULT = { 1: 0, 3: 0.015, 6: 0.015, 9: 0.005, 12: 0.003 };
+        const scale = renderW / svgW;
+        const dlBlurMult = DL_BLUR_MULT[Math.round(scale)] ?? 0.015;
+        const dlBlur = (scale - 1) * dlBlurMult;
         if (dlBlur > 0.01) {
             steps.push(`<feGaussianBlur in="${cur}" stdDeviation="${dlBlur.toFixed(2)}" result="dlblur"/>`);
             cur = 'dlblur';
@@ -1804,7 +1808,7 @@ function buildLayerFilter(layer, palette, defs, makeGradientId, svgW = 640, rend
         };
         const kernel = kernels[layer.convolve.type] || kernels.emboss;
         // Pre-blur so the 3x3 kernel covers the same apparent area regardless of render resolution.
-        const cvBlur = (renderW / svgW - 1) * 0;
+        const cvBlur = (renderW / svgW - 1) * 0; // functionally pointless
         if (cvBlur > 0.01) {
             steps.push(`<feGaussianBlur in="${cur}" stdDeviation="${cvBlur.toFixed(2)}" result="cvblur"/>`);
             cur = 'cvblur';
