@@ -819,8 +819,8 @@
         }
         .layer-drag-handle:active { cursor: grabbing; }
         .layer-drag-handle:hover { color: #888; }
-        .layer-row.dragging { opacity: 0; }
-        #layer-panel-list.is-dragging .layer-row {
+        .layer-entry.dragging { opacity: 0; }
+        #layer-panel-list.is-dragging .layer-entry {
             transition: transform 0.15s ease;
         }
         .layer-drag-ghost {
@@ -839,24 +839,83 @@
             transform: scale(1.02);
             will-change: top;
         }
-        #layer-tooltip {
+        .layer-entry {
+            display: flex;
+            flex-direction: column;
+        }
+        .layer-effects-toggle {
+            background: none;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 6px;
+            font-size: 10px;
+            color: #555;
+            letter-spacing: 0.3px;
+            transition: color 0.12s;
+            align-self: flex-start;
+        }
+        .layer-effects-toggle:hover { color: #888; }
+        .layer-effects-toggle .toggle-arrow {
+            display: inline-block;
+            transition: transform 0.15s ease;
+            font-size: 8px;
+            line-height: 1;
+        }
+        .layer-effects-toggle.expanded .toggle-arrow { transform: rotate(180deg); }
+        .layer-entry:has(.layer-effects-list.expanded) .layer-row {
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+        .layer-effects-list {
             display: none;
-            position: fixed;
-            background: #111;
-            border: 1px solid #3a3a3a;
-            border-radius: 5px;
-            padding: 6px 9px;
-            font-size: 11px;
-            color: #999;
-            z-index: 9999;
-            pointer-events: none;
-            line-height: 1.7;
+            flex-direction: column;
+            gap: 3px;
+            padding: 4px 5px 4px 5px;
+            background: #1e1e1e;
+            border: 1px solid #2e2e2e;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+        }
+        .layer-effects-list.expanded { display: flex; }
+        .effect-row {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 2px 4px 2px 8px;
+            border-radius: 3px;
+            background: #1a1a1a;
+        }
+        .effect-row.effect-hidden { opacity: 0.4; }
+        .effect-name-label {
+            flex: 1;
+            font-size: 10px;
+            color: #777;
+            letter-spacing: 0.3px;
+            overflow: hidden;
+            text-overflow: ellipsis;
             white-space: nowrap;
         }
-        #layer-tooltip.visible { display: block; }
-        #layer-tooltip b { color: #ddd; font-weight: 600; display: block; margin-bottom: 2px; }
-        #layer-tooltip .tip-effect { color: #aaa; }
-        #layer-tooltip .tip-none { color: #555; font-style: italic; }
+        .effect-vis-btn, .effect-delete-btn {
+            background: none;
+            border: 1px solid #383838;
+            border-radius: 3px;
+            color: #666;
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background 0.12s, color 0.12s, border-color 0.12s;
+            padding: 0;
+        }
+        .effect-vis-btn:hover { background: rgba(255,255,255,0.07); color: #bbb; border-color: #555; }
+        .effect-vis-btn.hidden { color: #444; border-color: #2e2e2e; }
+        .effect-delete-btn:hover { background: rgba(255,80,80,0.18); color: #ff8080; border-color: #ff6060; }
 
         .color-dice {
             position: absolute;
@@ -1385,8 +1444,6 @@
     </div>
 </div>
 
-<div id="layer-tooltip"></div>
-
 <div id="layer-panel">
     <div id="layer-panel-header">
         <span id="layer-panel-title">Layers</span>
@@ -1845,14 +1902,15 @@ function getFeatureFlags() {
 // Builds a single chained SVG filter for all layer effects.
 // Returns the filter attribute string (empty if no effects).
 function buildLayerFilter(layer, palette, defs, makeGradientId, svgW = 640, renderW = svgW, svgH = svgW * 9 / 16) {
-    const hasMorph     = layer.morph != null;
-    const hasDisplace  = layer.displace != null;
-    const hasBlur      = layer.blur != null;
-    const hasColor     = layer.colorShift != null;
-    const hasCompTrans = layer.componentTransfer != null;
-    const hasDiffuse   = layer.diffuseLight != null;
-    const hasConvolve  = layer.convolve != null;
-    const hasShadow    = layer.shadow != null;
+    const hidden = new Set(layer.hiddenEffects || []);
+    const hasMorph     = layer.morph != null     && !hidden.has('morph');
+    const hasDisplace  = layer.displace != null  && !hidden.has('displace');
+    const hasBlur      = layer.blur != null      && !hidden.has('blur');
+    const hasColor     = layer.colorShift != null && !hidden.has('colorShift');
+    const hasCompTrans = layer.componentTransfer != null && !hidden.has('componentTransfer');
+    const hasDiffuse   = layer.diffuseLight != null && !hidden.has('diffuseLight');
+    const hasConvolve  = layer.convolve != null  && !hidden.has('convolve');
+    const hasShadow    = layer.shadow != null    && !hidden.has('shadow');
     if (!hasMorph && !hasDisplace && !hasBlur && !hasColor && !hasCompTrans && !hasDiffuse && !hasConvolve && !hasShadow) return '';
 
     const fid = makeGradientId();
@@ -1955,7 +2013,7 @@ function buildLayerFilter(layer, palette, defs, makeGradientId, svgW = 640, rend
 // Builds a luminance mask (radial or linear gradient) for a layer.
 // Returns the mask attribute string (empty if no mask).
 function buildLayerMask(layer, W, H, defs, makeGradientId) {
-    if (!layer.mask) return '';
+    if (!layer.mask || (layer.hiddenEffects || []).includes('mask')) return '';
     const { type, cx, cy, r, angle } = layer.mask;
     const gid = makeGradientId();
     const mid = makeGradientId();
@@ -2063,7 +2121,7 @@ function renderTilingLayer(layer, palette, W, H, defs, makeGradientId, renderW =
         amplitude: layer.params.amplitude != null ? layer.params.amplitude * s : undefined,
     };
     const pid = makeGradientId();
-    const dashAttr = layer.dash
+    const dashAttr = layer.dash && !(layer.hiddenEffects || []).includes('dash')
         ? ` stroke-dasharray="${layer.dash.len.toFixed(1)},${layer.dash.gap.toFixed(1)}"`
         : '';
 
@@ -2194,7 +2252,7 @@ function renderLayer(layer, palette, W, H, defs, makeGradientId, renderW = W) {
     const rotate = t.rotate || 0;
     const scaleX = t.scaleX || 1, scaleY = t.scaleY || 1;
 
-    const dashAttr = layer.dash
+    const dashAttr = layer.dash && !(layer.hiddenEffects || []).includes('dash')
         ? ` stroke-dasharray="${layer.dash.len.toFixed(1)},${layer.dash.gap.toFixed(1)}"`
         : '';
     const attrs = `fill="${fillStr}" stroke="${strokeColor}" stroke-width="${strokeWidth}" opacity="${opacity}" style="mix-blend-mode:${blend}"${dashAttr}`;
@@ -2779,30 +2837,7 @@ function getLayerEffectNames(layer) {
     return effects;
 }
 
-function showLayerTooltip(canvas, layer) {
-    const effects = getLayerEffectNames(layer);
-    const tip = document.getElementById('layer-tooltip');
-    const typeName = layer.type.replace(/_/g, ' ');
-    const lines = effects.length
-        ? effects.map(e => `<span class="tip-effect">${e}</span>`).join('<br>')
-        : `<span class="tip-none">no effects</span>`;
-    tip.innerHTML = `<b>${typeName}</b>${lines}`;
-    tip.classList.add('visible');
-
-    const r = canvas.getBoundingClientRect();
-    const tipW = tip.offsetWidth || 140;
-    const tipH = tip.offsetHeight || 40;
-    let left = r.right + 8;
-    let top = r.top;
-    if (left + tipW > window.innerWidth - 6) left = r.left - tipW - 8;
-    if (top + tipH > window.innerHeight - 6) top = window.innerHeight - tipH - 6;
-    tip.style.left = left + 'px';
-    tip.style.top = top + 'px';
-}
-
-function hideLayerTooltip() {
-    document.getElementById('layer-tooltip').classList.remove('visible');
-}
+function hideLayerTooltip() {}
 
 const eyeOpenSVG = `<svg width="14" height="10" viewBox="0 0 14 10" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 5C3 1 11 1 13 5C11 9 3 9 1 5Z" stroke="currentColor" stroke-width="1.2"/><circle cx="7" cy="5" r="1.8" fill="currentColor"/></svg>`;
 const eyeClosedSVG = `<svg width="14" height="10" viewBox="0 0 14 10" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 5C3 1 11 1 13 5C11 9 3 9 1 5Z" stroke="currentColor" stroke-width="1.2" opacity="0.4"/><line x1="2" y1="8.5" x2="12" y2="1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
@@ -2814,6 +2849,11 @@ function populateLayerPanel(cellIdx) {
     document.getElementById('layer-panel-title').textContent = `Layers (${genome.layers.length})`;
 
     genome.layers.forEach((layer, layerIdx) => {
+        // Wrapper holds the layer row + any effect sub-rows
+        const wrapper = document.createElement('div');
+        wrapper.className = 'layer-entry';
+        wrapper.dataset.layerIdx = layerIdx;
+
         const row = document.createElement('div');
         row.className = 'layer-row' + (layer.hidden ? ' layer-hidden' : '');
         row.dataset.layerIdx = layerIdx;
@@ -2827,8 +2867,6 @@ function populateLayerPanel(cellIdx) {
         canvas.className = 'layer-preview-canvas';
         canvas.width = 120;
         canvas.height = 80;
-        canvas.addEventListener('mouseenter', () => showLayerTooltip(canvas, layer));
-        canvas.addEventListener('mouseleave', hideLayerTooltip);
         renderLayerPreview(canvas, genome, layerIdx);
 
         const label = document.createElement('span');
@@ -2855,7 +2893,73 @@ function populateLayerPanel(cellIdx) {
         row.appendChild(label);
         row.appendChild(visBtn);
         row.appendChild(delBtn);
-        list.appendChild(row);
+        wrapper.appendChild(row);
+
+        // Effect sub-rows
+        const effectDefs = [
+            { key: 'morph',             label: () => 'Morph: ' + layer.morph.operator },
+            { key: 'displace',          label: () => 'Displacement' },
+            { key: 'blur',              label: () => 'Blur' },
+            { key: 'colorShift',        label: () => 'Color shift' },
+            { key: 'componentTransfer', label: () => 'Channel curves' },
+            { key: 'diffuseLight',      label: () => 'Diffuse light' },
+            { key: 'convolve',          label: () => 'Convolve: ' + layer.convolve.type },
+            { key: 'shadow',            label: () => 'Shadow' },
+            { key: 'mask',              label: () => 'Mask: ' + layer.mask.type },
+            { key: 'dash',              label: () => 'Dashed stroke' },
+        ].filter(d => layer[d.key] != null);
+
+        if (effectDefs.length > 0) {
+            const toggleBtn = document.createElement('button');
+            toggleBtn.className = 'layer-effects-toggle';
+            toggleBtn.innerHTML = `<span class="toggle-arrow">▼</span> Show ${effectDefs.length} effect${effectDefs.length > 1 ? 's' : ''}`;
+
+            const effectsList = document.createElement('div');
+            effectsList.className = 'layer-effects-list';
+
+            toggleBtn.addEventListener('click', () => {
+                const expanded = effectsList.classList.toggle('expanded');
+                toggleBtn.classList.toggle('expanded', expanded);
+                if (expanded) {
+                    toggleBtn.innerHTML = `<span class="toggle-arrow">▼</span> Hide effect${effectDefs.length > 1 ? 's' : ''}`;
+                } else {
+                    toggleBtn.innerHTML = `<span class="toggle-arrow">▼</span> Show ${effectDefs.length} effect${effectDefs.length > 1 ? 's' : ''}`;
+                }
+            });
+
+            effectDefs.forEach(({ key, label }) => {
+                const isHidden = (layer.hiddenEffects || []).includes(key);
+                const effectRow = document.createElement('div');
+                effectRow.className = 'effect-row' + (isHidden ? ' effect-hidden' : '');
+                effectRow.dataset.effectKey = key;
+
+                const effectLabel = document.createElement('span');
+                effectLabel.className = 'effect-name-label';
+                effectLabel.textContent = label();
+
+                const effectVisBtn = document.createElement('button');
+                effectVisBtn.className = 'effect-vis-btn' + (isHidden ? ' hidden' : '');
+                effectVisBtn.title = isHidden ? 'Show effect' : 'Hide effect';
+                effectVisBtn.innerHTML = isHidden ? eyeClosedSVG : eyeOpenSVG;
+                effectVisBtn.addEventListener('click', () => toggleEffectVisibility(cellIdx, layerIdx, key));
+
+                const effectDelBtn = document.createElement('button');
+                effectDelBtn.className = 'effect-delete-btn';
+                effectDelBtn.title = 'Remove effect';
+                effectDelBtn.textContent = '×';
+                effectDelBtn.addEventListener('click', () => deleteEffect(cellIdx, layerIdx, key));
+
+                effectRow.appendChild(effectLabel);
+                effectRow.appendChild(effectVisBtn);
+                effectRow.appendChild(effectDelBtn);
+                effectsList.appendChild(effectRow);
+            });
+
+            wrapper.appendChild(toggleBtn);
+            wrapper.appendChild(effectsList);
+        }
+
+        list.appendChild(wrapper);
     });
 }
 
@@ -2863,7 +2967,8 @@ function startLayerDrag(e, cellIdx, srcIdx, row) {
     e.preventDefault();
     hideLayerTooltip();
 
-    const rect = row.getBoundingClientRect();
+    const wrapper = row.closest('.layer-entry') || row;
+    const rect = wrapper.getBoundingClientRect();
 
     const ghost = document.createElement('div');
     ghost.className = 'layer-drag-ghost';
@@ -2886,17 +2991,17 @@ function startLayerDrag(e, cellIdx, srcIdx, row) {
     ghost.appendChild(ghostLabel);
 
     document.body.appendChild(ghost);
-    row.classList.add('dragging');
+    wrapper.classList.add('dragging');
 
     const list = document.getElementById('layer-panel-list');
-    const allRows = [...list.querySelectorAll('.layer-row')];
-    const slotHeight = allRows.length >= 2
-        ? allRows[1].getBoundingClientRect().top - allRows[0].getBoundingClientRect().top
+    const allWrappers = [...list.querySelectorAll('.layer-entry')];
+    const slotHeight = allWrappers.length >= 2
+        ? allWrappers[1].getBoundingClientRect().top - allWrappers[0].getBoundingClientRect().top
         : rect.height + 6;
     list.classList.add('is-dragging');
 
     layerDragState = {
-        cellIdx, srcIdx, ghost, row,
+        cellIdx, srcIdx, ghost, row: wrapper,
         offsetY: e.clientY - rect.top,
         targetIdx: srcIdx,
         slotHeight, list
@@ -2912,7 +3017,7 @@ function onLayerDragMove(e) {
 
     ghost.style.top = (e.clientY - offsetY) + 'px';
 
-    const rows = [...list.querySelectorAll('.layer-row')];
+    const rows = [...list.querySelectorAll('.layer-entry')];
 
     // Determine where the dragged item would be inserted (as a DOM index)
     let targetIdx = rows.length;
@@ -2943,7 +3048,7 @@ function onLayerDragEnd() {
     ghost.remove();
     row.classList.remove('dragging');
     list.classList.remove('is-dragging');
-    [...list.querySelectorAll('.layer-row')].forEach(r => r.style.transform = '');
+    [...list.querySelectorAll('.layer-entry')].forEach(r => r.style.transform = '');
 
     document.removeEventListener('pointermove', onLayerDragMove);
     document.removeEventListener('pointerup', onLayerDragEnd);
@@ -2966,7 +3071,8 @@ function toggleLayerVisibility(cellIdx, layerIdx) {
     cellCache[cellIdx] = null;
     renderCell(cellIdx);
     // Update only the affected row in-place to avoid re-rendering all thumbnails
-    const row = document.getElementById('layer-panel-list').children[layerIdx];
+    const wrapper = document.getElementById('layer-panel-list').children[layerIdx];
+    const row = wrapper && wrapper.querySelector('.layer-row');
     if (row) {
         row.classList.toggle('layer-hidden', !!layer.hidden);
         const visBtn = row.querySelector('.layer-vis-btn');
@@ -3003,6 +3109,49 @@ function deleteLayer(cellIdx, layerIdx) {
     const genome = genomes[cellIdx];
     if (genome.layers.length <= 1) return;
     genome.layers.splice(layerIdx, 1);
+    cellCache[cellIdx] = null;
+    renderCell(cellIdx);
+    populateLayerPanel(cellIdx);
+}
+
+function toggleEffectVisibility(cellIdx, layerIdx, effectKey) {
+    const layer = genomes[cellIdx].layers[layerIdx];
+    if (!layer.hiddenEffects) layer.hiddenEffects = [];
+    const idx = layer.hiddenEffects.indexOf(effectKey);
+    if (idx === -1) {
+        layer.hiddenEffects.push(effectKey);
+    } else {
+        layer.hiddenEffects.splice(idx, 1);
+    }
+    cellCache[cellIdx] = null;
+    renderCell(cellIdx);
+    // Update the effect row in-place
+    const list = document.getElementById('layer-panel-list');
+    const layerRow = list.children[layerIdx];
+    if (layerRow) {
+        const effectRows = layerRow.querySelectorAll('.effect-row');
+        effectRows.forEach(row => {
+            if (row.dataset.effectKey === effectKey) {
+                const isHidden = layer.hiddenEffects.includes(effectKey);
+                row.classList.toggle('effect-hidden', isHidden);
+                const visBtn = row.querySelector('.effect-vis-btn');
+                if (visBtn) {
+                    visBtn.classList.toggle('hidden', isHidden);
+                    visBtn.title = isHidden ? 'Show effect' : 'Hide effect';
+                    visBtn.innerHTML = isHidden ? eyeClosedSVG : eyeOpenSVG;
+                }
+            }
+        });
+    }
+}
+
+function deleteEffect(cellIdx, layerIdx, effectKey) {
+    const layer = genomes[cellIdx].layers[layerIdx];
+    delete layer[effectKey];
+    if (layer.hiddenEffects) {
+        const i = layer.hiddenEffects.indexOf(effectKey);
+        if (i !== -1) layer.hiddenEffects.splice(i, 1);
+    }
     cellCache[cellIdx] = null;
     renderCell(cellIdx);
     populateLayerPanel(cellIdx);
