@@ -148,6 +148,8 @@
             list-style: none;
             display: grid;
             grid-template-columns: 1fr 1fr;
+            grid-template-rows: repeat(6, auto);
+            grid-auto-flow: column;
             gap: 6px 32px;
         }
 
@@ -453,6 +455,73 @@
         .flag-tier.standard     { background: #1a2a3a; color: var(--accent); }
         .flag-tier.experimental { background: #2a1a0a; color: var(--orange); }
 
+        /* ── Side TOC ─────────────────────────────────────── */
+        .side-toc {
+            position: fixed;
+            left: max(12px, calc(50vw - 610px));
+            top: 50%;
+            transform: translateY(-50%);
+            width: 148px;
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+            z-index: 50;
+        }
+
+        .side-toc.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        @media (max-width: 1200px) {
+            .side-toc { display: none; }
+        }
+
+        .side-toc-item {
+            display: flex;
+            align-items: baseline;
+            gap: 7px;
+            padding: 4px 8px 4px 10px;
+            border-left: 2px solid transparent;
+            text-decoration: none;
+            border-radius: 0 3px 3px 0;
+            transition: border-color 0.15s, background 0.15s;
+        }
+
+        .side-toc-item:hover {
+            background: rgba(255,255,255,0.04);
+            border-left-color: var(--border2);
+        }
+
+        .side-toc-item.active {
+            border-left-color: var(--accent);
+            background: rgba(74,158,255,0.06);
+        }
+
+        .side-toc-num {
+            font-size: 10px;
+            font-variant-numeric: tabular-nums;
+            color: var(--text-faint);
+            flex-shrink: 0;
+            font-family: 'SF Mono', Menlo, monospace;
+            transition: color 0.15s;
+        }
+
+        .side-toc-item.active .side-toc-num { color: var(--accent); }
+
+        .side-toc-label {
+            font-size: 11.5px;
+            color: var(--text-dim);
+            line-height: 1.35;
+            transition: color 0.15s;
+        }
+
+        .side-toc-item:hover .side-toc-label { color: var(--text); }
+        .side-toc-item.active .side-toc-label { color: #fff; }
+
         /* ── Divider ──────────────────────────────────────── */
         .divider {
             border: none;
@@ -478,6 +547,21 @@
     </style>
 </head>
 <body>
+
+<nav class="side-toc" id="sideToc">
+    <a href="#overview" class="side-toc-item" data-section="overview"><span class="side-toc-num">01</span><span class="side-toc-label">Architecture</span></a>
+    <a href="#genome"   class="side-toc-item" data-section="genome">  <span class="side-toc-num">02</span><span class="side-toc-label">Genome</span></a>
+    <a href="#randomization" class="side-toc-item" data-section="randomization"><span class="side-toc-num">03</span><span class="side-toc-label">Randomization</span></a>
+    <a href="#tier1"    class="side-toc-item" data-section="tier1">   <span class="side-toc-num">04</span><span class="side-toc-label">Color Mutation</span></a>
+    <a href="#tier2"    class="side-toc-item" data-section="tier2">   <span class="side-toc-num">05</span><span class="side-toc-label">Param Mutation</span></a>
+    <a href="#tier3"    class="side-toc-item" data-section="tier3">   <span class="side-toc-num">06</span><span class="side-toc-label">Layer Mutation</span></a>
+    <a href="#tier4"    class="side-toc-item" data-section="tier4">   <span class="side-toc-num">07</span><span class="side-toc-label">Genome Mutation</span></a>
+    <a href="#flow"     class="side-toc-item" data-section="flow">    <span class="side-toc-num">08</span><span class="side-toc-label">Evolution Flow</span></a>
+    <a href="#controls" class="side-toc-item" data-section="controls"><span class="side-toc-num">09</span><span class="side-toc-label">Controls</span></a>
+    <a href="#flags"    class="side-toc-item" data-section="flags">   <span class="side-toc-num">10</span><span class="side-toc-label">Feature Flags</span></a>
+    <a href="#lod"      class="side-toc-item" data-section="lod">     <span class="side-toc-num">11</span><span class="side-toc-label">LOD Rendering</span></a>
+    <a href="#export"   class="side-toc-item" data-section="export">  <span class="side-toc-num">12</span><span class="side-toc-label">PNG Export</span></a>
+</nav>
 
 <nav class="topnav">
     <a href="index.html" class="topnav-back"><span class="arrow">←</span> Back</a>
@@ -510,6 +594,8 @@
             <li><a href="#flow"><span class="num">08</span> Evolution Flow</a></li>
             <li><a href="#controls"><span class="num">09</span> User Controls</a></li>
             <li><a href="#flags"><span class="num">10</span> Feature Flag System</a></li>
+            <li><a href="#lod"><span class="num">11</span> High-Resolution LOD Rendering</a></li>
+            <li><a href="#export"><span class="num">12</span> Tiled PNG Export</a></li>
         </ul>
     </div>
 
@@ -823,14 +909,14 @@ newGenomes[<span class="num">4</span>] = <span class="fn">deepClone</span>(paren
                     </tr>
                     <tr>
                         <td><strong style="color:#fff">Structure Rate</strong></td>
-                        <td><code>0.05 – 1.0</code></td>
-                        <td><code>0.3</code></td>
+                        <td><code>0.0 – 1.0</code></td>
+                        <td><code>0.2</code></td>
                         <td>Scales all structural change probabilities — layer add/remove, shape type change, effect spawn/remove, arrangement change</td>
                     </tr>
                     <tr>
                         <td><strong style="color:#fff">Max Layers</strong></td>
-                        <td><code>2 – 8</code></td>
-                        <td><code>8</code></td>
+                        <td><code>2 – 20</code></td>
+                        <td><code>15</code></td>
                         <td>Hard cap on the number of layers a genome can accumulate; layer addition is skipped once this limit is reached</td>
                     </tr>
                 </tbody>
@@ -910,10 +996,245 @@ newGenomes[<span class="num">4</span>] = <span class="fn">deepClone</span>(paren
         </div>
     </section>
 
+    <!-- 11 LOD Rendering -->
+    <section class="section" id="lod">
+        <div class="section-label">11 — Expand View</div>
+        <h2 class="section-title">High-Resolution LOD Rendering</h2>
+        <div class="section-body">
+            <p>The Expand View re-rasterizes the current SVG pattern at progressively higher resolutions as you zoom in. This multi-tier <strong style="color:#fff">Level of Detail</strong> system is necessary because the SVG coordinate space is fixed at 1280×720 user units — scaling that space up to print-quality dimensions requires rendering the SVG at a higher pixel density, not stretching a smaller raster.</p>
+            <p>Three rendering modes are available. Standard mode is always on. Extreme and Death modes are opt-in via the Settings panel and unlock successively higher resolution tiers through a GPU tiling strategy.</p>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">The Fixed SVG Coordinate Space</div>
+            <p style="color:var(--text);margin-bottom:12px">A critical constraint: the SVG's <code>viewBox</code> dimensions are always <code>1280×720</code> — they are never changed. The browser's <code>feTurbulence</code> filter samples noise in SVG user-unit space, so altering the viewBox would change the noise pattern itself, not just the display size. To get more pixels, the SVG <code>width</code> and <code>height</code> attributes are scaled up while the viewBox stays constant.</p>
+            <div class="callout orange">
+                <div class="callout-label">Hard constraint</div>
+                Never change the SVG's viewBox when scaling for LOD. Doing so changes the feTurbulence sampling domain and produces a completely different displacement pattern — not the same image at higher resolution.
+            </div>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">Tier System</div>
+            <p style="color:var(--text);margin-bottom:16px">Each mode adds tiers to the resolution ladder. A tier is selected by the current zoom level inside the Expand View. Once rendered, each tier is cached and reused instantly when zooming back out.</p>
+
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Label</th><th>Scale Factor</th><th>Output Resolution</th><th>Mode Required</th><th>Strategy</th></tr></thead>
+                    <tbody>
+                        <tr><td>720p</td><td>1×</td><td>1280 × 720</td><td>Standard</td><td>Single pass</td></tr>
+                        <tr><td>4K</td><td>3×</td><td>3840 × 2160</td><td>Standard</td><td>Single pass</td></tr>
+                        <tr><td>8K</td><td>6×</td><td>7680 × 4320</td><td>Standard</td><td>Single pass</td></tr>
+                        <tr><td>12K</td><td>9×</td><td>11520 × 6480</td><td>Standard</td><td>Single pass</td></tr>
+                        <tr><td>16K ★</td><td>12×</td><td>15360 × 8640</td><td>Extreme</td><td>4×4 tiled composite</td></tr>
+                        <tr><td>Detail of Death ☠</td><td>24×</td><td>30720 × 17280</td><td>Death</td><td>4×4 tiled, separate canvases</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p style="color:var(--text-dim);font-size:13.5px;margin-top:12px">The 16K and Death tiers exceed what any GPU can hold in a single canvas allocation. They use a tiling strategy to work around this limit.</p>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">Tiling Strategy (Extreme &amp; Death Modes)</div>
+            <p style="color:var(--text);margin-bottom:14px">At high scale factors, a single canvas exceeds GPU memory limits and the browser silently produces a blank or corrupt result. The workaround is to divide the full image into a <strong style="color:#fff">4×4 grid of 16 tiles</strong>, render each tile separately at a manageable canvas size, then composite them back together.</p>
+            <p style="color:var(--text);margin-bottom:14px">The tricky part is SVG filters. <code>feTurbulence</code> computes displacement based on absolute SVG user-unit coordinates. If you simply clip the viewBox to a tile's region, filter primitives that sample outside the tile boundary (the <code>feDisplacementMap</code> sampling radius can reach ~75 user units at maximum scale) would be clipped to zero — producing a visible seam where tiles meet.</p>
+            <p style="color:var(--text);margin-bottom:14px">The solution is an <strong style="color:#fff">overlap margin</strong>: each tile's viewBox is expanded by 80 SVG user units on every shared edge. This overlap is larger than the maximum displacement radius, so filter math across tile boundaries is identical to single-pass rendering. After rasterizing each tile, the overlap strip is cropped off via <code>drawImage()</code> before compositing.</p>
+
+            <pre><code><span class="cm">// For each tile at (col, tc), (row, tr) in a 4×4 grid:</span>
+<span class="kw">const</span> OVERLAP = <span class="num">80</span>;   <span class="cm">// SVG user units — covers max displacement radius</span>
+
+<span class="cm">// Tile's region in SVG user-unit space (without overlap)</span>
+<span class="kw">const</span> vx = tc * tileVW;
+<span class="kw">const</span> vy = tr * tileVH;
+
+<span class="cm">// Expanded viewBox includes overlap on shared edges</span>
+<span class="kw">const</span> vxo = vx - (tc &gt; <span class="num">0</span> ? OVERLAP : <span class="num">0</span>);
+<span class="kw">const</span> vyo = vy - (tr &gt; <span class="num">0</span> ? OVERLAP : <span class="num">0</span>);
+<span class="kw">const</span> vwo = tileVW + (tc &gt; <span class="num">0</span> ? OVERLAP : <span class="num">0</span>) + (tc &lt; cols-<span class="num">1</span> ? OVERLAP : <span class="num">0</span>);
+<span class="kw">const</span> vho = tileVH + (tr &gt; <span class="num">0</span> ? OVERLAP : <span class="num">0</span>) + (tr &lt; rows-<span class="num">1</span> ? OVERLAP : <span class="num">0</span>);
+
+<span class="cm">// Patch SVG viewBox and pixel dimensions, render to canvas</span>
+svg.<span class="fn">setAttribute</span>(<span class="str">'viewBox'</span>, `${vxo} ${vyo} ${vwo} ${vho}`);
+svg.<span class="fn">setAttribute</span>(<span class="str">'width'</span>,   rawTileW + overlapPxX);
+svg.<span class="fn">setAttribute</span>(<span class="str">'height'</span>,  rawTileH + overlapPxY);
+
+<span class="cm">// Crop the overlap pixels out before compositing</span>
+ctx.<span class="fn">drawImage</span>(tileCanvas, cropL, cropT, rawTileW, rawTileH, destX, destY, rawTileW, rawTileH);</code></pre>
+
+            <div class="callout green">
+                <div class="callout-label">Why this works</div>
+                The browser clips SVG filter buffers to the tile's viewBox. By making the viewBox larger than the inner region, all filter sampling that would cross a tile boundary happens within the oversized buffer — producing pixel-identical results to a single full-resolution pass.
+            </div>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">Extreme vs. Death: What's Different</div>
+            <div class="tier-grid">
+                <div class="tier-card">
+                    <div class="tier-card-header">
+                        <span class="tier-badge" style="color:var(--gold);border-color:#4a3800;background:#1a1200">16K ★</span>
+                        <div class="tier-card-title">Extreme Mode</div>
+                    </div>
+                    <p>All 16 tiles are rendered sequentially and composited into a <strong style="color:#ccc">single offscreen canvas</strong>. The composite is displayed in the Expand View and cached for instant reuse. Export produces one PNG from this composite.</p>
+                </div>
+                <div class="tier-card">
+                    <div class="tier-card-header">
+                        <span class="tier-badge" style="color:#f87171;border-color:#4a0000;background:#1a0000">☠ Death</span>
+                        <div class="tier-card-title">Death Mode</div>
+                    </div>
+                    <p>Each of the 16 tiles is kept as its <strong style="color:#ccc">own canvas element</strong>, positioned absolutely in the DOM via CSS transform. The canvases are never composited — they remain separate for streaming directly to the PNG encoder at export time.</p>
+                </div>
+            </div>
+            <p style="color:var(--text-dim);font-size:13.5px;margin-top:12px">Death mode's separate-canvas approach avoids ever allocating a 530+ megapixel composite in memory. The 16 tile canvases are instead piped sequentially into the PNG encoder.</p>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">Issue Detection</div>
+            <p style="color:var(--text);margin-bottom:14px">At extreme zoom levels, some GPUs silently produce incorrect renders — missing displacement layers, flat luminance, or washed-out color. An automatic detection pass runs after an Extreme-tier render, comparing it against the tier below.</p>
+            <p style="color:var(--text);margin-bottom:14px">The image is divided into a 16×9 analysis grid of 80×80-pixel tiles, with a 20px border cropped from each to avoid edge artifacts. The central 40×40 region of each tile is analyzed with four independent checks:</p>
+            <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;font-size:14px;color:var(--text-dim);margin-bottom:14px">
+                <li><strong style="color:#ccc">1. Luminance variance drop</strong> — detects missing texture or displacement layers</li>
+                <li><strong style="color:#ccc">2. Per-channel mean delta &gt; 15</strong> — detects missing tone or color grading layers</li>
+                <li><strong style="color:#ccc">3. Saturation-amplified color variance drop</strong> — detects missing subtle hue-shift layers</li>
+                <li><strong style="color:#ccc">4. Structured difference variance</strong> — detects missing textured detail at any scale</li>
+            </ul>
+            <p style="color:var(--text);margin-bottom:14px">If more than 10% of analysis tiles fail any check, the tier is flagged as a GPU rendering failure.</p>
+            <div class="callout orange">
+                <div class="callout-label">Currently Disabled</div>
+                The CPU rendering fallback notification is suppressed. Detection runs in full but does not surface a warning or offer a fallback to the user. This was a solution before I setup tiling. I kept the code in evolveSVG just in case the tiling wasn't good enough. I should probably remove these checks for the sake of performance.
+            </div>
+        </div>
+    </section>
+
+    <!-- 12 Export -->
+    <section class="section" id="export">
+        <div class="section-label">12 — Export</div>
+        <h2 class="section-title">Tiled PNG Export</h2>
+        <div class="section-body">
+            <p>Exporting a Death-mode render as a single PNG file poses a memory problem: a 30720×17280 image at 3 bytes per pixel is roughly 1.5 GB of raw pixel data. Loading it all into memory to encode it would crash most browsers. Instead, the exporter uses a <strong style="color:#fff">streaming PNG encoder</strong> that writes the file scanline-by-scanline directly to disk, keeping peak memory at the size of one tile row (~100 MB).</p>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">File System Access API</div>
+            <p style="color:var(--text);margin-bottom:14px">The exporter opens a save dialog via <code>window.showSaveFilePicker()</code> (File System Access API) and writes directly to the chosen file. This allows sequential writes and — critically — lets the encoder seek back to fill in the IDAT chunk length once compression is complete, without holding the whole file in memory.</p>
+            <div class="callout orange">
+                <div class="callout-label">Fallback</div>
+                If the File System Access API is unavailable (non-Chromium browsers, certain contexts), the exporter falls back to downloading all 16 tiles as separate PNG files named <code>*-death-r{row}c{col}.png</code>.
+            </div>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">PNG Encoding Pipeline</div>
+            <p style="color:var(--text);margin-bottom:14px">PNG is a relatively simple format: a fixed signature, a header chunk (IHDR), one compressed data chunk (IDAT), and an end marker (IEND). The exporter builds each part manually:</p>
+
+            <pre><code><span class="cm">// 1. PNG signature — 8 magic bytes</span>
+<span class="fn">write</span>([<span class="num">137</span>, <span class="num">80</span>, <span class="num">78</span>, <span class="num">71</span>, <span class="num">13</span>, <span class="num">10</span>, <span class="num">26</span>, <span class="num">10</span>]);
+
+<span class="cm">// 2. IHDR chunk — width, height, 8-bit RGB (color type 2)</span>
+<span class="fn">writeChunk</span>(<span class="str">'IHDR'</span>, [W >> <span class="num">24</span>, W >> <span class="num">16</span>, W >> <span class="num">8</span>, W,
+                    H >> <span class="num">24</span>, H >> <span class="num">16</span>, H >> <span class="num">8</span>, H,
+                    <span class="num">8</span>,   <span class="cm">// bit depth</span>
+                    <span class="num">2</span>,   <span class="cm">// color type: RGB (no alpha)</span>
+                    <span class="num">0</span>, <span class="num">0</span>, <span class="num">0</span>]);  <span class="cm">// compression, filter, interlace</span>
+
+<span class="cm">// 3. IDAT chunk — length placeholder written now, filled in after compression</span>
+<span class="kw">const</span> idatLenPos = pos;   <span class="cm">// remember file offset</span>
+<span class="fn">write</span>([<span class="num">0</span>, <span class="num">0</span>, <span class="num">0</span>, <span class="num">0</span>]);        <span class="cm">// placeholder — seek back later</span>
+<span class="fn">write</span>(<span class="str">'IDAT'</span>);
+
+<span class="cm">// 4. Pipe scanlines through zlib deflate → directly to file</span>
+<span class="kw">const</span> cs = <span class="kw">new</span> <span class="fn">CompressionStream</span>(<span class="str">'deflate'</span>);
+<span class="kw">const</span> csWriter = cs.writable.<span class="fn">getWriter</span>();
+cs.readable.<span class="fn">pipeTo</span>(fileStream);   <span class="cm">// compressed bytes go straight to disk</span>
+
+<span class="cm">// 5. For each tile row, read pixel data from all 4 tiles in that row,</span>
+<span class="cm">//    then write scanlines by concatenating pixels horizontally</span>
+<span class="kw">for</span> (<span class="kw">let</span> tr = <span class="num">0</span>; tr &lt; rows; tr++) {
+    <span class="kw">const</span> pixData = tiles.<span class="fn">slice</span>(tr*cols, tr*cols+cols)
+                         .<span class="fn">map</span>(c => c.<span class="fn">getContext</span>(<span class="str">'2d'</span>).<span class="fn">getImageData</span>(<span class="num">0</span>,<span class="num">0</span>,tw,th).data);
+    <span class="kw">for</span> (<span class="kw">let</span> y = <span class="num">0</span>; y &lt; th; y++) {
+        <span class="kw">const</span> row = <span class="kw">new</span> <span class="fn">Uint8Array</span>(<span class="num">1</span> + W * <span class="num">3</span>);  <span class="cm">// filter byte + RGB</span>
+        row[<span class="num">0</span>] = <span class="num">0</span>;  <span class="cm">// PNG filter type: None</span>
+        <span class="kw">for</span> (<span class="kw">let</span> tc = <span class="num">0</span>; tc &lt; cols; tc++) {
+            <span class="kw">for</span> (<span class="kw">let</span> x = <span class="num">0</span>; x &lt; tw; x++) {
+                <span class="cm">// Copy R, G, B from RGBA pixel data (skip A)</span>
+                row[di]   = pixData[tc][si];
+                row[di+<span class="num">1</span>] = pixData[tc][si+<span class="num">1</span>];
+                row[di+<span class="num">2</span>] = pixData[tc][si+<span class="num">2</span>];
+            }
+        }
+        <span class="kw">await</span> csWriter.<span class="fn">write</span>(row);  <span class="cm">// scanline fed to compressor</span>
+    }
+}
+
+<span class="cm">// 6. Close compressor, seek back to fill IDAT length, write IEND</span>
+<span class="kw">await</span> csWriter.<span class="fn">close</span>();
+writer.<span class="fn">seek</span>(idatLenPos);
+<span class="fn">write</span>(idatByteCount);           <span class="cm">// fill in the placeholder</span>
+<span class="fn">writeChunk</span>(<span class="str">'IEND'</span>, []);</code></pre>
+
+            <div class="callout green">
+                <div class="callout-label">Memory efficiency</div>
+                At any given moment, only one tile row's pixel data is in memory — roughly 4 × (tile width × tile height × 4 bytes). For a 4×4 tile layout of a 30720-pixel-wide image, each tile is ~7680 pixels wide, so one tile row is about 500 MB of pixel data. Scanlines are fed immediately to the compressor and written to disk; there is never a full-image buffer in memory.
+            </div>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">CRC32 Checksums</div>
+            <p style="color:var(--text);margin-bottom:14px">Every PNG chunk requires a CRC32 checksum covering the chunk type and data. The encoder pre-computes a 256-entry CRC32 lookup table and processes each chunk's bytes through it before writing. This is a required part of the PNG specification — a PNG reader that validates checksums (most do) will reject a file with a wrong CRC.</p>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">Progress UI</div>
+            <p style="color:var(--text);margin-bottom:14px">Because a Death-mode export can take tens of seconds, a progress overlay appears showing a 4×4 grid of tile status cells. Each cell transitions through three states as processing moves through the 16 tiles:</p>
+            <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;font-size:14px;color:var(--text-dim)">
+                <li style="display:flex;align-items:center;gap:10px">
+                    <span style="flex-shrink:0;width:28px;height:16px;border-radius:3px;background:#5a2800;border:1px solid #c05810;animation:death-cell-pulse 0.7s ease-in-out infinite;display:inline-block"></span>
+                    <span><strong style="color:#ccc">Rendering</strong> — the tile's SVG is being rasterized</span>
+                </li>
+                <li style="display:flex;align-items:center;gap:10px">
+                    <span style="flex-shrink:0;width:28px;height:16px;border-radius:3px;background:#00304a;border:1px solid #1890d0;animation:death-cell-pulse 0.7s ease-in-out infinite;display:inline-block"></span>
+                    <span><strong style="color:#ccc">Streaming</strong> — the tile's pixel data is being fed to the PNG compressor</span>
+                </li>
+                <li style="display:flex;align-items:center;gap:10px">
+                    <span style="flex-shrink:0;width:28px;height:16px;border-radius:3px;background:#1a4228;border:1px solid #38b058;display:inline-block"></span>
+                    <span><strong style="color:#ccc">Done</strong> — the tile's scanlines have been written to disk</span>
+                </li>
+            </ul>
+            <style>@keyframes death-cell-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }</style>
+            <p style="color:var(--text);margin-top:12px">If tiles are already cached from a previous render in the same session, the rendering phase is skipped and export jumps straight to streaming.</p>
+        </div>
+    </section>
+
     <footer class="footer">
         <p><a href="index.html">← Back to evolveSVG</a> &nbsp;·&nbsp; <a href="about.html">About</a></p>
     </footer>
 
 </div>
+<script>
+    const sideToc  = document.getElementById('sideToc');
+    const mainToc  = document.querySelector('.toc');
+    const sections = document.querySelectorAll('.section[id]');
+    const sideItems = document.querySelectorAll('.side-toc-item');
+
+    // Show/hide sidebar based on whether the main TOC is in view
+    new IntersectionObserver(([e]) => {
+        sideToc.classList.toggle('visible', !e.isIntersecting);
+    }, { threshold: 0 }).observe(mainToc);
+
+    // Track which section is active
+    function setActive(id) {
+        sideItems.forEach(item => {
+            item.classList.toggle('active', item.dataset.section === id);
+        });
+    }
+
+    // Track active section as the user scrolls
+    const sectionObserver = new IntersectionObserver((entries) => {
+        entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+    }, { rootMargin: '-15% 0px -70% 0px' });
+    sections.forEach(s => sectionObserver.observe(s));
+</script>
 </body>
 </html>

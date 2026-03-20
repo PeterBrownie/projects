@@ -4213,6 +4213,7 @@ async function downloadPngAtTier(tierIdx) {
                     c.getContext('2d').drawImage(raw, cropX, cropY, nomTileW, nomTileH, 0, 0, nomTileW, nomTileH);
                     updateDeathExportTile(tileIdx, 'ready');
                     freshTiles.push(c);
+                    await new Promise(r => setTimeout(r, 150));
                 }
             }
             downloadTiles(freshTiles);
