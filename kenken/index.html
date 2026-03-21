@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dark Mode KenKen</title>
+  <title>KenKen</title>
   <style>
-    /* NEW: Prevent scrollbars and enforce box-sizing */
     html, body {
       overflow: hidden;
     }
@@ -22,7 +21,7 @@
     body {
       margin: 0;
       padding: 0;
-      font-family: sans-serif;
+      font-family: system-ui, -apple-system, sans-serif;
       background: var(--bg);
       color: var(--text);
       display: flex;
@@ -30,26 +29,124 @@
       align-items: center;
       height: 100vh;
     }
+
+    /* ── Header ── */
     header {
       width: 100%;
-      padding: 1rem;
+      height: 52px;
+      padding: 0 14px;
       display: flex;
-      gap: 1rem;
-      background: var(--highlight);
+      align-items: center;
+      gap: 6px;
+      background: #22223a;
+      border-bottom: 1px solid #30304a;
+      flex-shrink: 0;
     }
-    header select, header button {
-      padding: 0.5rem;
-      border: none;
-      border-radius: 4px;
-      background: var(--cell-bg);
-      color: var(--text);
+    .hdr-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .hdr-sep {
+      width: 1px;
+      height: 22px;
+      background: #35355a;
+      margin: 0 6px;
+      flex-shrink: 0;
+    }
+    .hdr-title {
       font-size: 1rem;
+      font-weight: 700;
+      color: #b0b0d0;
+      letter-spacing: 0.08em;
+      padding-right: 4px;
+    }
+    .back-btn {
+      color: #707090;
+      text-decoration: none;
+      font-size: 1.1rem;
+      line-height: 1;
+      padding: 5px 8px;
+      border-radius: 6px;
+      transition: color 0.15s, background 0.15s;
+    }
+    .back-btn:hover {
+      color: #ccc;
+      background: #2e2e4e;
+    }
+    header select {
+      padding: 4px 8px;
+      border: 1px solid #38385a;
+      border-radius: 6px;
+      background: #282840;
+      color: var(--text);
+      font-size: 0.85rem;
       cursor: pointer;
+      outline: none;
     }
-    /* New: spacing for placeholder icons */
-    header .icon {
-      margin-right: 0.5rem;
+    header select:hover {
+      border-color: #50508a;
     }
+    header button {
+      padding: 4px 11px;
+      border: 1px solid #38385a;
+      border-radius: 6px;
+      background: #282840;
+      color: #b8b8d8;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      white-space: nowrap;
+      line-height: 1.5;
+    }
+    header button:hover {
+      background: #30305a;
+      border-color: #55557a;
+      color: #e0e0ff;
+    }
+    header button:disabled {
+      opacity: 0.3;
+      cursor: default;
+    }
+    header button.btn-active {
+      background: #3c3c6e;
+      border-color: #6060a0;
+      color: #d0d0ff;
+    }
+    .hdr-spacer {
+      flex: 1;
+    }
+    .progress-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .progress-bar-track {
+      width: 80px;
+      height: 4px;
+      background: #2e2e4e;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: #6060a0;
+      border-radius: 2px;
+      transition: width 0.3s ease, background 0.3s ease;
+      width: 0%;
+    }
+    .progress-bar-fill.complete {
+      background: #50c050;
+    }
+    .progress-label {
+      font-size: 0.78rem;
+      color: #666;
+      font-variant-numeric: tabular-nums;
+      min-width: 36px;
+      text-align: right;
+    }
+
+    /* ── Board (unchanged from original) ── */
     #board {
       display: grid;
       margin-top: 1rem;
@@ -58,28 +155,26 @@
     }
     .cell {
       position: relative;
-      z-index: 0; /* ensure each cell starts at base level */
-      /* Removed static border */
+      z-index: 0;
       background: var(--cell-bg);
       display: flex;
       align-items: center;
       justify-content: center;
-      cursor: default; /* added to prevent changing mouse cursor on hover */
+      cursor: default;
     }
     .cell, .cell * {
-      cursor: default !important; /* forces default cursor over cell and all children */
+      cursor: default !important;
     }
     .cell input {
       width: 100%;
       height: 100%;
       border: none;
       background: transparent;
-      color: #000; /* changed from var(--text) to dark color */
+      color: #000;
       font-size: 1.2rem;
       text-align: center;
       caret-color: transparent;
     }
-    /* Remove up/down spinner arrows for number inputs */
     ::-webkit-outer-spin-button,
     ::-webkit-inner-spin-button {
       -webkit-appearance: none;
@@ -98,60 +193,287 @@
       left: 2px;
       font-size: 0.8rem;
       font-weight: bold;
-      color: #111
-      
-    }
-    button.action {
-      margin: 0.5rem;
-      padding: 0.5rem 1rem;
-      border: none;
-      border-radius: 4px;
-      background: var(--cell-bg);
-      color: var(--text);
-      cursor: pointer;
+      color: #111;
     }
     .candidates {
       position: absolute;
       bottom: 2px;
       right: 2px;
-      font-size: 0.7rem;
+      font-size: 0.6rem;
       color: #000;
     }
     .cell.selected {
       z-index: 1;
       outline: 2px solid white;
       outline-offset: -2px;
-      border-radius: 2px; /* added for slight rounding */
+      border-radius: 2px;
+    }
+    /* Wrong cell highlight (replaces alert) */
+    .cell.wrong {
+      z-index: 2;
+      outline: 2.5px solid #ff5555 !important;
+      outline-offset: -2px;
+    }
+
+    /* ── Number pad ── */
+    #numpad {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .num-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      border: 1px solid #38385a;
+      background: #282840;
+      color: #b8b8d8;
+      font-size: 1.1rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      user-select: none;
+    }
+    .num-btn:hover {
+      background: #30305a;
+      border-color: #5555a0;
+      color: #e0e0ff;
+    }
+
+    /* Individual candidate spans — always bold so highlighting never shifts layout */
+    .candidates span {
+      font-weight: bold;
+    }
+    .candidates span.cand-lit {
+      color: #ff4444;
+    }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #252542;
+      border: 1px solid #44447a;
+      color: #d0d0f8;
+      padding: 11px 22px;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      transition: transform 0.32s cubic-bezier(0.34, 1.4, 0.64, 1), opacity 0.32s;
+      z-index: 10000;
+      pointer-events: none;
+      opacity: 0;
+    }
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+    .toast.solved {
+      background: #1e3a1e;
+      border-color: #40904a;
+      color: #90ee90;
     }
   </style>
 </head>
 <body>
   <header>
-    <label for="size">Size:</label>
-    <select id="size">
-      <option value="4">4×4</option>
-      <option value="5">5×5</option>
-      <option value="6" selected>6×6</option>
-      <option value="7">7×7</option>
-      <option value="8">8×8</option>
-    </select>
-    <!-- Removed placeholder letters -->
-    <button id="newGame">New Game</button>
-    <button class="action" id="reset">Reset</button>
-    <button class="action" id="check">Check</button>
-    <button id="toggleNotes">Notes Mode: Off</button>
-    <button id="randomizeColors">Randomize Colors</button>
-    <!-- NEW: Add All Candidates button -->
-    <button id="addAllCandidates">Add All Candidates</button>
-    <button id="undo">Undo</button>
-    <button id="redo">Redo</button>
+    <a href="/" class="back-btn" title="Home">←</a>
+    <span class="hdr-title">KenKen</span>
+    <div class="hdr-sep"></div>
+    <div class="hdr-group">
+      <select id="size">
+        <option value="4">4×4</option>
+        <option value="5">5×5</option>
+        <option value="6" selected>6×6</option>
+        <option value="7">7×7</option>
+        <option value="8">8×8</option>
+      </select>
+      <button id="newGame">New Game</button>
+    </div>
+    <div class="hdr-sep"></div>
+    <div class="hdr-group">
+      <button id="undo">Undo</button>
+      <button id="redo">Redo</button>
+      <button id="reset">Reset</button>
+    </div>
+    <div class="hdr-sep"></div>
+    <div class="hdr-group">
+      <button id="toggleNotes">Note Mode</button>
+      <button id="addAllCandidates">Fill All Candidates</button>
+      <button id="randomizeColors">Randomize Colors</button>
+    </div>
+    <div class="hdr-spacer"></div>
+    <div class="progress-wrap">
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" id="progressFill"></div>
+      </div>
+      <span class="progress-label" id="progressLabel"></span>
+    </div>
   </header>
+
   <div id="board"></div>
+  <div id="numpad"></div>
+  <div class="toast" id="toast"></div>
 
   <script>
     let notesMode = false;
     let history = [];
     let historyIndex = -1;
+    let toastTimer = null;
+    let wrongTimer = null;
+    let solved = false;
+
+    /* ── Candidate helpers ── */
+    // Render space-separated number string as individual spans inside a candidates div
+    function renderCandidates(div, text) {
+      div.innerHTML = '';
+      const nums = text.split(' ').filter(s => s.trim() !== '');
+      nums.forEach((n, i) => {
+        const span = document.createElement('span');
+        span.dataset.candidate = n;
+        span.textContent = n;
+        div.appendChild(span);
+        if (i < nums.length - 1) div.appendChild(document.createTextNode(' '));
+      });
+    }
+
+    // Read candidate text back from a div (works whether spans exist or not)
+    function getCandidatesText(div) {
+      const spans = div.querySelectorAll('span');
+      if (spans.length > 0) return Array.from(spans).map(s => s.textContent).join(' ');
+      return div.textContent.trim();
+    }
+
+    /* ── Number pad ── */
+    function renderNumpad(size) {
+      const numpad = document.getElementById('numpad');
+      numpad.innerHTML = '';
+      for (let n = 1; n <= size; n++) {
+        const btn = document.createElement('button');
+        btn.className = 'num-btn';
+        btn.textContent = n;
+        btn.dataset.num = n;
+
+        btn.addEventListener('mouseenter', () => {
+          document.querySelectorAll(`.candidates span[data-candidate="${n}"]`).forEach(span => {
+            span.classList.add('cand-lit');
+          });
+        });
+        btn.addEventListener('mouseleave', () => {
+          document.querySelectorAll('.candidates span.cand-lit').forEach(span => {
+            span.classList.remove('cand-lit');
+          });
+        });
+
+        btn.addEventListener('click', () => {
+          const selectedCell = document.querySelector('.cell.selected');
+          if (!selectedCell) return;
+          const input = selectedCell.querySelector('input');
+          const candidatesDiv = selectedCell.querySelector('.candidates');
+
+          if (notesMode) {
+            // Don't add notes to a cell that already has a value
+            if (input.value.trim() !== '') return;
+            let candidates = getCandidatesText(candidatesDiv).split(' ').filter(ch => ch.trim() !== '');
+            const key = String(n);
+            if (candidates.includes(key)) {
+              candidates = candidates.filter(ch => ch !== key);
+            } else {
+              candidates.push(key);
+              candidates.sort((a, b) => parseInt(a) - parseInt(b));
+            }
+            renderCandidates(candidatesDiv, candidates.join(' '));
+            captureState();
+          } else {
+            // Normal mode: place the value
+            input.value = String(n);
+            renderCandidates(candidatesDiv, '');
+            // Remove this candidate from row/col peers
+            const row = selectedCell.dataset.row;
+            const col = selectedCell.dataset.col;
+            document.querySelectorAll('.cell').forEach(peer => {
+              if (peer !== selectedCell && (peer.dataset.row === row || peer.dataset.col === col)) {
+                const cDiv = peer.querySelector('.candidates');
+                if (cDiv) {
+                  const remaining = getCandidatesText(cDiv).split(' ').filter(ch => ch !== String(n) && ch.trim() !== '');
+                  renderCandidates(cDiv, remaining.join(' '));
+                }
+              }
+            });
+            captureState();
+          }
+        });
+
+        numpad.appendChild(btn);
+      }
+    }
+
+    /* ── Toast ── */
+    function showToast(message, type = '', duration = 3500) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = 'toast ' + (type ? type + ' show' : 'show');
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), duration);
+    }
+
+    /* ── Progress ── */
+    function updateProgress() {
+      if (!window.currentPuzzle) return;
+      const total = window.currentPuzzle.size ** 2;
+      const filled = Array.from(document.querySelectorAll('.cell input'))
+        .filter(inp => inp.value.trim() !== '').length;
+      const pct = total > 0 ? (filled / total) * 100 : 0;
+      const fill = document.getElementById('progressFill');
+      const label = document.getElementById('progressLabel');
+      fill.style.width = pct + '%';
+      fill.classList.toggle('complete', filled === total);
+      label.textContent = filled + '/' + total;
+    }
+
+    /* ── Auto-completion check ── */
+    function checkCompletion() {
+      if (solved || !window.currentPuzzle) return;
+      const { size, solution } = window.currentPuzzle;
+      const inputs = Array.from(document.querySelectorAll('.cell input'));
+      let allFilled = true;
+      let allCorrect = true;
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          const val = inputs[r * size + c].value.trim();
+          if (!val) { allFilled = false; break; }
+          if (parseInt(val, 10) !== solution[r][c]) allCorrect = false;
+        }
+        if (!allFilled) break;
+      }
+      if (!allFilled) return;
+      if (allCorrect) {
+        solved = true;
+        celebrate();
+        showToast('Puzzle solved!', 'solved', 6000);
+      } else {
+        // Briefly highlight wrong cells instead of an alert
+        if (wrongTimer) return; // debounce — don't re-flash while already showing
+        const cells = Array.from(document.querySelectorAll('.cell'));
+        cells.forEach((cell, idx) => {
+          const r = Math.floor(idx / size);
+          const c = idx % size;
+          const val = inputs[idx].value.trim();
+          if (val && parseInt(val, 10) !== solution[r][c]) {
+            cell.classList.add('wrong');
+          }
+        });
+        wrongTimer = setTimeout(() => {
+          document.querySelectorAll('.cell.wrong').forEach(c => c.classList.remove('wrong'));
+          wrongTimer = null;
+        }, 1800);
+      }
+    }
 
     function updateUndoRedoButtons() {
       document.getElementById('undo').disabled = historyIndex <= 0;
@@ -166,13 +488,15 @@
           row: cell.dataset.row,
           col: cell.dataset.col,
           value: input.value,
-          candidates: cell.querySelector('.candidates').textContent
+          candidates: getCandidatesText(cell.querySelector('.candidates'))
         });
       });
       history = history.slice(0, historyIndex + 1);
       history.push(state);
       historyIndex++;
       updateUndoRedoButtons();
+      updateProgress();
+      checkCompletion();
     }
 
     function applyState(state) {
@@ -180,11 +504,12 @@
         const cell = document.querySelector(`.cell[data-row='${item.row}'][data-col='${item.col}']`);
         const input = cell.querySelector('input');
         input.value = item.value;
-        cell.querySelector('.candidates').textContent = item.candidates;
+        renderCandidates(cell.querySelector('.candidates'), item.candidates);
       });
       updateUndoRedoButtons();
+      updateProgress();
     }
-    
+
     // Generate a Latin square of size n
     function generateLatinSquare(n) {
       const base = Array.from({length: n}, (_, i) => i + 1);
@@ -192,12 +517,10 @@
       for (let r = 0; r < n; r++) {
         grid.push(base.map((_, c) => ((r + c) % n) + 1));
       }
-      // Shuffle rows
       for (let i = n - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [grid[i], grid[j]] = [grid[j], grid[i]];
       }
-      // Shuffle columns
       for (let i = n - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         for (let r = 0; r < n; r++) {
@@ -207,13 +530,12 @@
       return grid;
     }
 
-    // Generate cages for the solution grid (limit single-cell cages to max 3)
     function generateCages(grid) {
       const n = grid.length;
       const used = Array.from({length: n}, () => Array(n).fill(false));
       const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
       const cages = [];
-      let singletons = 0; // NEW: track single-cell cages
+      let singletons = 0;
 
       function neighbors(r, c) {
         return dirs.map(([dr, dc]) => [r + dr, c + dc])
@@ -225,8 +547,6 @@
           if (used[r][c]) continue;
           const cage = [[r, c]];
           used[r][c] = true;
-          // Prefer larger cages (size 2 or 3) 80% of the time, else single cell —
-          // but cap singletons at 3 total across the board.
           let targetSize = Math.random() < 0.8 ? (2 + Math.floor(Math.random() * 2)) : 1;
           if (targetSize === 1 && singletons >= 3) {
             targetSize = 2 + Math.floor(Math.random() * 2);
@@ -239,13 +559,12 @@
             cage.push([nr, nc]);
           }
 
-          // Determine operation and target
           const values = cage.map(([rr, cc]) => grid[rr][cc]);
           let op, target;
           if (cage.length === 1) {
             op = '';
             target = values[0];
-            singletons++; // NEW
+            singletons++;
           } else {
             const sum = values.reduce((a,b) => a+b, 0);
             const prod = values.reduce((a,b) => a*b, 1);
@@ -272,7 +591,6 @@
       return cages;
     }
 
-    // Build puzzle object
     function generatePuzzle(n) {
       const solution = generateLatinSquare(n);
       const cages = generateCages(solution);
@@ -301,15 +619,11 @@
       const op = cage.op;
       const target = cage.target;
 
-      // Helper min/max sums/products for remaining cells
-      const minSum = (k) => k * 1;
       const maxSum = (k) => k * size;
-      const minProd = (k) => 1; // minimal positive product
       const maxProd = (k) => Math.pow(size, k);
 
       if (cage.cells.length === 1) {
-        // Single cell must equal target exactly when assigned
-        if (unassigned === 1) return true; // domain pruning handled elsewhere
+        if (unassigned === 1) return true;
         return vals[0] === target;
       }
 
@@ -329,12 +643,10 @@
         return true;
       }
       if (op === '−') {
-        // exactly two cells
         if (cage.cells.length !== 2) return false;
         if (vals.length === 2) return Math.abs(vals[0]-vals[1]) === target;
         if (vals.length === 1) {
           const a = vals[0];
-          // exists b in [1..size] s.t. |a-b| == target
           const b1 = a - target;
           const b2 = a + target;
           if ((b1 >= 1 && b1 <= size) || (b2 >= 1 && b2 <= size)) return true;
@@ -343,7 +655,6 @@
         return true;
       }
       if (op === '÷') {
-        // exactly two cells
         if (cage.cells.length !== 2) return false;
         if (vals.length === 2) {
           const a = Math.max(vals[0], vals[1]);
@@ -352,7 +663,6 @@
         }
         if (vals.length === 1) {
           const a = vals[0];
-          // exists b in [1..size] s.t. either a/b==target or b/a==target (integer)
           for (let b = 1; b <= size; b++) {
             if ((b !== 0 && a % b === 0 && a / b === target) || (a !== 0 && b % a === 0 && b / a === target)) {
               return true;
@@ -410,7 +720,7 @@
 
       let solutions = 0;
       function backtrack() {
-        if (solutions >= limit) return; // early stop
+        if (solutions >= limit) return;
         const pick = selectMRV();
         if (!pick) { solutions++; return; }
         const { r, c, dom } = pick;
@@ -427,24 +737,23 @@
     }
 
     function createUniquePuzzle(n) {
-      // Try multiple times to get a unique-solution puzzle with <=3 singletons
       let attempts = 0;
       while (attempts < 200) {
         attempts++;
         const candidate = generatePuzzle(n);
-        if (countSingletonCages(candidate.cages) > 3) continue; // safety if generator exceeded
+        if (countSingletonCages(candidate.cages) > 3) continue;
         const solCount = countSolutions(candidate, 2);
         if (solCount === 1) return candidate;
       }
-      // Fallback: return last generated puzzle even if not unique (should be rare)
       return generatePuzzle(n);
     }
     // =================== END UNIQUE-SOLUTION SOLVER ====================
 
-    // Updated toggleNotes event listener to update glow state
     document.getElementById('toggleNotes').addEventListener('click', () => {
       notesMode = !notesMode;
-      document.getElementById('toggleNotes').textContent = notesMode ? 'Notes Mode: On' : 'Notes Mode: Off';
+      const btn = document.getElementById('toggleNotes');
+      btn.textContent = 'Note Mode';
+      btn.classList.toggle('btn-active', notesMode);
       if (notesMode) {
         document.querySelectorAll('.cell').forEach(cell => cell.style.boxShadow = '');
         document.querySelectorAll('.cell.selected').forEach(cell => cell.classList.remove('selected'));
@@ -455,8 +764,10 @@
       }
     });
 
-    // Render the puzzle UI
     function renderPuzzle(puzzle) {
+      solved = false;
+      history = [];
+      historyIndex = -1;
       const { size, cages } = puzzle;
       const board = document.getElementById('board');
       board.innerHTML = '';
@@ -464,13 +775,11 @@
       board.style.width = `${size * 60}px`;
       board.style.height = `${size * 60}px`;
 
-      // map to find cage for each cell
       const map = Array.from({length: size}, () => Array(size).fill(null));
-      cages.forEach((c, i) => 
+      cages.forEach((c, i) =>
         c.cells.forEach(([r, cx]) => map[r][cx] = i)
       );
 
-      // Compute top-left cell for each cage
       cages.forEach(cage => {
         cage.minCell = cage.cells.reduce((min, cell) => {
           if (!min) return cell;
@@ -480,7 +789,6 @@
         }, null);
       });
 
-      // Build adjacency graph: for each cage, collect neighboring cage indices
       const adjacency = cages.map(() => new Set());
       for (let r = 0; r < size; r++) {
         for (let c = 0; c < size; c++) {
@@ -496,20 +804,16 @@
           });
         }
       }
-      // Define a palette of colors
-      const palette = ["#f28b82", "#fbbc04", "#fff475", "#ccff90", "#a7ffeb", "#cbf0f8", "#aecbfa", "#d7aefb", "#fdcfe8", "#e6c9a8"];
-      // Order cages by descending degree (greedy color assignment)
+
       const order = [...Array(cages.length).keys()].sort((a, b) => adjacency[b].size - adjacency[a].size);
-      
-      // NEW: Helper to generate random hex color
+
       function generateRandomColor() {
         return '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
       }
-      
-      // NEW: Use persistent palette (or default) and reassign colors ensuring no bordering conflicts
+
       const defaultPalette = ["#f28b82", "#fbbc04", "#fff475", "#ccff90", "#a7ffeb", "#cbf0f8", "#aecbfa", "#d7aefb", "#fdcfe8", "#e6c9a8"];
       let persistentPalette = (window.lastColorScheme && window.lastColorScheme.length) ? window.lastColorScheme.slice() : defaultPalette.slice();
-      
+
       order.forEach(i => {
         const used = new Set();
         adjacency[i].forEach(j => {
@@ -522,22 +826,18 @@
         }
         cages[i].cageColor = chosen;
       });
-      // Save updated persistent palette
       window.lastColorScheme = persistentPalette;
-      
-      // Render each cell with updated dynamic borders, background, and assign dataset
+
       for (let r = 0; r < size; r++) {
         for (let c = 0; c < size; c++) {
           const cell = document.createElement('div');
           cell.className = 'cell';
-          // NEW: Store cell coordinates as dataset attributes
           cell.dataset.row = r;
           cell.dataset.col = c;
           const currentCage = map[r][c];
-          cell.dataset.cage = currentCage  // NEW: store cage index for later updates
+          cell.dataset.cage = currentCage;
           cell.style.background = cages[currentCage].cageColor;
 
-          // Set dynamic borders based on same-cage neighbors
           const topWidth = (r === 0 || map[r - 1][c] !== currentCage) ? '2px' : '1px';
           const leftWidth = (c === 0 || map[r][c - 1] !== currentCage) ? '2px' : '1px';
           const bottomWidth = (r === size - 1 || map[r + 1][c] !== currentCage) ? '2px' : '1px';
@@ -547,29 +847,24 @@
           cell.style.borderBottom = `${bottomWidth} solid var(--border)`;
           cell.style.borderRight = `${rightWidth} solid var(--border)`;
 
-          // Only label the top-left most cell for the cage
           const cage = cages[currentCage];
           if (r === cage.minCell[0] && c === cage.minCell[1]) {
             const label = document.createElement('div');
             label.className = 'cage-label';
             label.textContent = `${cage.target}${cage.op}`;
-            // Prevent label clicks from bubbling up and reordering cells
             label.addEventListener('click', e => e.stopPropagation());
             cell.appendChild(label);
           }
 
-          // Create input and candidate elements
           const input = document.createElement('input');
           input.setAttribute('type', 'number');
           input.setAttribute('min', '1');
           input.setAttribute('max', size.toString());
-          // Update input keydown listener for each cell input:
           input.addEventListener('keydown', (e) => {
             if (e.metaKey || e.ctrlKey) return;
             const allowedKeys = ["Backspace", "ArrowLeft", "ArrowRight", "Delete", "Tab"];
             if (allowedKeys.includes(e.key)) return;
             if (notesMode) {
-              // Prevent adding notes to cells that already have a value
               if (input.value.trim() !== "") {
                 e.preventDefault();
                 return;
@@ -577,15 +872,14 @@
               if (/^[1-9]$/.test(e.key) && parseInt(e.key, 10) <= size) {
                 e.preventDefault();
                 const candidatesDiv = cell.querySelector('.candidates');
-                let candidates = candidatesDiv.textContent.split(' ').filter(ch => ch.trim().length > 0);
+                let candidates = getCandidatesText(candidatesDiv).split(' ').filter(ch => ch.trim().length > 0);
                 if (candidates.includes(e.key)) {
                   candidates = candidates.filter(ch => ch !== e.key);
                 } else {
                   candidates.push(e.key);
                   candidates.sort((a, b) => parseInt(a) - parseInt(b));
                 }
-                candidatesDiv.textContent = candidates.join(' ');
-                // record this change
+                renderCandidates(candidatesDiv, candidates.join(' '));
                 captureState();
               } else {
                 e.preventDefault();
@@ -594,21 +888,18 @@
               if (/^[1-9]$/.test(e.key) && parseInt(e.key, 10) <= size) {
                 e.preventDefault();
                 input.value = e.key;
-                // NEW: Clear candidates when a value is placed
-                cell.querySelector('.candidates').textContent = "";
-                // NEW: Remove candidate from all peer cells in same row or column
+                renderCandidates(cell.querySelector('.candidates'), '');
                 const row = cell.dataset.row;
                 const col = cell.dataset.col;
                 document.querySelectorAll('.cell').forEach(peer => {
                   if (peer !== cell && (peer.dataset.row === row || peer.dataset.col === col)) {
                     const cDiv = peer.querySelector('.candidates');
                     if (cDiv) {
-                      const newCandidates = cDiv.textContent.split(' ').filter(ch => ch !== e.key);
-                      cDiv.textContent = newCandidates.join(' ');
+                      const newCandidates = getCandidatesText(cDiv).split(' ').filter(ch => ch !== e.key && ch.trim() !== '');
+                      renderCandidates(cDiv, newCandidates.join(' '));
                     }
                   }
                 });
-                // record this change
                 captureState();
               } else {
                 e.preventDefault();
@@ -616,34 +907,152 @@
             }
           });
           cell.appendChild(input);
-          // Create candidate container (always present)
+
           const candidatesDiv = document.createElement('div');
           candidatesDiv.className = 'candidates';
           cell.appendChild(candidatesDiv);
 
-          // NEW: Toggle cell selection when clicked
           cell.addEventListener('click', (e) => {
             const board = document.getElementById('board');
-            // Clear previous selections and remove glow
             board.querySelectorAll('.cell.selected').forEach(c => {
               c.classList.remove('selected');
               c.style.boxShadow = '';
             });
             cell.classList.add('selected');
-            // Apply glow if notes mode is NOT enabled
             if (!notesMode) {
               cell.style.boxShadow = "0 0 10px 4px yellow";
             }
-            // Focus the input element so key events are registered
             const inputEl = cell.querySelector('input');
             if (inputEl) inputEl.focus();
           });
-          
+
           board.appendChild(cell);
         }
       }
-      // capture initial state after rendering
-      captureState();
+
+      // capture initial state (don't trigger checkCompletion on fresh board)
+      const state = [];
+      document.querySelectorAll('.cell').forEach(cell => {
+        const input = cell.querySelector('input');
+        state.push({
+          row: cell.dataset.row,
+          col: cell.dataset.col,
+          value: input.value,
+          candidates: getCandidatesText(cell.querySelector('.candidates'))
+        });
+      });
+      history.push(state);
+      historyIndex = 0;
+      updateUndoRedoButtons();
+      updateProgress();
+      renderNumpad(size);
+    }
+
+    // Confetti celebration
+    function celebrate() {
+      const canvas = document.createElement("canvas");
+      canvas.style.cssText = "position:fixed;top:0;left:0;pointer-events:none;z-index:9999;";
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      document.body.appendChild(canvas);
+      const ctx = canvas.getContext("2d");
+
+      const COLORS = ["#f28b82","#fbbc04","#fff475","#ccff90","#a7ffeb","#cbf0f8","#aecbfa","#d7aefb","#ff9de2","#ffd6a5"];
+      const TOTAL = 160;
+      const DURATION = 5500; // ms
+      const start = performance.now();
+
+      // Burst origins — two cannon points near bottom corners
+      const origins = [
+        { x: canvas.width * 0.2, y: canvas.height },
+        { x: canvas.width * 0.8, y: canvas.height },
+      ];
+
+      function rand(lo, hi) { return lo + Math.random() * (hi - lo); }
+
+      // Each piece: rectangle or circle, launched upward with gravity + drag
+      const pieces = Array.from({ length: TOTAL }, (_, i) => {
+        const origin = origins[i % origins.length];
+        const angle = rand(-Math.PI * 0.9, -Math.PI * 0.1); // upward arc
+        const speed = rand(600, 1200); // px/s
+        const isRect = Math.random() > 0.35;
+        return {
+          x: origin.x + rand(-18, 18),
+          y: origin.y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          w: isRect ? rand(7, 14) : rand(5, 10),
+          h: isRect ? rand(4, 8)  : null,
+          rot: rand(0, Math.PI * 2),
+          rotV: rand(-6, 6),       // rad/s
+          color: COLORS[Math.floor(Math.random() * COLORS.length)],
+          isRect,
+          drag: rand(0.88, 0.96),  // per-second exponential drag factor
+          wobble: rand(0, Math.PI * 2),
+          wobbleV: rand(2, 5),
+        };
+      });
+
+      const GRAVITY = 1400; // px/s²
+
+      let lastT = start;
+      let raf;
+
+      function frame(now) {
+        const dt = Math.min((now - lastT) / 1000, 0.05);
+        lastT = now;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        for (const p of pieces) {
+          const dragFactor = Math.pow(p.drag, dt);
+          p.vx *= dragFactor;
+          p.vy = p.vy * dragFactor + GRAVITY * dt;
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.rot += p.rotV * dt;
+          p.wobble += p.wobbleV * dt;
+
+          if (p.y > canvas.height + 40) continue;
+
+          // Shimmer — tumbling pieces catch light
+          const shimmer = 0.65 + 0.35 * Math.abs(Math.sin(p.wobble));
+          ctx.globalAlpha = shimmer;
+          ctx.fillStyle = p.color;
+
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+
+          if (p.isRect) {
+            const scaleY = Math.abs(Math.cos(p.wobble));
+            ctx.scale(1, Math.max(0.15, scaleY));
+            ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+          } else {
+            ctx.beginPath();
+            ctx.arc(0, 0, p.w / 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          ctx.restore();
+        }
+
+        ctx.globalAlpha = 1;
+        raf = requestAnimationFrame(frame);
+      }
+
+      raf = requestAnimationFrame(frame);
+
+      // Fade the canvas element out with a CSS transition, then clean up
+      const FADE = 1200;
+      setTimeout(() => {
+        canvas.style.transition = `opacity ${FADE}ms ease-out`;
+        canvas.style.opacity = '0';
+      }, DURATION - FADE);
+      setTimeout(() => {
+        cancelAnimationFrame(raf);
+        canvas.remove();
+      }, DURATION);
     }
 
     // Event hookups
@@ -652,129 +1061,33 @@
       window.currentPuzzle = createUniquePuzzle(n);
       renderPuzzle(window.currentPuzzle);
     });
-    document.getElementById('reset').addEventListener('click', () => renderPuzzle(window.currentPuzzle));
-    document.getElementById('check').addEventListener('click', () => {
-	const { size, solution } = window.currentPuzzle;
-	const inputs = Array.from(document.querySelectorAll('.cell input'));
-	let correct = 0, incorrect = 0, blank = 0;
-	for (let r = 0; r < size; r++) {
-		for (let c = 0; c < size; c++) {
-			const idx = r * size + c;
-			const value = inputs[idx].value.trim();
-			if (!value) {
-				blank++;
-			} else if (parseInt(value, 10) === solution[r][c]) {
-				correct++;
-			} else {
-				incorrect++;
-			}
-		}
-	}
-	let message = `Correct: ${correct}\nIncorrect: ${incorrect}\nBlank: ${blank}`;
-	if (correct === size * size) {
-		message += "\nSolved!";
-		alert(message);
-		// NEW: Trigger celebration confetti animation when solved
-		celebrate();
-	} else {
-		alert(message);
-	}
-});
-// NEW: Confetti celebration function
-function celebrate() {
-  const canvas = document.createElement("canvas");
-  canvas.id = "confettiCanvas";
-  canvas.style.position = "fixed";
-  canvas.style.top = "0";
-  canvas.style.left = "0";
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  canvas.style.pointerEvents = "none";
-  canvas.style.zIndex = 9999;
-  document.body.appendChild(canvas);
-  const ctx = canvas.getContext("2d");
-  
-  let confettiPieces = [];
-  const colors = ["#f28b82", "#fbbc04", "#fff475", "#ccff90", "#a7ffeb", "#cbf0f8", "#aecbfa", "#d7aefb"];
-  for (let i = 0; i < 100; i++) {
-    confettiPieces.push({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height - canvas.height,
-      r: Math.random() * 6 + 2,
-      d: Math.random() * 10 + 5,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      tilt: Math.random() * 10 - 10,
-      tiltAngle: Math.random() * 0.07 + 0.05
+
+    document.getElementById('reset').addEventListener('click', () => {
+      renderPuzzle(window.currentPuzzle);
     });
-  }
-  
-  let angle = 0;
-  function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    confettiPieces.forEach((p) => {
-      ctx.beginPath();
-      ctx.lineWidth = p.r;
-      ctx.strokeStyle = p.color;
-      ctx.moveTo(p.x + p.tilt, p.y);
-      ctx.lineTo(p.x, p.y + p.tilt);
-      ctx.stroke();
-    });
-    update();
-    angle += 0.01;
-    requestAnimationFrame(draw);
-  }
-  
-  function update() {
-    for (let i = 0; i < confettiPieces.length; i++) {
-      let p = confettiPieces[i];
-      p.y += Math.cos(angle + p.d) + 1 + p.r / 2;
-      p.x += Math.sin(angle);
-      p.tiltAngle += 0.05;
-      p.tilt = Math.sin(p.tiltAngle) * 15;
-      if (p.y > canvas.height) {
-        p.y = -10;
-        p.x = Math.random() * canvas.width;
-      }
-    }
-  }
-  
-  draw();
-  setTimeout(() => {
-    canvas.remove();
-  }, 5000);
-}
-    // NEW: Randomize Colors button event handler:
+
     document.getElementById('randomizeColors').addEventListener('click', () => {
-      // Define a palette of distinct base colors.
       const palette = ["#f28b82", "#fbbc04", "#fff475", "#ccff90", "#a7ffeb", "#cbf0f8", "#aecbfa", "#d7aefb", "#fdcfe8", "#e6c9a8"];
-      
-      // Helper functions to compare colors.
+
       function hexToRgb(hex) {
         hex = hex.replace("#", "");
-        return {
-          r: parseInt(hex.substring(0,2), 16),
-          g: parseInt(hex.substring(2,4), 16),
-          b: parseInt(hex.substring(4,6), 16)
-        };
+        return { r: parseInt(hex.substring(0,2),16), g: parseInt(hex.substring(2,4),16), b: parseInt(hex.substring(4,6),16) };
       }
-      function colorDistance(hex1, hex2) {
-        let c1 = hexToRgb(hex1), c2 = hexToRgb(hex2);
-        return Math.sqrt(Math.pow(c1.r - c2.r, 2) + Math.pow(c1.g - c2.g, 2) + Math.pow(c1.b - c2.b, 2));
+      function colorDistance(h1, h2) {
+        const c1 = hexToRgb(h1), c2 = hexToRgb(h2);
+        return Math.sqrt((c1.r-c2.r)**2 + (c1.g-c2.g)**2 + (c1.b-c2.b)**2);
       }
-      function isSimilar(color1, color2, threshold = 50) {
-        return colorDistance(color1, color2) < threshold;
-      }
-      // Shuffle function.
-      function shuffle(array) {
-        for (let i = array.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [array[i], array[j]] = [array[j], array[i]];
+      function isSimilar(c1, c2, t=50) { return colorDistance(c1,c2) < t; }
+      function shuffle(arr) {
+        for (let i = arr.length-1; i > 0; i--) {
+          const j = Math.floor(Math.random()*(i+1));
+          [arr[i],arr[j]] = [arr[j],arr[i]];
         }
       }
+
       let shuffledPalette = palette.slice();
       shuffle(shuffledPalette);
-      
-      // Rebuild cell-to-cage map and adjacency graph.
+
       const cages = window.currentPuzzle.cages;
       const size = window.currentPuzzle.size;
       const cellMap = Array.from({length: size}, () => Array(size).fill(null));
@@ -783,80 +1096,64 @@ function celebrate() {
       for (let r = 0; r < size; r++) {
         for (let c = 0; c < size; c++) {
           const current = cellMap[r][c];
-          [[r-1, c], [r+1, c], [r, c-1], [r, c+1]].forEach(([nr, nc]) => {
-            if(nr >= 0 && nr < size && nc >= 0 && nc < size) {
+          [[r-1,c],[r+1,c],[r,c-1],[r,c+1]].forEach(([nr,nc]) => {
+            if(nr>=0&&nr<size&&nc>=0&&nc<size) {
               const neighbor = cellMap[nr][nc];
-              if(neighbor !== current) {
-                adjacency[current].add(neighbor);
-              }
+              if(neighbor!==current) adjacency[current].add(neighbor);
             }
           });
         }
       }
-      // Assign each cage a new color in greedy order, avoiding similar colors on adjacent cages.
-      const order = [...Array(cages.length).keys()].sort((a, b) => adjacency[b].size - adjacency[a].size);
+
+      const order = [...Array(cages.length).keys()].sort((a,b) => adjacency[b].size - adjacency[a].size);
       order.forEach(i => {
         let chosenColor = null;
         for (let color of shuffledPalette) {
           let conflict = false;
           adjacency[i].forEach(adj => {
-            if(cages[adj].cageColor && isSimilar(cages[adj].cageColor, color)) {
-              conflict = true;
-            }
+            if(cages[adj].cageColor && isSimilar(cages[adj].cageColor, color)) conflict = true;
           });
-          if(!conflict) {
-            chosenColor = color;
-            break;
-          }
+          if(!conflict) { chosenColor = color; break; }
         }
-        if(!chosenColor) {  // fallback in case all colors are too similar
-          chosenColor = shuffledPalette[Math.floor(Math.random() * shuffledPalette.length)];
-        }
+        if(!chosenColor) chosenColor = shuffledPalette[Math.floor(Math.random()*shuffledPalette.length)];
         cages[i].cageColor = chosenColor;
       });
-      
-      // Update each cell's background based on its cage's new color.
-      const board = document.getElementById('board');
-      Array.from(board.children).forEach(cell => {
-        const cageIndex = cell.dataset.cage;
-        if(cageIndex !== undefined) {
-          cell.style.background = window.currentPuzzle.cages[cageIndex].cageColor;
-        }
+
+      Array.from(document.getElementById('board').children).forEach(cell => {
+        const idx = cell.dataset.cage;
+        if(idx !== undefined) cell.style.background = window.currentPuzzle.cages[idx].cageColor;
       });
-      // NEW: Save the current color scheme to window.lastColorScheme
       window.lastColorScheme = window.currentPuzzle.cages.map(c => c.cageColor);
     });
 
-    // NEW: Global space bar toggle for notes mode
-document.addEventListener('keydown', (e) => {
-  // Only toggle notes mode if only the spacebar is pressed (no modifier keys)
-  if (e.key === ' ' && !e.metaKey && !e.ctrlKey && !e.altKey) {
-    e.preventDefault();
-    notesMode = !notesMode;
-    document.getElementById('toggleNotes').textContent = notesMode ? 'Notes Mode: On' : 'Notes Mode: Off';
-    document.querySelectorAll('.cell.selected').forEach(cell => {
-      cell.style.boxShadow = notesMode ? "" : "0 0 10px 4px yellow";
+    // Global space bar toggle for notes mode
+    document.addEventListener('keydown', (e) => {
+      if (e.key === ' ' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        notesMode = !notesMode;
+        const btn = document.getElementById('toggleNotes');
+        btn.textContent = 'Note Mode';
+        btn.classList.toggle('btn-active', notesMode);
+        document.querySelectorAll('.cell.selected').forEach(cell => {
+          cell.style.boxShadow = notesMode ? "" : "0 0 10px 4px yellow";
+        });
+        document.body.style.cursor = 'default';
+      }
     });
-    // Ensure the mouse cursor remains visible
-    document.body.style.cursor = 'default';
-  }
-});
 
-    // NEW: Add All Candidates button event listener
     document.getElementById('addAllCandidates').addEventListener('click', () => {
       const size = window.currentPuzzle.size;
-      const candidateStr = Array.from({length: size}, (_, i) => (i + 1).toString()).join(' ');
+      const candidateStr = Array.from({length: size}, (_, i) => (i+1).toString()).join(' ');
       document.querySelectorAll('.cell').forEach(cell => {
         const input = cell.querySelector('input');
         if (input && input.value.trim() === "") {
           const candidatesDiv = cell.querySelector('.candidates');
-          if (candidatesDiv) candidatesDiv.textContent = candidateStr;
+          if (candidatesDiv) renderCandidates(candidatesDiv, candidateStr);
         }
       });
       captureState();
     });
 
-    // undo/redo controls
     document.getElementById('undo').addEventListener('click', () => {
       if (historyIndex > 0) {
         historyIndex--;
