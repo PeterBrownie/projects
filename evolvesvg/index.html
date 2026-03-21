@@ -1294,18 +1294,8 @@
             align-items: center;
             gap: 12px;
             backdrop-filter: blur(10px);
-            animation: exp-hint-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
         }
         #exp-hint-banner.hidden { display: none; }
-        #exp-hint-banner.dismissing { animation: exp-hint-out 0.22s ease-in both; }
-        @keyframes exp-hint-in {
-            from { transform: translateY(-100%); opacity: 0; }
-            to   { transform: translateY(0); opacity: 1; }
-        }
-        @keyframes exp-hint-out {
-            from { transform: translateY(0); opacity: 1; }
-            to   { transform: translateY(-100%); opacity: 0; }
-        }
         #exp-hint-text {
             flex: 1;
             font-size: 11.5px;
@@ -1490,7 +1480,7 @@
         <h2>evolveSVG</h2>
         <button id="info-popup-close" title="Close">✕</button>
     </div>
-    <p>A generative art tool that breeds abstract patterns through interactive evolution. Images are algorithmically generated, not ai-generated. Export SVGs or incredible 16k PNGs.</p>
+    <p>evolveSVG is a generative art tool that breeds abstract patterns through interactive evolution. Images are algorithmically generated, not ai-generated. Export SVGs or incredible 16k PNGs.</p>
     <p>Made by <a href="https://peterbrown.space" target="_blank" rel="noopener">Peter Brown</a>. Inspired by <a href="https://www.youtube.com/@EmergentGarden" target="_blank" rel="noopener">Emergent Garden</a>.</p>
 </div> <!-- This info popup must remain at the top of the body -->
 
@@ -3232,10 +3222,10 @@ function handleCellClick(idx) {
     if (selectedIdx === idx) {
         // Already selected — evolve
         evolveFrom(idx);
+        if (idx !== 4) trackNonCenterClick();
     } else {
         setSelected(idx);
     }
-    if (idx !== 4) trackNonCenterClick();
 }
 
 function buildGrid() {
@@ -5105,14 +5095,21 @@ let expHintDismissed = false;
 function showExpHint() {
     const banner = document.getElementById('exp-hint-banner');
     if (!banner.classList.contains('hidden')) return;
-    banner.classList.remove('hidden', 'dismissing');
+    banner.classList.remove('hidden');
+    banner.animate(
+        [{ transform: 'translateY(-100%)', opacity: '0' }, { transform: 'translateY(0)', opacity: '1' }],
+        { duration: 350, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }
+    );
 }
 
 function dismissExpHint() {
     expHintDismissed = true;
     const banner = document.getElementById('exp-hint-banner');
-    banner.classList.add('dismissing');
-    banner.addEventListener('animationend', () => banner.classList.add('hidden'), { once: true });
+    const anim = banner.animate(
+        [{ transform: 'translateY(0)', opacity: '1' }, { transform: 'translateY(-100%)', opacity: '0' }],
+        { duration: 220, easing: 'ease-in', fill: 'forwards' }
+    );
+    anim.addEventListener('finish', () => { banner.classList.add('hidden'); anim.cancel(); });
 }
 
 function trackNonCenterClick() {
