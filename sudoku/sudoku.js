@@ -1182,6 +1182,7 @@ You can 100% use this code anyway you'd like under the following conditions:
     diffEl.addEventListener('input', () => {
       markTipKnown('difficulty');
       candidates = Array(81).fill().map(() => new Set());
+      resetTimer();
       generate();
     });
     showMistakesEl.addEventListener('change', render);
