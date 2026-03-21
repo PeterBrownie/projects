@@ -391,7 +391,7 @@ You can 100% use this code anyway you'd like under the following conditions:
   }
 
   function selectCell(idx) {
-    // Allow selecting any cell, even a given clue.
+    if (window.closeInfoPopup) { window.closeInfoPopup(); window.closeInfoPopup = null; }
     selected = idx;
     render();
   }
@@ -498,6 +498,7 @@ You can 100% use this code anyway you'd like under the following conditions:
   }
 
   function onPadClick(n) {
+    if (window.closeInfoPopup) { window.closeInfoPopup(); window.closeInfoPopup = null; }
     // NEW: If no cell is selected, process potential secret sequence as before.
     if (selected === null) {
       secretSequence.push(n);

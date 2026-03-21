@@ -25,6 +25,19 @@ You can 100% use this code anyway you'd like under the following conditions:
   <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "03a89f35132a4e8aa86bf1ed1b60541a"}'></script><!-- End Cloudflare Web Analytics -->
 </head>
 <body>
+
+<!-- This info popup must remain at the top of the body for SEO -->
+<div id="info-popup">
+  <div id="info-popup-header">
+    <h2>Dark Mode Sudoku</h2>
+    <button id="info-popup-close" title="Close">✕</button>
+  </div>
+  <p>Simple & Smooth Dark Mode Sudoku. Nothing else. No ads, no sign up, no premium tiers.</p>
+  <p>Supports 'five' difficulty levels, auto-candidate fill, undo/redo, puzzle import, and more. I designed this for myself for personal use. You might enjoy it too.</p>
+  <p>Made by <a href="https://peterbrown.space" target="_blank" rel="noopener">Peter Brown</a>. <a href="https://github.com/PeterBrownie/projects/" target="_blank" rel="noopener">Source on GitHub</a>.</p>
+</div>
+<!-- End info popup -->
+
   <div class="controls">
     <div class="game-controls">
       <label>
@@ -39,7 +52,7 @@ You can 100% use this code anyway you'd like under the following conditions:
       </div>
       <div class="game-options-body">
         <label><input type="checkbox" id="showMistakes"> Show Mistakes</label>
-        <label><input type="checkbox" id="showConflicts"> Show Conflicts</label>
+        <label><input type="checkbox" id="showConflicts" checked> Show Conflicts</label>
         <div class="import-section" style="margin-top: 10px; border-top: 1px solid #5a4d7f; padding-top: 10px;">
           <input type="text" id="boardImport" placeholder="Enter 81-digit board" maxlength="81">
           <button id="importButton" disabled>Import</button>
@@ -184,6 +197,46 @@ You can 100% use this code anyway you'd like under the following conditions:
   <div id="credit">
     Created by <a href="https://peterbrown.space" target="_blank">Peter Brown</a>, with the help of AI.
     <a href="https://github.com/PeterBrownie/projects/" target="_blank" rel="noopener noreferrer">Github</a>
+    <button id="info-btn" title="About this page">ⓘ</button>
   </div>
+
+  <!-- Info popup logic — must be after #info-btn exists in the DOM -->
+  <script>
+    (function() {
+      const popup = document.getElementById('info-popup');
+      const closeBtn = document.getElementById('info-popup-close');
+
+      function closePopup() {
+        if (!popup.classList.contains('open')) return;
+        popup.classList.add('closing');
+        setTimeout(function() {
+          popup.classList.remove('open', 'closing');
+        }, 220);
+      }
+
+      function openPopup() {
+        popup.classList.remove('closing');
+        popup.classList.add('open');
+      }
+
+      // Expose for sudoku.js to call on first puzzle interaction
+      window.closeInfoPopup = closePopup;
+
+      closeBtn.addEventListener('click', function(e) { e.stopPropagation(); closePopup(); });
+
+      document.getElementById('info-btn').addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (popup.classList.contains('open')) closePopup();
+        else openPopup();
+      });
+
+      document.addEventListener('click', function(e) {
+        if (popup.classList.contains('open') && !e.target.closest('#info-popup') && !e.target.closest('#info-btn'))
+          closePopup();
+      });
+
+      popup.classList.add('open');
+    })();
+  </script>
 </body>
 </html>
