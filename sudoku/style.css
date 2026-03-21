@@ -34,10 +34,11 @@ body {
   gap: 6px;
   background: #1e1e2e;
   border: 1px solid #5a4d7f;
-  border-radius: 4px;
-  padding: 8px 12px;
+  border-radius: 6px;
+  padding: 7px 12px;
   cursor: pointer;
   user-select: none;
+  font-size: 0.85em;
 }
 input[type="checkbox"] {
   appearance: none;
@@ -69,17 +70,15 @@ input[type="checkbox"]:disabled {
 .controls > *:not(label) {
   background: #1e1e2e;
   border: 1px solid #5a4d7f;
-  border-radius: 4px;
+  border-radius: 6px;
   color: #e0e0e0;
-  padding: 8px;
-}
-button#newGame {
-  background: #1e1e2e;
-  border: 1px solid #5a4d7f;
-  border-radius: 4px;
-  color: #e0e0e0;
-  padding: 8px 12px;
+  padding: 7px 12px;
   cursor: pointer;
+}
+input[type="range"] {
+  accent-color: #5a4d7f;
+  cursor: pointer;
+  padding: 0;
 }
 button {
   transition: background-color 0.2s ease, filter 0.2s ease;
@@ -162,11 +161,23 @@ button:hover {
 .cell.duplicate   { background: #4f1e1e; }
 .cell.mistake     { outline: 2px solid #ff3366; }
 .cell.conflict    { outline: 2px dashed #ff9933; }
-.cell .candidate.highlight { 
-  color: #ff3366; 
+.cell .candidate.highlight {
+  color: #ff3366;
   transform: scale(1.2); /* add slight growth without shifting layout */
   text-shadow: 0 0 5px #ff3366; /* new: glowing effect behind the number */
   animation: weightGrow 0.3s forwards; /* animate weight smoothly */
+}
+.cell .candidate.pad-hover-red {
+  color: #ff3366;
+  transform: scale(1.2);
+  text-shadow: 0 0 5px #ff3366;
+  animation: weightGrow 0.3s forwards;
+}
+.cell .candidate.pad-hover-blue {
+  color: #4da6ff;
+  transform: scale(1.2);
+  text-shadow: 0 0 5px #4da6ff;
+  animation: weightGrow 0.3s forwards;
 }
 .cell.selected {
   background: #3b3b5e;
@@ -207,11 +218,13 @@ button:hover {
 }
 .pad-item button {
   width: 40px; height: 45px;
-  background: #2a2a3a; border: 1px solid #5a4d7f;
-  border-radius: 4px; color: #e0e0e0; cursor: pointer;
+  background: #1e1e2e; border: 1px solid #5a4d7f;
+  border-radius: 6px; color: #e0e0e0; cursor: pointer;
+  font-family: inherit;
 }
 .pad-item button.clear {
-  background: #3a2a2a;
+  background: #2a1e1e;
+  border-color: #7f4d4d;
 }
 .count-indicator {
   display: grid;
@@ -233,7 +246,7 @@ button:hover {
   height: 6px;
   border-radius: 50%;
   background: #ff3366;
-  transition: opacity 0.3s ease; /* ADDED: animate opacity changes */
+  transition: opacity 0.3s ease;
 }
 @keyframes pulse {
   0% { box-shadow: 0 0 5px #aaa; }
@@ -244,7 +257,7 @@ button#newGame.glow {
   animation: pulse 1s infinite;
 }
 .cell.mistake, .cell.conflict {
-  z-index: 15; /* increased to ensure red outlines appear over adjacent hovered cells */
+  z-index: 15; 
   position: relative;
   outline-offset: 2px;
 }
@@ -287,24 +300,20 @@ button#newGame.glow {
 .puzzle-area {
     position: relative;
     display: inline-block;
-    /* You may adjust margin/padding as needed */
 }
 .info-col {
   position: absolute;
-  top: 120px;  /* adjusted to align with the top of the puzzle container */
-  left: calc(50% + 220px);  /* ensures info-col sits a few pixels from the puzzle container */
+  top: 120px;  
+  left: calc(50% + 220px);  
   display: flex;
   flex-direction: column;
   gap: 8px;
   align-items: center;
 }
   
-/* NEW: Style for left side info-col (Undo/Redo) */
 .info-col.left {
   position: fixed;
-  /* Place to the right of the sidebar */
   left: 44px;
-  /* Align top with puzzle board */
   top: 0;
   z-index: 2100;
   flex-direction: row;
@@ -325,54 +334,55 @@ button#newGame.glow {
   background: #1e1e2e;
   color: #e0e0e0;
   border: 1px solid #5a4d7f;
-  border-radius: 4px;
-  padding: 8px 12px;
-  font-size: 1.2em;
-  font-family: sans-serif;
+  border-radius: 6px;
+  padding: 7px 12px;
+  font-size: 1em;
+  font-family: inherit;
   width: 60px;
   text-align: center;
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.5s ease, visibility 0.5s ease;
-  z-index: 100 !important;  /* ensure timer appears on top */
+  z-index: 100 !important;
 }
 .timer.visible {
   opacity: 1;
   visibility: visible;
 }
-button#copyPuzzle {
+/* Unified icon buttons */
+button#copyPuzzle,
+button#openPuzzle,
+button#copySnapshot,
+button#undo,
+button#redo {
   background: transparent;
-  border: none;
+  border: 1px solid rgba(90, 77, 127, 0.4);
+  border-radius: 6px;
+  padding: 5px;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  padding: 6px;
-  border-radius: 4px;
-  width: 60px;
-  align-self: flex-start;
+  align-self: auto;
 }
-button#copyPuzzle svg {
-  width: 20px;
-  height: 20px;
+button#copyPuzzle svg,
+button#openPuzzle svg,
+button#copySnapshot svg,
+button#undo svg,
+button#redo svg {
+  width: 18px;
+  height: 18px;
   fill: #e0e0e0;
 }
-button#copyPuzzle:hover {
-  background: rgba(35, 35, 35, 0.894);
-}
-button#openPuzzle {
-  background: transparent;
-  border: none;
-  padding: 6px;
-  border-radius: 4px;
-  width: 60px;
-  align-self: flex-start;
-  cursor: pointer;
-}
-button#openPuzzle svg {
-  width: 20px;
-  height: 20px;
-  fill: #e0e0e0;
-}
-button#openPuzzle:hover {
-  background: rgba(35, 35, 35, 0.894);
+button#copyPuzzle:hover,
+button#openPuzzle:hover,
+button#copySnapshot:hover,
+button#undo:hover,
+button#redo:hover {
+  background: #1e1e2e;
+  border-color: #5a4d7f;
 }
 /* Adding click animation*/
 button:active {
@@ -383,14 +393,15 @@ button:active {
 button#pauseGame {
   background: #1e1e2e;
   border: 1px solid #5a4d7f;
-  border-radius: 4px;
-  padding: 8px 12px;
+  border-radius: 6px;
+  padding: 7px 14px;
   color: #e0e0e0;
   cursor: pointer;
-  width: 80px;
+  font-family: inherit;
+  font-size: 0.85em;
   transition: opacity 0.5s ease, visibility 0.5s ease;
-  opacity: 0;             /* added: hide by default */
-  visibility: hidden;      /* added: hide by default */
+  opacity: 0;
+  visibility: hidden;
 }
 button#pauseGame.visible {
   opacity: 1;
@@ -412,11 +423,8 @@ button#pauseGame.visible {
   position: relative;
   display: inline-block;
   margin: 20px auto;
-  /* border-radius: 12px; */
-  /* box-shadow: 0 4px 20px rgba(0,0,0,0.25); */
-  overflow: hidden;  /* NEW: Ensure rounded corners clip the board */
-  padding: 15px;        /* NEW: remove extra spacing so bottom aligns directly */
-  /* border: 2px solid #5a4d7f;  NEW: add matching edge border */
+  overflow: hidden;
+  padding: 15px;
 }
 .puzzle-wrapper .info-col {
   position: absolute;
@@ -428,20 +436,17 @@ button#pauseGame.visible {
   align-items: center;
 }
 .game-options {
-  /* Ensure the container is positioned relative so the body can be absolute */
   position: relative;
-  align-self: flex-start; /* align to top in flex container */
-  z-index: 9999; /* ensure the game options container is above all other content */
-  /*adding rounded corners*/
+  align-self: flex-start;
+  z-index: 9999;
   border-radius: 12px;
 }
 .game-options-header {
   cursor: pointer;
   user-select: none;
-  width: 150px; /* fixed width for the game options header */
+  width: 150px; 
 }
 .game-options-body {
-  /* Removed max-height and dynamic padding */
   position: absolute;
   top: 100%;
   left: 0;
@@ -450,13 +455,12 @@ button#pauseGame.visible {
   opacity: 0;
   transition: transform 0.3s ease, opacity 0.3s ease;
   z-index: 10;
-  /* fixed inner layout */
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 10px;
-  background-color: #2a2a3a;
-  border-radius: 12px;
+  padding: 12px;
+  background-color: #1e1e2e;
+  border-radius: 10px;
   border: 1px solid #5a4d7f;
   pointer-events: none;
 }
@@ -465,22 +469,29 @@ button#pauseGame.visible {
   opacity: 1;
   pointer-events: auto;
 }
-/* NEW: Style for import section inside game options */
+/* Import section inside game options */
 .game-options-body .import-section input {
+  display: block;
   background: #1e1e2e;
   border: 1px solid #5a4d7f;
-  border-radius: 4px;
+  border-radius: 6px;
   color: #e0e0e0;
-  padding: 8px 12px;
-  width: 250px;
+  padding: 7px 12px;
+  margin-bottom: 8px;
+  width: 220px;
+  font-family: inherit;
+  font-size: 0.82em;
 }
 .game-options-body .import-section button {
+  display: block;
   background: #1e1e2e;
   border: 1px solid #5a4d7f;
-  border-radius: 4px;
+  border-radius: 6px;
   color: #e0e0e0;
-  padding: 8px 12px;
+  padding: 7px 14px;
   cursor: pointer;
+  font-family: inherit;
+  font-size: 0.82em;
 }
 .game-options-body .import-section button:disabled {
   opacity: 0.5;
@@ -516,7 +527,41 @@ button#pauseGame.visible {
   -ms-user-select: none;
 }
 
-/* NEW: Style for the credit text */
+/* Tip area */
+#tipArea {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin-bottom: 14px;
+  min-height: 18px;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+#tipText {
+  font-size: 0.7em;
+  color: #4a4a4a;
+  font-style: italic;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+#tipDismiss {
+  background: transparent;
+  border: none;
+  color: #3a3a3a;
+  cursor: pointer;
+  font-size: 0.75em;
+  padding: 0 2px;
+  line-height: 1;
+  flex-shrink: 0;
+  filter: none !important;
+}
+#tipDismiss:hover {
+  color: #666;
+  filter: none !important;
+}
+
+/* Style for the credit text */
 #credit {
   position: fixed;
   bottom: 0;
@@ -605,25 +650,29 @@ button#pauseGame.visible {
   cursor: not-allowed;
 }
 
-/* NEW: Style for Undo and Redo buttons to match copy and open buttons */
-button#undo, button#redo {
-  background: transparent;
-  border: none;
-  padding: 6px;
-  border-radius: 4px;
-  width: 35px;
-  height: 35px;
-  aspect-ratio: 1;
-  align-self: center;
+/* Unified text buttons */
+button#newGame,
+button#autoCandidate {
+  background: #1e1e2e;
+  border: 1px solid #5a4d7f;
+  border-radius: 6px;
+  color: #e0e0e0;
+  padding: 7px 14px;
   cursor: pointer;
+  font-family: inherit;
+  font-size: 0.85em;
 }
-button#undo svg, button#redo svg {
-  width: 20px;
-  height: 20px;
-  fill: #e0e0e0;
-}
-button#undo:hover, button#redo:hover {
-  background: rgba(35, 35, 35, 0.894);
+#clearHistoryBtn {
+  background: #1e1e2e;
+  border: 1px solid #5a4d7f;
+  border-radius: 6px;
+  color: #e0e0e0;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.82em;
+  align-self: flex-start;
+  margin: 4px 8px 8px;
 }
 
 /* NEW: Updated styles for the collapsable Keyboard Controls container with background fade */
@@ -636,22 +685,23 @@ button#undo:hover, button#redo:hover {
 }
 .keyboard-controls.collapsed {
   max-height: 30px;
-  background-color: transparent;  /* faded out background */
+  background-color: transparent; 
   border: none;
   opacity: 1;
 }
 .keyboard-controls.expanded {
   max-height: 200px;
-  background-color: #1e1e2e;  /* visible background */
+  background-color: #1e1e2e;
   border: 1px solid #5a4d7f;
+  border-radius: 6px;
   opacity: 1;
 }
 .keyboard-controls-header {
   cursor: pointer;
-  font-size: 12px;
+  font-size: 0.78em;
   padding: 8px 12px;
   user-select: none;
-  font-weight: bold;
+  color: #888;
 }
 .keyboard-controls-content {
   padding: 8px 12px;
@@ -679,15 +729,14 @@ button#undo:hover, button#redo:hover {
 .undo-redo-stack {
   position: absolute;
   left: -40px;
-  top: 20px; /* moved down to align with top row of puzzle */
+  top: 20px; 
   z-index: 3100;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  background: transparent; /* removed solid background for subtle appearance */
+  background: transparent;
   border-radius: 12px 0 0 12px;
-  /* box-shadow: 2px 0 12px #000a; */
   padding: 16px 6px 16px 4px;
   width: 44px;
   min-height: 100px;
@@ -698,39 +747,39 @@ button#undo:hover, button#redo:hover {
   position: fixed;
   top: 20px;
   left: 20px;
-  width: 300px; /* Always fixed width */
+  width: 240px;
   background: #1e1e2e;
-  border-right: 2px solid #5a4d7f;
-  border-radius: 0 12px 12px 0;
-  box-shadow: 2px 0 12px rgba(0,0,0,0.15);
+  border: 1px solid #5a4d7f;
+  border-radius: 10px;
+  box-shadow: 2px 0 16px rgba(0,0,0,0.2);
   z-index: 2000;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  transition: background 0.3s, box-shadow 0.3s, top 0.3s;
+  transition: background 0.3s, box-shadow 0.3s;
   overflow: hidden;
   opacity: 1;
   margin-bottom: 0;
-  min-height: 50px;
+  min-height: 28px;
   max-height: none;
 }
 .history-gallery.collapsed {
-    background: transparent; /* fully transparent background */
-    box-shadow: none;
-    opacity: 1;
-    max-height: 15px;        /* collapse so that only header is visible */
-    border: none;
+  background: transparent;
+  box-shadow: none;
+  border-color: transparent;
+  max-height: 22px;
 }
 .history-gallery.collapsed .history-gallery-header {
-    color: grey;             /* header text and triangle in grey */
+  color: #555;
 }
 /* Ensure gallery items have a minimum height */
 .history-item {
     min-height: 12px;
 }
 .history-gallery.expanded {
-  background: #23233a;
-  box-shadow: 4px 0 24px rgba(0,0,0,0.22);
+  background: #1e1e2e;
+  box-shadow: 2px 0 20px rgba(0,0,0,0.25);
+  max-height: 500px;
 }
 .history-gallery-header {
   cursor: pointer;
@@ -784,15 +833,15 @@ button#undo:hover, button#redo:hover {
   transition: max-height 0.5s cubic-bezier(0.4,0,0.2,1), opacity 0.3s;
 }
 .history-gallery.expanded .history-gallery-content {
-  max-height: 340px; /* Animate height */
+  max-height: 340px;
   opacity: 1;
   pointer-events: auto;
   padding-top: 10px;
 }
 .history-item {
-  background: #2a2a3a;
-  border-radius: 5px;
-  padding: 6px 8px;
+  background: #232336;
+  border-radius: 6px;
+  padding: 6px 10px;
   color: #e0e0e0;
   cursor: pointer;
   border: 1px solid transparent;
@@ -800,23 +849,24 @@ button#undo:hover, button#redo:hover {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-size: 0.82em;
 }
 .history-item:hover {
-  background: #3b3b5e;
+  background: #2e2e50;
   border: 1px solid #5a4d7f;
 }
 .history-item.selected {
-  background: #5a4d7f;
+  background: #3a2f5e;
   color: #fff;
-  border: 1px solid #fff;
+  border: 1px solid #5a4d7f;
 }
-/* New: Date heading style for grouped history */
+/* Date heading style for grouped history */
 .history-date-heading {
-  font-size: 13px;
-  color: #ffb366;
+  font-size: 11px;
+  color: #9a8bbf;
   font-weight: bold;
   margin: 10px 0 2px 0;
   padding-left: 2px;
   letter-spacing: 0.5px;
-  text-shadow: 0 1px 2px #000a;
+  text-transform: uppercase;
 }

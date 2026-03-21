@@ -16,7 +16,6 @@ This is broken is many places including:
 - likely the chute remote pairs
 - likely the unique rectangles
 
-
 */ 
 // -------------------- Helpers --------------------
 

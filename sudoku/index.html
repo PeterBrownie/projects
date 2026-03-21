@@ -2,14 +2,11 @@
 
 "Vibe-coded" by Peter Brown in May 2025.
 
-This is the HTML file for the Sudoku game.
-It is part of the "Dark Mode Sudoku" project, which is a simple Sudoku game with a dark mode theme.
-
-AI wrote all of this code, so I will not try to claim it as my own.
+AI wrote all of this code, so I will not try to claim it as my own. You shouldn't use this code to make yourself money. I honestly just created it for myself because I was tired of using various Sudoku website that charged for quality of life features. I just wanted it to work a specific way, so I did it myself.
 
 You can 100% use this code anyway you'd like under the following conditions:
 1. You cannot claim it as your own.
-2. You cannot prevent others from using it through any legal means or otherwise. 
+2. You cannot prevent others from using it through any legal means or otherwise.
 
 -->
 
@@ -21,100 +18,15 @@ You can 100% use this code anyway you'd like under the following conditions:
   <link rel="icon" type="image/png" href="../peter.png">
   <title>Dark Mode Sudoku</title>
   <link rel="stylesheet" href="style.css">
-  <!-- Additional inline styles for toggle arrow -->
-  <style>
-    .game-options-header { cursor: pointer; user-select: none; }
-    .game-options-header .toggle-arrow { display: inline-block; transition: transform 0.2s; }
-    .game-options-header.expanded .toggle-arrow { transform: rotate(90deg); }
-    /* New: Special Copy Snapshot button styling */
-    #copySnapshot {
-      position: fixed;
-      bottom: 10px;
-      right: 10px;
-      opacity: 0.2;
-      background: transparent;
-      border: none;
-      z-index: 1000;
-      /* extra padding to make it easier to click without affecting layout */
-      padding: 4px;
-    }
-    #copySnapshot:hover {
-      opacity: 0.5;
-    }
-    /* Add style for history gallery */
-    .history-gallery {
-      width: 180px;
-      background: #1e1e2e;
-      border: 1px solid #5a4d7f;
-      border-radius: 10px;
-      transition: max-height 0.5s, opacity 0.5s;
-      overflow: hidden;
-      opacity: 1;
-      max-height: 32px;
-    }
-    .history-gallery.expanded {
-      max-height: 400px;
-      opacity: 1;
-    }
-    .history-gallery-header {
-      cursor: pointer;
-      font-size: 13px;
-      padding: 8px 10px;
-      font-weight: bold;
-      user-select: none;
-      color: #aaa;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .history-gallery-header .arrow {
-      font-size: 16px;  /* arrow size reduced */
-      transition: transform 0.3s;
-      display: inline-block;
-    }
-    .history-gallery-content {
-      padding: 6px 10px 10px 10px;
-      font-size: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .history-item {
-      background: #2a2a3a;
-      border-radius: 5px;
-      padding: 6px 8px;
-      color: #e0e0e0;
-      cursor: pointer;
-      border: 1px solid transparent;
-      transition: background 0.2s, border 0.2s;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .history-item:hover {
-      background: #3b3b5e;
-      border: 1px solid #5a4d7f;
-    }
-    /* New: Style for delete (clear history) button */
-    #clearHistoryBtn {
-      background: #1e1e2e;
-      border: 1px solid #5a4d7f;
-      border-radius: 4px;
-      color: #e0e0e0;
-      padding: 6px 12px;
-      cursor: pointer;
-      font-size: 13px;
-      margin: 8px;
-    }
-    #clearHistoryBtn:hover {
-      background: rgba(35, 35, 35, 0.894);
-    }
-  </style>
+  <meta property="og:title" content="Dark Mode Sudoku">
+  <meta property="og:description" content="Simple open source sudoku. Dark mode only. No ads, no premium features. Simple interface.">
+  <meta property="og:url" content="https://peterbrown.space/sudoku/">
+  <meta property="og:type" content="website">
+  <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "03a89f35132a4e8aa86bf1ed1b60541a"}'></script><!-- End Cloudflare Web Analytics -->
 </head>
 <body>
   <div class="controls">
     <div class="game-controls">
-      <!-- Moved Difficulty slider and New Game button into their own container -->
       <label>
         Difficulty:
         <input type="range" id="difficulty" min="1" max="5" value="1">
@@ -128,29 +40,24 @@ You can 100% use this code anyway you'd like under the following conditions:
       <div class="game-options-body">
         <label><input type="checkbox" id="showMistakes"> Show Mistakes</label>
         <label><input type="checkbox" id="showConflicts"> Show Conflicts</label>
-        <!-- NEW: Import Section moved into game options -->
         <div class="import-section" style="margin-top: 10px; border-top: 1px solid #5a4d7f; padding-top: 10px;">
-          <input type="text" id="boardImport" placeholder="Enter 81-digit board" maxlength="81" style="display: block; margin-bottom: 8px;">
-          <button id="importButton" disabled style="display: block;">Import</button>
+          <input type="text" id="boardImport" placeholder="Enter 81-digit board" maxlength="81">
+          <button id="importButton" disabled>Import</button>
           <span id="importReason" style="display: none; color: red; margin-left: 8px; font-size: 11px;"></span>
         </div>
       </div>
     </div>
     <button id="autoCandidate">Auto-Candidate</button>
-    <!-- REMOVE the old undo/redo buttons -->
   </div>
   
-  <!-- NEW: Left side container for Undo/Redo buttons and Game History Gallery -->
   <div class="history-gallery collapsed" id="historyGallery">
     <div class="history-gallery-header">
       <span class="arrow">&#9654;</span>
       <span class="header-text">Game History</span>
     </div>
     <div class="history-gallery-content"></div>
-    <!-- NEW: Clear History button -->
     <button id="clearHistoryBtn" class="clear-history-btn" title="Clear all game history">🗑️ Clear History</button>
   </div>
-  <!-- NEW: Wrap undo/redo stack and puzzle-wrapper together -->
   <div class="puzzle-area">
     <div class="undo-redo-stack">
       <button id="undo">
@@ -168,22 +75,16 @@ You can 100% use this code anyway you'd like under the following conditions:
     </div>
     <div class="puzzle-wrapper">
       <div class="board-container" id="boardContainer">
-        <!-- Moved board here -->
         <div class="board" id="board"></div>
       </div>
-      <!-- Removed info-col from here -->
     </div>
   </div>
-  <!-- Insert info-col outside the puzzle-wrapper -->
   <div class="info-col">
-    <!-- Wrap timer and pause button in a flex row, updated to left-align content -->
     <div style="display: flex; gap: 10px; align-items: center; justify-content: flex-start;">
       <div class="timer" id="timer">00:00</div>
       <button id="pauseGame">Pause</button>
     </div>
-    <!-- NEW: Difficulty label -->
     <div id="diffLabel">Loading difficulty...</div>
-    <!-- Group copy and open buttons in a flex container for inline layout -->
     <div style="display: flex; gap: 4px; margin-top: 8px; justify-content: flex-start; align-items: flex-start; width: 100%;">
       <button id="copyPuzzle" title="Copy Puzzle">
       <svg fill='#FFFFFF' aria-hidden='true' width='40px' height='40px' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'><path d='M8 2a2 2 0 0 0-2 2v10c0 1.1.9 2 2 2h6a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8ZM7 4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4ZM4 6a2 2 0 0 1 1-1.73V14.5A2.5 2.5 0 0 0 7.5 17h6.23A2 2 0 0 1 12 18H7.5A3.5 3.5 0 0 1 4 14.5V6Z' fill='#FFFFFF'/></svg>
@@ -193,13 +94,7 @@ You can 100% use this code anyway you'd like under the following conditions:
           <path d='M6 4a2 2 0 0 0-2 2v8c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2v-2.5a.5.5 0 0 1 1 0V14a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3h2.5a.5.5 0 0 1 0 1H6Zm5-.5c0-.28.22-.5.5-.5h5c.28 0 .5.22.5.5v5a.5.5 0 0 1-1 0V4.7l-4.15 4.15a.5.5 0 0 1-.7-.7L15.29 4H11.5a.5.5 0 0 1-.5-.5Z' fill='#FFFFFF'/>
         </svg>
       </button>
-      <!-- NEW: Special Copy Snapshot button -->
-      <button id="copySnapshot" title="Copy Snapshot Data">
-        <svg fill='#992299' aria-hidden='true' width='20px' height='20px' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'><path d='M8 2a2 2 0 0 0-2 2v10c0 1.1.9 2 2 2h6a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8ZM7 4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4ZM4 6a2 2 0 0 1 1-1.73V14.5A2.5 2.5 0 0 0 7.5 17h6.23A2 2 0 0 1 12 18H7.5A3.5 3.5 0 0 1 4 14.5V6Z' fill='#FFFFFF'/></svg>
-
-      </button>
     </div>
-    <!-- NEW: Collapsable Keyboard Controls container -->
     <div id="keyboardControls" class="keyboard-controls collapsed">
       <div class="keyboard-controls-header">Show Keyboard Controls</div>
       <div class="keyboard-controls-content">
@@ -221,6 +116,11 @@ You can 100% use this code anyway you'd like under the following conditions:
   <div class="candidate-toggle">
     <label><input type="checkbox" id="candidateMode"> Candidate Mode</label>
   </div>
+
+  <div id="tipArea">
+    <span id="tipText"></span>
+    <button id="tipDismiss" title="Dismiss tips">×</button>
+  </div>
   
   <!-- Inline script to toggle the Game Options container -->
   <script>
@@ -230,6 +130,7 @@ You can 100% use this code anyway you'd like under the following conditions:
       const isExpanded = bodyEl.classList.toggle('expanded');
       header.classList.toggle('expanded', isExpanded);
       header.querySelector('.toggle-arrow').textContent = isExpanded ? ' ▶' : ' ▶';
+      if (window.markTipKnown) window.markTipKnown('importPuzzle');
     });
   </script>
   
@@ -242,6 +143,7 @@ You can 100% use this code anyway you'd like under the following conditions:
         kbControls.classList.remove("collapsed");
         kbControls.classList.add("expanded");
         kbHeader.textContent = "Hide Keyboard Controls";
+        if (window.markTipKnown) window.markTipKnown('keyboardControls');
       } else {
         kbControls.classList.remove("expanded");
         kbControls.classList.add("collapsed");
@@ -255,24 +157,11 @@ You can 100% use this code anyway you'd like under the following conditions:
     window.sudokuGrader = sudokuGrader;
     console.log("sudokuGrader imported and attached to window:", window.sudokuGrader);
   </script>
-  <!-- NEW: Import and attach puzzleGenerator -->
+  <!-- Import and attach puzzleGenerator -->
   <script type="module">
     import * as puzzleGenerator from './puzzleGenerator.js';
     window.puzzleGenerator = puzzleGenerator;
     console.log("puzzleGenerator imported and attached to window:", window.puzzleGenerator);
-  </script>
-  <!-- NEW: Special Copy Snapshot button script -->
-  <script>
-    document.getElementById('copySnapshot').addEventListener('click', () => {
-      const data = JSON.stringify(window.snapshots, null, 2);
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(data)
-          .then(() => alert('Snapshot data copied to clipboard! Go to peterbrown.space/sudoku/debugViewer.html to paste and view it.'))
-          .catch(err => alert('Failed to copy snapshot data: ' + err));
-      } else {
-        alert('Clipboard API not available.');
-      }
-    });
   </script>
   <!-- Add script to handle gallery toggle and item click -->
   <script>
@@ -291,9 +180,10 @@ You can 100% use this code anyway you'd like under the following conditions:
   </script>
   <script src="sudoku.js"></script>
   
-  <!-- NEW: Credit text at the bottom left -->
+  <!-- Credit text at the bottom left -->
   <div id="credit">
-    Created by <a href="https://peterbrown.space" target="_blank">Peter Brown</a>, with the help of AI
+    Created by <a href="https://peterbrown.space" target="_blank">Peter Brown</a>, with the help of AI.
+    <a href="https://github.com/PeterBrownie/projects/" target="_blank" rel="noopener noreferrer">Github</a>
   </div>
 </body>
 </html>

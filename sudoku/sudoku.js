@@ -12,8 +12,6 @@ You can 100% use this code anyway you'd like under the following conditions:
 
 */ 
 
-
-
 (() => {
   const HISTORY_KEY = 'sudokuGameHistory';
   let gameHistory = JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
@@ -102,6 +100,99 @@ You can 100% use this code anyway you'd like under the following conditions:
   let isPaused = false;
   let pausedElapsed = 0;  // Time elapsed at pause
   let isPauseAnimating = false;  // Prevent rapid pause/resume clicks
+  let hoveredPadValue = null;
+  let padHoverTimer = null;
+
+  // --- TIP SYSTEM ---
+  const tips = [
+    { key: 'candidateMode',   text: 'Press Space or C to toggle Candidate Mode' },
+    { key: 'keyboardControls',text: 'Check "Show Keyboard Controls" in the sidebar for all shortcuts' },
+    { key: 'padHover',        text: 'Hover a number below the board for half a second to preview its candidates' },
+    { key: 'undo',            text: 'Ctrl+Z undoes a move — Ctrl+Y redoes it' },
+    { key: 'autoCandidate',   text: 'Auto-Candidate fills every empty cell with its valid candidates' },
+    { key: 'difficulty',      text: 'The difficulty slider controls how complex new puzzles are' },
+    { key: 'importPuzzle',    text: 'Paste an 81-digit string in Game Options to import any puzzle' },
+    { key: 'copyPuzzle',      text: 'The copy button exports the current puzzle as an 81-digit string' },
+    { key: 'openSudokuWiki',  text: 'The external link button opens the puzzle in SudokuWiki for hints' },
+  ];
+  const knownActions = new Set();
+  let tipsDismissed = false;
+  let tipRotationIdx = 0;
+  let tipCycleInterval = null;
+  let tipFadeTimeout = null;
+
+  function markTipKnown(key) {
+    if (knownActions.has(key)) return;
+    knownActions.add(key);
+    // If current tip is for this action and we're not paused, rotate away from it
+    if (!isPaused) {
+      const tipTextEl = document.getElementById('tipText');
+      if (tipTextEl && tipTextEl.dataset.key === key) rotateTip();
+    }
+  }
+  window.markTipKnown = markTipKnown;
+
+  function getNextTip() {
+    const pool = isPaused ? tips : tips.filter(t => !knownActions.has(t.key));
+    if (pool.length === 0) return null;
+    for (let i = 0; i < tips.length; i++) {
+      const idx = (tipRotationIdx + i) % tips.length;
+      if (pool.some(t => t.key === tips[idx].key)) {
+        tipRotationIdx = (idx + 1) % tips.length;
+        return tips[idx];
+      }
+    }
+    return null;
+  }
+
+  function displayTip(tip) {
+    if (tipsDismissed) return;
+    const tipArea = document.getElementById('tipArea');
+    const tipTextEl = document.getElementById('tipText');
+    if (!tipArea || !tipTextEl) return;
+    clearTimeout(tipFadeTimeout);
+    const applyTip = () => {
+      tipTextEl.textContent = `Tip: ${tip.text}`;
+      tipTextEl.dataset.key = tip.key;
+      tipTextEl.style.opacity = '1';
+      tipArea.style.opacity = '1';
+    };
+    if (tipArea.style.opacity === '1') {
+      tipTextEl.style.opacity = '0';
+      tipFadeTimeout = setTimeout(applyTip, 500);
+    } else {
+      applyTip();
+    }
+  }
+
+  function hideTip() {
+    clearTimeout(tipFadeTimeout);
+    const tipArea = document.getElementById('tipArea');
+    const tipTextEl = document.getElementById('tipText');
+    if (!tipArea) return;
+    if (tipTextEl) tipTextEl.style.opacity = '0';
+    tipFadeTimeout = setTimeout(() => { tipArea.style.opacity = '0'; }, 500);
+  }
+
+  function rotateTip() {
+    if (tipsDismissed) return;
+    const tip = getNextTip();
+    if (tip) displayTip(tip);
+    else { hideTip(); stopTipCycle(); }
+  }
+
+  function stopTipCycle() {
+    clearInterval(tipCycleInterval);
+    tipCycleInterval = null;
+  }
+
+  function startTipCycle(showImmediately) {
+    stopTipCycle();
+    if (tipsDismissed) return;
+    if (showImmediately) rotateTip();
+    tipCycleInterval = setInterval(rotateTip, isPaused ? 15000 : 45000);
+  }
+  // --- END TIP SYSTEM ---
   let isPuzzleTransitioning = false;  //  track puzzle fade-in
 
   // Helper functions to yield control to the browser when idle
@@ -231,6 +322,30 @@ You can 100% use this code anyway you'd like under the following conditions:
     }
   }
 
+  function applyPadHoverHighlights() {
+    if (hoveredPadValue === null) return;
+    markTipKnown('padHover');
+    const selectedHasValue = selected !== null && puzzle[selected] !== null;
+    const selectedValue = selectedHasValue ? puzzle[selected] : null;
+    if (hoveredPadValue === selectedValue) return; // already highlighted red by selection
+    const useBlue = selectedHasValue;
+    const cells = boardEl.children;
+    for (let i = 0; i < 81; i++) {
+      const candEls = cells[i].querySelectorAll('.candidate');
+      candEls.forEach((cEl, idx) => {
+        if (idx + 1 === hoveredPadValue && candidates[i].has(idx + 1)) {
+          cEl.classList.add(useBlue ? 'pad-hover-blue' : 'pad-hover-red');
+        }
+      });
+    }
+  }
+
+  function clearPadHoverHighlights() {
+    document.querySelectorAll('.pad-hover-red, .pad-hover-blue').forEach(el => {
+      el.classList.remove('pad-hover-red', 'pad-hover-blue');
+    });
+  }
+
   function buildPad() {
     padEl.innerHTML = '';
     indicatorEls.length = 0;
@@ -241,6 +356,19 @@ You can 100% use this code anyway you'd like under the following conditions:
       const btn = document.createElement('button');
       btn.textContent = n;
       btn.addEventListener('click', () => onPadClick(n));
+      btn.addEventListener('mouseenter', () => {
+        padHoverTimer = setTimeout(() => {
+          hoveredPadValue = n;
+          applyPadHoverHighlights();
+        }, 500);
+      });
+      btn.addEventListener('mouseleave', () => {
+        clearTimeout(padHoverTimer);
+        if (hoveredPadValue !== null) {
+          hoveredPadValue = null;
+          clearPadHoverHighlights();
+        }
+      });
       item.appendChild(btn);
 
       const ind = document.createElement('div');
@@ -312,6 +440,7 @@ You can 100% use this code anyway you'd like under the following conditions:
 
   // Undo last recorded action.
   function doUndo() {
+    markTipKnown('undo');
     if (!undoStack.length) return;
     const action = undoStack.pop();
     if (action.type === "setValue") {
@@ -335,6 +464,7 @@ You can 100% use this code anyway you'd like under the following conditions:
 
   // Redo next action.
   function doRedo() {
+    markTipKnown('undo');
     if (!redoStack.length) return;
     const action = redoStack.pop();
     if (action.type === "setValue") {
@@ -524,6 +654,7 @@ You can 100% use this code anyway you'd like under the following conditions:
                   hasCandidate && // NEW: only highlight if candidate is still present
                   idx+1 === (puzzle[selected] || null)
               );
+              cEl.classList.remove('pad-hover-red', 'pad-hover-blue');
           });
           cell.classList.remove('highlight','duplicate','mistake','conflict');
           cell.classList.remove('selected','associated');
@@ -560,6 +691,9 @@ You can 100% use this code anyway you'd like under the following conditions:
       }
       updateIndicators();
       
+      // Re-apply pad hover highlights after clearing them in the loop above.
+      applyPadHoverHighlights();
+
       // NEW: Always highlight mistakes and conflicts regardless of cell selection.
       if (showMistakesEl.checked) checkMistakes();
       if (showConflictsEl.checked) checkConflicts();
@@ -791,6 +925,7 @@ You can 100% use this code anyway you'd like under the following conditions:
         padContainer.classList.add('paused');
         pauseBtn.textContent = "Resume";
         isPaused = true;
+        startTipCycle(true); // show tips immediately at 15s interval
         // Wait for the blurIn animation to finish before accepting new clicks
         boardContainer.addEventListener('animationend', () => {
           isPauseAnimating = false;
@@ -808,6 +943,7 @@ You can 100% use this code anyway you'd like under the following conditions:
         }, { once: true });
         pauseBtn.textContent = "Pause";
         isPaused = false;
+        startTipCycle(false); // resume normal 45s cycle, keep current tip
       }
     });
 
@@ -819,6 +955,7 @@ You can 100% use this code anyway you'd like under the following conditions:
     // New: copy puzzle functionality without text changes.
     const copyPuzzleBtn = document.getElementById('copyPuzzle');
     copyPuzzleBtn.addEventListener('click', () => {
+      markTipKnown('copyPuzzle');
       const puzzleText = puzzle.map(cell => cell ? cell : '0').join('');
       navigator.clipboard.writeText(puzzleText)
         .catch(err => console.error('Failed to copy puzzle: ', err));
@@ -827,8 +964,7 @@ You can 100% use this code anyway you'd like under the following conditions:
     // New: open puzzle functionality.
     const openPuzzleBtn = document.getElementById('openPuzzle');
     openPuzzleBtn.addEventListener('click', () => {
-      // Use the packing function to include candidate data.
-      // Here, "X9B" (for example) is used as the prefix to signal candidate data.
+      markTipKnown('openSudokuWiki');
       const packed = makePackedStringVB('S9B', true);
       const url = "https://www.sudokuwiki.org/sudoku.htm?bd=" + packed;
       window.open(url, '_blank');
@@ -1018,6 +1154,12 @@ You can 100% use this code anyway you'd like under the following conditions:
 
     buildBoard();
     buildPad();
+    startTipCycle(false); // begin 45s tip rotation; first tip appears after first interval
+    document.getElementById('tipDismiss').addEventListener('click', () => {
+      tipsDismissed = true;
+      stopTipCycle();
+      hideTip();
+    });
     newGameBtn.addEventListener('click', () => {
       if (isPuzzleTransitioning) return; // do nothing if puzzle is still fading in
       puzzleImported = false;  // <-- NEW: reset imported flag on new game
@@ -1037,15 +1179,15 @@ You can 100% use this code anyway you'd like under the following conditions:
       generate();
     });
     diffEl.addEventListener('input', () => {
-      // Clear all candidates when difficulty changes
+      markTipKnown('difficulty');
       candidates = Array(81).fill().map(() => new Set());
       generate();
     });
     showMistakesEl.addEventListener('change', render);
     showConflictsEl.addEventListener('change', render);
-    candidateModeEl.addEventListener('change', render);
+    candidateModeEl.addEventListener('change', () => { markTipKnown('candidateMode'); render(); });
     // NEW: Register Auto-Candidate button event listener.
-    document.getElementById('autoCandidate').addEventListener('click', autoCandidate);
+    document.getElementById('autoCandidate').addEventListener('click', () => { markTipKnown('autoCandidate'); autoCandidate(); });
     
     // ← new: keyboard support for 1–9, 0/backspace = clear
     document.addEventListener('keydown', e => {
@@ -1055,6 +1197,7 @@ You can 100% use this code anyway you'd like under the following conditions:
       // Toggle candidate mode on "C" key or space bar
       if (e.key.toLowerCase() === 'c' || e.key === ' ') {
         candidateModeEl.checked = !candidateModeEl.checked;
+        markTipKnown('candidateMode');
         render();
         e.preventDefault();
       }
@@ -1065,6 +1208,12 @@ You can 100% use this code anyway you'd like under the following conditions:
       else if (e.key === '0' || e.key === 'Backspace') {
         onPadClick(0);
         e.preventDefault();
+      }
+      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        markTipKnown('undo');
+      }
+      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        markTipKnown('undo');
       }
     });
     
