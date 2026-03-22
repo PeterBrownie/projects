@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/jpg" href="evolve.jpg">
+    <link rel="icon" type="image/jpg" href="evolve.png">
     <title>About — evolveSVG</title>
     <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "03a89f35132a4e8aa86bf1ed1b60541a"}'></script><!-- End Cloudflare Web Analytics -->
     <style>
@@ -658,11 +658,11 @@
 <body>
 
 <nav class="topnav">
-    <a class="topnav-back" href="index.html"><span class="arrow">&#8592;</span> evolveSVG</a>
+    <a class="topnav-back" href="/"><span class="arrow">&#8592;</span> evolveSVG</a>
     <span class="topnav-sep">/</span>
     <span class="topnav-subtitle">About</span>
     <span class="topnav-sep" style="margin-left:auto"></span>
-    <a class="topnav-back" href="technical.html">Technical-ish Reference →</a>
+    <a class="topnav-back" href="technical">Technical-ish Reference →</a>
 </nav>
 
 <div class="page">
@@ -673,7 +673,7 @@
         <p class="hero-tagline">
             A generative art tool that breeds abstract patterns through interactive evolution. Images are algorithmically generated, not ai-generated.
         </p>
-        <a class="hero-cta" href="index.html">Open evolveSVG</a>
+        <a class="hero-cta" href="/">Open evolveSVG</a>
     </div>
 
     <!-- Inspiration -->
@@ -703,7 +703,7 @@
                     The original generative art evolution explorer. Highly recommended watching his various youtube videos about many different generative coding projects.
                 </p>
                 <div class="inspiration-links">
-                    <a class="insp-link" href="https://evolvecode.io/hyperspace/picbreeder.html" target="_blank" rel="noopener noreferrer">Picbreeder by Emergent Garden</a>
+                    <a class="insp-link" href="https://evolvecode.io/hyperspace/picbreeder" target="_blank" rel="noopener noreferrer">Picbreeder by Emergent Garden</a>
                     <a class="insp-link" href="https://www.youtube.com/@EmergentGarden" target="_blank" rel="noopener noreferrer">YouTube channel</a>
                     <a class="insp-link" href="https://github.com/MaxRobinsonTheGreat/hyperdimensions" target="_blank" rel="noopener noreferrer">hyperdimensions on GitHub (picbreeder and more)</a>
                 </div>
@@ -1035,7 +1035,7 @@
     <div class="about-footer">
         <span>Made by <a href="https://github.com/PeterBrownie/projects/" target="_blank" rel="noopener noreferrer">Peter Brown</a></span>
         <span>Inspired by <a href="https://www.youtube.com/@EmergentGarden" target="_blank" rel="noopener noreferrer">Emergent Garden</a> &mdash; <a href="https://github.com/MaxRobinsonTheGreat/hyperdimensions" target="_blank" rel="noopener noreferrer">hyperdimensions</a></span>
-        <span><a href="technical.html">Technical-ish Reference</a></span>
+        <span><a href="technical">Technical-ish Reference</a></span>
     </div>
 
 </div><!-- /page -->
@@ -1055,7 +1055,7 @@
     names.forEach(name => {
         const item = document.createElement('a');
         item.className = 'gallery-item';
-        item.href = `index.html?template=${encodeURIComponent(name)}`;
+        item.href = `?template=${encodeURIComponent(name)}`;
 
         const thumb = document.createElement('div');
         thumb.className = 'gallery-thumb';
