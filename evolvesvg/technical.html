@@ -565,7 +565,7 @@
 </nav>
 
 <nav class="topnav">
-    <a href="index" class="topnav-back"><span class="arrow">←</span> Back</a>
+    <a href="index" class="topnav-back" onclick="if(document.referrer && new URL(document.referrer).origin===location.origin){history.back();return false;}"><span class="arrow">←</span> Back</a>
     <span class="topnav-sep">/</span>
     <span class="topnav-title">evolveSVG</span>
     <span class="topnav-sep">/</span>
