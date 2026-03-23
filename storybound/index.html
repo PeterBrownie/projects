@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>StoryboundAI</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Text:ital@0;1&display=swap" rel="stylesheet">
+
+    <!-- Legacy scripts (kept for reference during port, remove when Plan 3 is complete) -->
+    <!-- <script defer src="main.js"></script> -->
+    <!-- <script defer src="phase1.js"></script> -->
+    <!-- <script defer src="render.js"></script> -->
+
+    <!-- Foundation — order matters: storage first, then api-client, then settings -->
+    <script defer src="js/storage.js"></script>
+    <script defer src="js/api-client.js"></script>
+    <script defer src="js/settings.js"></script>
+
+    <!-- AI Functions (Plan 2) -->
+    <script defer src="js/api-functions.js"></script>
+
+    <!-- UI (Plan 3) -->
+    <script defer src="js/render.js"></script>
+    <script defer src="js/character.js"></script>
+    <script defer src="js/scene.js"></script>
+    <script defer src="js/objectives.js"></script>
+    <script defer src="js/game.js"></script>
+    <script defer src="js/app.js"></script>
+</head>
+<body>
+    
+    <div class="main-flex centered-phase" id="mainFlex">
+        <div id="phase1-centerbox">
+            <div id="phase1-title-row">
+                <div id="phase1-title" class="dm-serif-text-regular">StoryboundAI</div>
+                <button id="settingsGearBtnPhase1" title="Settings" aria-label="Settings">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="30px" height="30px" viewBox="0 0 20 20" fill="#FFFFFF" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"><path d="M1.91 7.38A8.5 8.5 0 0 1 3.7 4.3a.5.5 0 0 1 .54-.13l1.92.68a1 1 0 0 0 1.32-.76l.36-2a.5.5 0 0 1 .4-.4 8.53 8.53 0 0 1 3.55 0c.2.04.35.2.38.4l.37 2a1 1 0 0 0 1.32.76l1.92-.68a.5.5 0 0 1 .54.13 8.5 8.5 0 0 1 1.78 3.08c.06.2 0 .4-.15.54l-1.56 1.32a1 1 0 0 0 0 1.52l1.56 1.32a.5.5 0 0 1 .15.54 8.5 8.5 0 0 1-1.78 3.08.5.5 0 0 1-.54.13l-1.92-.68a1 1 0 0 0-1.32.76l-.37 2a.5.5 0 0 1-.38.4 8.53 8.53 0 0 1-3.56 0 .5.5 0 0 1-.39-.4l-.36-2a1 1 0 0 0-1.32-.76l-1.92.68a.5.5 0 0 1-.54-.13 8.5 8.5 0 0 1-1.78-3.08.5.5 0 0 1 .15-.54l1.56-1.32a1 1 0 0 0 0-1.52L2.06 7.92a.5.5 0 0 1-.15-.54Zm1.06 0 1.3 1.1a2 2 0 0 1 0 3.04l-1.3 1.1c.3.79.72 1.51 1.25 2.16l1.6-.58a2 2 0 0 1 2.63 1.53l.3 1.67a7.56 7.56 0 0 0 2.5 0l.3-1.67a2 2 0 0 1 2.64-1.53l1.6.58a7.5 7.5 0 0 0 1.24-2.16l-1.3-1.1a2 2 0 0 1 0-3.04l1.3-1.1a7.5 7.5 0 0 0-1.25-2.16l-1.6.58a2 2 0 0 1-2.63-1.53l-.3-1.67a7.55 7.55 0 0 0-2.5 0l-.3 1.67A2 2 0 0 1 5.81 5.8l-1.6-.58a7.5 7.5 0 0 0-1.24 2.16ZM7.5 10a2.5 2.5 0 1 1 5 0 2.5 2.5 0 0 1-5 0Zm1 0a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0Z"/></svg>
+                </button>
+            </div>
+            <button id="generateNamesBtn">Generate Character Traits</button>
+            <div id="miniChars"></div>
+            <div class="placeholder-text" id="phase1-placeholder">Select a character to see details.</div>
+        </div>
+        <div class="content" style="display:none;">
+            <div id="characterDetails" class="character-details-container"></div>
+        </div>
+        <div id="gameSidebar" class="game-sidebar" style="display:none;"></div>
+        <div id="gameContent" class="game-content" style="display:none;">
+            <div id="topToggleRow">
+                <div id="objectivesHeader">
+                    <button id="objectivesToggleBtn" type="button" aria-expanded="false" title="Show objectives">View Objectives</button>
+                </div>
+                <div id="sceneViewHeader">
+                    <button id="sceneViewToggleBtn" type="button" aria-expanded="false" title="View generated scene images">
+                        <span class="scene-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" width="14" height="14" focusable="false" aria-hidden="true">
+                                <path fill="currentColor" d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zm-2 0H5l4.5-6 3.5 4.5 2.5-3L19 19zM8.5 11A2.5 2.5 0 1 0 8.5 6a2.5 2.5 0 0 0 0 5z"/>
+                            </svg>
+                        </span>
+                        <span>View Scene</span>
+                    </button>
+                </div>
+                <div id="actionHistoryHeader">
+                    <button id="actionHistoryToggleBtn" type="button" aria-expanded="false" title="Show action history">
+                        <span class="history-arrow" aria-hidden="true">▴</span>
+                    </button>
+                </div>
+            </div>
+            <div id="topPanelsRow">
+                <div id="objectivesPanel" aria-hidden="true" style="display:none;">
+                    <div id="objectivesList"></div>
+                </div>
+                <div id="sceneViewPanel" aria-hidden="true" style="display:none;">
+                    <div id="sceneViewList"></div>
+                </div>
+            </div>
+            <div id="actionHistoryPanel" aria-hidden="true" style="display:none;">
+                <div id="actionHistoryList"></div>
+            </div>
+            <div id="actionResponseArea"></div>
+            <div id="actionControls">
+                <button id="regenerateActionsBtn" type="button" style="display:none;">Regenerate actions</button>
+            </div>
+            <div id="actionButtonsArea"></div>
+            <!-- Custom action input -->
+            <div id="customActionContainer" style="margin-top:1em;display:flex;gap:0.7em;align-items:center;">
+                <textarea id="customActionInput"
+                    placeholder="Type your own action..."
+                    style="flex:1;font-size:1.1em;padding:0.7em 1em;border-radius:8px;border:1px solid hsl(var(--accent-h),37%,24%);background:#23272a;color:#e4e6eb;resize:none;min-height:2.5em;max-height:8em;overflow-y:auto;line-height:1.5;"
+                    rows="1"></textarea>
+                <button id="customActionBtn" style="font-size:1.1em;padding:0.7em 1.5em;border-radius:8px;background:hsl(var(--accent-h),74%,46%);color:#fff;border:none;cursor:pointer;">Submit</button>
+            </div>
+        </div>
+    </div>
+    <div id="loading-container" style="display:none;">
+        <!-- Content will be set dynamically -->
+    </div>
+</body>
+    
+</html>
