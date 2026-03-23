@@ -84,12 +84,12 @@ var DEMO_KEY_BLOB = 'CPhn0cWNTi6IHnSUCb8kkWpbsrnzakx7NoKaLdjEVQjVrMKBmR+9y8KIXnx
         <hr class="settings-divider" />
         <div class="settings-portability">
           <button id="settingsExportBtn">
-            <svg xmlns="http://www.w3.org/2000/svg" width="30px" height="30px" viewBox="0 0 20 20" fill="#FFFFFF" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm-2 1a2 2 0 1 1 4 0 2 2 0 0 1-4 0Zm2-4a.5.5 0 0 0 .5-.5V3.7l3.15 3.15a.5.5 0 0 0 .7-.7l-4-4a.5.5 0 0 0-.7 0l-4 4a.5.5 0 1 0 .7.7L9.5 3.71v7.79c0 .28.22.5.5.5Z"/></svg>
-            Export Data
+            <svg xmlns="http://www.w3.org/2000/svg" width="30px" height="30px" viewBox="0 0 20 20" fill="#FFFFFF" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm-2 1a2 2 0 1 1 4 0 2 2 0 0 1-4 0Zm2-14c.28 0 .5.22.5.5v7.8l3.15-3.15a.5.5 0 0 1 .7.7l-4 4a.5.5 0 0 1-.7 0l-4-4a.5.5 0 1 1 .7-.7l3.15 3.14V2.5c0-.28.22-.5.5-.5Z"/></svg>
+            Download Data Backup
           </button>
           <button id="settingsImportBtn">
-            <svg xmlns="http://www.w3.org/2000/svg" width="30px" height="30px" viewBox="0 0 20 20" fill="#FFFFFF" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm-2 1a2 2 0 1 1 4 0 2 2 0 0 1-4 0Zm2-14c.28 0 .5.22.5.5v7.8l3.15-3.15a.5.5 0 0 1 .7.7l-4 4a.5.5 0 0 1-.7 0l-4-4a.5.5 0 1 1 .7-.7l3.15 3.14V2.5c0-.28.22-.5.5-.5Z"/></svg>
-            Import Data
+            <svg xmlns="http://www.w3.org/2000/svg" width="30px" height="30px" viewBox="0 0 20 20" fill="#FFFFFF" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm-2 1a2 2 0 1 1 4 0 2 2 0 0 1-4 0Zm2-4a.5.5 0 0 0 .5-.5V3.7l3.15 3.15a.5.5 0 0 0 .7-.7l-4-4a.5.5 0 0 0-.7 0l-4 4a.5.5 0 1 0 .7.7L9.5 3.71v7.79c0 .28.22.5.5.5Z"/></svg>
+            Upload Data Backup
           </button>
         </div>
         <div id="settingsImportMsg"></div>
@@ -500,7 +500,7 @@ var DEMO_KEY_BLOB = 'CPhn0cWNTi6IHnSUCb8kkWpbsrnzakx7NoKaLdjEVQjVrMKBmR+9y8KIXnx
       URL.revokeObjectURL(url);
     } catch (err) {
       const msgEl = document.getElementById('settingsImportMsg');
-      if (msgEl) msgEl.textContent = 'Export failed: ' + (err.message || 'Unknown error');
+      if (msgEl) msgEl.textContent = 'Download failed: ' + (err.message || 'Unknown error');
     }
   }
 
