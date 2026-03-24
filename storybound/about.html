@@ -1058,10 +1058,21 @@
         });
     }
 
-    const sectionObserver = new IntersectionObserver((entries) => {
-        entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
-    }, { rootMargin: '-15% 0px -70% 0px' });
-    sections.forEach(s => sectionObserver.observe(s));
+    function updateActive() {
+        if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 10) {
+            setActive(sections[sections.length - 1].id);
+            return;
+        }
+        const threshold = window.innerHeight * 0.3;
+        let active = sections[0];
+        sections.forEach(s => {
+            if (s.getBoundingClientRect().top < threshold) active = s;
+        });
+        if (active) setActive(active.id);
+    }
+
+    window.addEventListener('scroll', updateActive, { passive: true });
+    updateActive();
 </script>
 </body>
 </html>
