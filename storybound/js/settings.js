@@ -368,10 +368,12 @@ var DEMO_KEY_BLOB = 'CPhn0cWNTi6IHnSUCb8kkWpbsrnzakx7NoKaLdjEVQjVrMKBmR+9y8KIXnx
   }
 
   function syncMatureContentVisibility() {
-    const url = getActiveUrl();
-    const isXai = url.indexOf('api.x.ai') !== -1;
-    document.getElementById('settingsMatureContentRow').style.display = isXai ? '' : 'none';
-    if (!isXai) {
+    const sel = document.getElementById('settingsApiUrlSelect');
+    const isXai = sel.value === 'https://api.x.ai/v1';
+    const isCustom = sel.value === '__custom__';
+    const show = isXai || isCustom;
+    document.getElementById('settingsMatureContentRow').style.display = show ? '' : 'none';
+    if (!show) {
       document.getElementById('settingsMatureContent').checked = false;
       document.getElementById('settingsMatureAgeGate').style.display = 'none';
       document.getElementById('settingsMatureAgeConfirm').checked = false;
@@ -408,7 +410,7 @@ var DEMO_KEY_BLOB = 'CPhn0cWNTi6IHnSUCb8kkWpbsrnzakx7NoKaLdjEVQjVrMKBmR+9y8KIXnx
       notice = document.createElement('div');
       notice.id = 'apiKeyNotice';
       notice.innerHTML =
-        '<div id="apiKeyNoticeIcon">&#128274;</div>' +
+        '<div id="apiKeyNoticeIcon"><svg xmlns="http://www.w3.org/2000/svg" width="40px" height="40px" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="16" r="1"/><rect x="3" y="10" width="18" height="12" rx="2"/><path d="M7 10V7a5 5 0 0 1 10 0v3"/></svg></div>' +
         '<div id="apiKeyNoticeTitle">API key required</div>' +
         '<p id="apiKeyNoticeBody">StoryboundAI sends requests directly from your browser to an AI provider. ' +
         'You\'ll need to supply your own API key to play.</p>' +
