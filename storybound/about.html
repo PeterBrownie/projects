@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="evolve.png">
+    <title>About — StoryboundAI</title>
+    <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "03a89f35132a4e8aa86bf1ed1b60541a"}'></script><!-- End Cloudflare Web Analytics -->
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg:        #0e0e0e;
+            --surface:   #161616;
+            --surface2:  #1e1e1e;
+            --border:    #2a2a2a;
+            --border2:   #333;
+            --text:      #ccc;
+            --text-dim:  #777;
+            --text-faint:#555;
+            --accent:    #a78bfa;
+            --accent2:   #c4b5fd;
+            --gold:      #f5c542;
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-size: 15px;
+            line-height: 1.65;
+            min-height: 100vh;
+            overflow-x: clip;
+        }
+
+        /* ── Top nav ──────────────────────────────────────── */
+        .topnav {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(14,14,14,0.92);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 0 28px;
+            height: 52px;
+        }
+
+        .topnav-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 5px 10px;
+            border: 1px solid var(--border2);
+            border-radius: 4px;
+            transition: background 0.15s, border-color 0.15s;
+            flex-shrink: 0;
+        }
+        .topnav-back:hover { background: #1a1a1a; border-color: #555; }
+        .topnav-back .arrow { font-size: 15px; line-height: 1; }
+
+        .topnav-sep { color: var(--border2); }
+
+        .topnav-subtitle {
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+
+        /* ── Page layout ──────────────────────────────────── */
+        .page {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 60px 28px 100px;
+        }
+
+        /* ── Hero ─────────────────────────────────────────── */
+        .hero {
+            text-align: center;
+            padding: 20px 0 56px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 64px;
+        }
+
+        .hero-wordmark {
+            font-size: clamp(38px, 8vw, 68px);
+            font-weight: 800;
+            letter-spacing: -2px;
+            color: #fff;
+            line-height: 1.05;
+        }
+
+        .hero-wordmark span { color: var(--accent); }
+
+        .hero-tagline {
+            margin-top: 16px;
+            font-size: 17px;
+            color: var(--text-dim);
+            max-width: 560px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.55;
+        }
+
+        .hero-cta {
+            margin-top: 28px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--accent);
+            color: #fff;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            padding: 10px 20px;
+            border-radius: 6px;
+            transition: background 0.15s;
+        }
+        .hero-cta:hover { background: #8b6fe0; }
+
+        /* ── Section ──────────────────────────────────────── */
+        .section {
+            margin-bottom: 72px;
+        }
+
+        .section-label {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+
+        .section-title {
+            font-size: 26px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: -0.5px;
+            margin-bottom: 18px;
+            line-height: 1.25;
+        }
+
+        .section-body p {
+            color: var(--text);
+            margin-bottom: 14px;
+        }
+        .section-body p:last-child { margin-bottom: 0; }
+
+        .section-body a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+        .section-body a:hover { text-decoration: underline; }
+
+        /* ── Workflow diagram ─────────────────────────────── */
+        .workflow {
+            margin-top: 28px;
+            display: flex;
+            align-items: stretch;
+            gap: 0;
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        @media (max-width: 640px) {
+            .workflow { flex-direction: column; }
+            .workflow-arrow { transform: rotate(90deg); }
+        }
+
+        .workflow-step {
+            flex: 1;
+            padding: 20px 16px;
+            text-align: center;
+            border-right: 1px solid var(--border);
+        }
+        .workflow-step:last-child { border-right: none; }
+
+        .workflow-step-icon {
+            font-size: 22px;
+            margin-bottom: 8px;
+        }
+
+        .workflow-step-num {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 4px;
+        }
+
+        .workflow-step-name {
+            font-size: 12px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+
+        .workflow-step-desc {
+            font-size: 13px;
+            color: var(--text-dim);
+            line-height: 1.4;
+        }
+
+        /* ── Agent table ──────────────────────────────────── */
+        .agent-table {
+            margin-top: 28px;
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .agent-table-header {
+            padding: 12px 18px;
+            border-bottom: 1px solid var(--border2);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            display: grid;
+            grid-template-columns: 200px 1fr 130px;
+            gap: 14px;
+        }
+
+        .agent-row {
+            display: grid;
+            grid-template-columns: 200px 1fr 130px;
+            gap: 14px;
+            align-items: start;
+            padding: 13px 18px;
+            border-bottom: 1px solid var(--border);
+        }
+        .agent-row:last-child { border-bottom: none; }
+        .agent-row:hover { background: #181818; }
+
+        .agent-name {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--accent);
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+            padding-top: 1px;
+        }
+
+        .agent-desc {
+            font-size: 13px;
+            color: var(--text-dim);
+            line-height: 1.5;
+        }
+
+        .agent-desc b { color: var(--text); }
+
+        .agent-subtitle {
+            font-size: 12px;
+            color: var(--text-faint);
+            margin-top: 2px;
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+            font-weight: 400;
+        }
+
+        .agent-tag {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            padding: 3px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            white-space: nowrap;
+        }
+
+        .tag-char   { background: #1a1a3a; color: #818cf8; border: 1px solid #2a2a5a; }
+        .tag-env    { background: #1a2a1a; color: #6ee7b7; border: 1px solid #1f4030; }
+        .tag-action { background: #2a1a1a; color: #fca5a5; border: 1px solid #4a2020; }
+        .tag-obj    { background: #2a1f0a; color: #fcd34d; border: 1px solid #4a3510; }
+        .tag-scene  { background: #1a1a2a; color: #93c5fd; border: 1px solid #1e2a4a; }
+
+        @media (max-width: 640px) {
+            .agent-table-header { display: none; }
+            .agent-row { grid-template-columns: 1fr; gap: 6px; }
+        }
+
+        /* ── Feature grid ─────────────────────────────────── */
+        .feature-grid {
+            margin-top: 28px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        @media (max-width: 580px) {
+            .feature-grid { grid-template-columns: 1fr; }
+        }
+
+        .feature-card {
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            padding: 18px 20px;
+        }
+
+        .feature-card-icon {
+            font-size: 20px;
+            margin-bottom: 8px;
+        }
+
+        .feature-card-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 6px;
+        }
+
+        .feature-card-desc {
+            font-size: 14px;
+            color: var(--text-dim);
+            line-height: 1.5;
+        }
+
+        /* ── Schema block ─────────────────────────────────── */
+        .schema-block {
+            margin-top: 28px;
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .schema-block-header {
+            padding: 10px 18px;
+            border-bottom: 1px solid var(--border2);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .schema-rows { display: flex; flex-direction: column; }
+
+        .schema-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            padding: 11px 18px;
+            border-bottom: 1px solid var(--border);
+        }
+        .schema-row:last-child { border-bottom: none; }
+
+        .schema-key {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--accent);
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+            min-width: 140px;
+            flex-shrink: 0;
+            padding-top: 1px;
+        }
+
+        .schema-val {
+            font-size: 13px;
+            color: var(--text-dim);
+            line-height: 1.5;
+        }
+        .schema-val b { color: var(--text); }
+
+        .chip {
+            display: inline-block;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: 3px;
+            font-size: 11px;
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+            padding: 1px 6px;
+            color: var(--text);
+            margin: 1px 2px;
+            white-space: nowrap;
+        }
+
+        /* ── Opinion bars ─────────────────────────────────── */
+        .opinion-demo {
+            margin-top: 28px;
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            padding: 20px 24px;
+        }
+
+        .opinion-demo-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 16px;
+        }
+
+        .opinion-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        .opinion-row:last-child { margin-bottom: 0; }
+
+        .opinion-label {
+            font-size: 12px;
+            color: var(--text-dim);
+            min-width: 100px;
+            flex-shrink: 0;
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+        }
+
+        .opinion-bar-track {
+            flex: 1;
+            height: 6px;
+            background: #222;
+            border-radius: 3px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .opinion-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            position: absolute;
+            left: 50%;
+            transform-origin: left;
+        }
+
+        .opinion-value {
+            font-size: 11px;
+            color: var(--text-dim);
+            min-width: 36px;
+            text-align: right;
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+        }
+
+        /* ── Privacy card ─────────────────────────────────── */
+        .privacy-card {
+            margin-top: 24px;
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-left: 3px solid var(--accent);
+            border-radius: 6px;
+            padding: 20px 22px;
+            display: flex;
+            gap: 18px;
+            align-items: flex-start;
+        }
+
+        .privacy-icon {
+            font-size: 26px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .privacy-text strong {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 6px;
+        }
+
+        .privacy-text p {
+            font-size: 13px;
+            color: var(--text-dim);
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        /* ── Provider list ────────────────────────────────── */
+        .provider-list {
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .provider-pill {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text);
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 20px;
+            padding: 5px 14px;
+        }
+
+        /* ── Inline TOC ───────────────────────────────────── */
+        .toc {
+            background: var(--surface);
+            border: 1px solid var(--border2);
+            border-radius: 8px;
+            padding: 24px 28px;
+            margin-bottom: 64px;
+        }
+
+        .toc-title {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 14px;
+        }
+
+        .toc-list {
+            list-style: none;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: repeat(3,auto);
+            grid-auto-flow: column;
+            gap: 6px 32px;
+        }
+
+        @media (max-width: 560px) {
+            .toc-list { grid-template-columns: 1fr; }
+        }
+
+        .toc-list a {
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .toc-list a:hover { text-decoration: underline; }
+        .toc-list .num {
+            font-size: 12px;
+            color: var(--text-faint);
+            font-variant-numeric: tabular-nums;
+            min-width: 18px;
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+        }
+
+        /* ── Side TOC ─────────────────────────────────────── */
+        .side-toc {
+            position: fixed;
+            left: max(12px, calc(50vw - 610px));
+            top: 50%;
+            transform: translateY(-50%);
+            width: 148px;
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+            z-index: 50;
+        }
+
+        .side-toc.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        @media (max-width: 1200px) {
+            .side-toc { display: none; }
+        }
+
+        .side-toc-item {
+            display: flex;
+            align-items: baseline;
+            gap: 7px;
+            padding: 4px 8px 4px 10px;
+            border-left: 2px solid transparent;
+            text-decoration: none;
+            border-radius: 0 3px 3px 0;
+            transition: border-color 0.15s, background 0.15s;
+        }
+
+        .side-toc-item:hover {
+            background: rgba(255,255,255,0.04);
+            border-left-color: var(--border2);
+        }
+
+        .side-toc-item.active {
+            border-left-color: var(--accent);
+            background: rgba(167,139,250,0.06);
+        }
+
+        .side-toc-num {
+            font-size: 10px;
+            font-variant-numeric: tabular-nums;
+            color: var(--text-faint);
+            flex-shrink: 0;
+            font-family: 'SF Mono', Menlo, monospace;
+            transition: color 0.15s;
+        }
+
+        .side-toc-item.active .side-toc-num { color: var(--accent); }
+
+        .side-toc-label {
+            font-size: 11.5px;
+            color: var(--text-dim);
+            line-height: 1.35;
+            transition: color 0.15s;
+        }
+
+        .side-toc-item:hover .side-toc-label { color: var(--text); }
+        .side-toc-item.active .side-toc-label { color: #fff; }
+
+        /* ── Section scroll offset ────────────────────────── */
+        .section { scroll-margin-top: 70px; }
+
+        /* ── Footer ───────────────────────────────────────── */
+        .about-footer {
+            border-top: 1px solid var(--border);
+            padding-top: 32px;
+            margin-top: 40px;
+            color: var(--text-dim);
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .about-footer a { color: var(--text-dim); text-decoration: none; }
+        .about-footer a:hover { color: var(--text); }
+    </style>
+</head>
+<body>
+
+<nav class="side-toc" id="sideToc">
+    <a href="#overview"   class="side-toc-item" data-section="overview">  <span class="side-toc-num">01</span><span class="side-toc-label">Overview</span></a>
+    <a href="#pipeline"   class="side-toc-item" data-section="pipeline">  <span class="side-toc-num">02</span><span class="side-toc-label">Agent Pipeline</span></a>
+    <a href="#npcs"       class="side-toc-item" data-section="npcs">      <span class="side-toc-num">03</span><span class="side-toc-label">NPC Profiles</span></a>
+    <a href="#characters" class="side-toc-item" data-section="characters"><span class="side-toc-num">04</span><span class="side-toc-label">Living Characters</span></a>
+    <a href="#data"       class="side-toc-item" data-section="data">      <span class="side-toc-num">05</span><span class="side-toc-label">Import / Export</span></a>
+    <a href="#privacy"    class="side-toc-item" data-section="privacy">   <span class="side-toc-num">06</span><span class="side-toc-label">Privacy & Setup</span></a>
+</nav>
+
+<nav class="topnav">
+    <a class="topnav-back" href="/storybound"><span class="arrow">&#8592;</span> StoryboundAI</a>
+    <span class="topnav-sep">/</span>
+    <span class="topnav-subtitle">About</span>
+</nav>
+
+<div class="page">
+
+    <!-- Hero -->
+    <div class="hero">
+        <div class="hero-wordmark"><span>Storybound</span>AI</div>
+        <p class="hero-tagline">
+            An AI-powered interactive RPG that runs entirely in your browser. Build characters, shape narratives, and watch your world evolve — driven by a pipeline of specialized AI agents.
+        </p>
+        <a class="hero-cta" href="/storybound">Play StoryboundAI</a>
+    </div>
+
+    <!-- Inline TOC -->
+    <div class="toc">
+        <div class="toc-title">Contents</div>
+        <ul class="toc-list">
+            <li><a href="#overview">  <span class="num">01</span> Overview</a></li>
+            <li><a href="#pipeline">  <span class="num">02</span> The AI Agent Pipeline</a></li>
+            <li><a href="#npcs">      <span class="num">03</span> NPC Opinion Profiles</a></li>
+            <li><a href="#characters"><span class="num">04</span> Living Characters</a></li>
+            <li><a href="#data">      <span class="num">05</span> Import / Export</a></li>
+            <li><a href="#privacy">   <span class="num">06</span> Privacy & Setup</a></li>
+        </ul>
+    </div>
+
+    <!-- What it is -->
+    <div class="section" id="overview">
+        <div class="section-label">Overview</div>
+        <h2 class="section-title">What is StoryboundAI?</h2>
+        <div class="section-body">
+            <p>
+                StoryboundAI is a browser-based interactive fiction game powered by AI. You create a character, drop into a living world, and take actions that drive a branching story. Storybound is much more than just a single AI chatbot. In the background, there are various AI Agents actively tracking the state of your world, your character, the people around you, and your ongoing objectives, updating each one after every turn.
+            </p>
+            <p>
+                There's no backend server. Every AI request goes directly from your browser to whichever API provider you configure. Your API key and story data never leave your device. There are no StoryboundAI servers; Your data is not retained by us (your API provider likely does retain your data though).
+            </p>
+        </div>
+
+        <div class="workflow">
+            <div class="workflow-step">
+                <div class="workflow-step-icon">🧬</div>
+                <div class="workflow-step-num">Step 1</div>
+                <div class="workflow-step-name">Create</div>
+                <div class="workflow-step-desc">AI generates your character's traits, abilities, and inventory</div>
+            </div>
+            <div class="workflow-step">
+                <div class="workflow-step-icon">🌍</div>
+                <div class="workflow-step-num">Step 2</div>
+                <div class="workflow-step-name">Enter</div>
+                <div class="workflow-step-desc">AI builds your starting environment and populates it with NPCs</div>
+            </div>
+            <div class="workflow-step">
+                <div class="workflow-step-icon">⚔️</div>
+                <div class="workflow-step-num">Step 3</div>
+                <div class="workflow-step-name">Act</div>
+                <div class="workflow-step-desc">Choose or write your action; the AI narrates what happens</div>
+            </div>
+            <div class="workflow-step">
+                <div class="workflow-step-icon">🔄</div>
+                <div class="workflow-step-num">Step 4</div>
+                <div class="workflow-step-name">Evolve</div>
+                <div class="workflow-step-desc">World state, character traits, inventory, and objectives update</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI agents pipeline -->
+    <div class="section" id="pipeline">
+        <div class="section-label">Under the Hood</div>
+        <h2 class="section-title">The AI agent pipeline</h2>
+        <div class="section-body">
+            <p>
+                Every meaningful game event is handled by a dedicated AI call with strict structured responses. Rather than one monolithic prompt, the game is split into a pipeline of specialized agents, each responsible for one piece of the world. This keeps outputs structured, predictable, and independently updatable. This design also allows the primary story driver agent to track only the relevant story context, leaving the secondary analysis agents to handle the rest.
+            </p>
+        </div>
+
+        <div class="agent-table">
+            <div class="agent-table-header">
+                <div>Agent</div>
+                <div>What it does</div>
+                <div>Phase</div>
+            </div>
+
+            <div class="agent-row">
+                <div class="agent-name">minichar_gen
+                <div class="agent-subtitle">Character Generation</div></div>
+                <div class="agent-desc">Generates <b>10 mini-characters</b> — name, gender, age, and role/job title. Used for mix-and-match character building before committing to a full character.</div>
+                <div><span class="agent-tag tag-char">Character</span></div>
+            </div>
+
+            <div class="agent-row">
+                <div class="agent-name">basic_info_gen
+                <div class="agent-subtitle">Character Generation</div></div>
+                <div class="agent-desc">Fleshes out <b>core identity</b>: full name, nickname, age, height, gender, and a short description. First of three sequential character generation calls. This will probably be consolidated with the minichar_gen function soon.</div>
+                <div><span class="agent-tag tag-char">Character</span></div>
+            </div>
+
+            <div class="agent-row">
+                <div class="agent-name">traits_gen
+                <div class="agent-subtitle">Character Generation</div></div>
+                <div class="agent-desc">Generates <b>abilities, limitations, flaws, agility, and starting location</b>. Abilities can include magical or unusual skills; limitations provide narrative balance.</div>
+                <div><span class="agent-tag tag-char">Character</span></div>
+            </div>
+
+            <div class="agent-row">
+                <div class="agent-name">inventory_gen
+                <div class="agent-subtitle">Content Generation</div></div>
+                <div class="agent-desc">Creates a <b>context-appropriate starting inventory</b> of 0–5 items, each with name, description, quantity, and weight. Items fit the character's background and location.</div>
+                <div><span class="agent-tag tag-char">Character</span></div>
+            </div>
+
+            <div class="agent-row">
+                <div class="agent-name">environment_gen
+                <div class="agent-subtitle">Content Generation</div></div>
+                <div class="agent-desc">Builds the <b>full starting environment</b>: location, time of day, temperature, vibe, sounds, an arrival backstory, and up to 5 NPCs — each with a rich opinion profile.</div>
+                <div><span class="agent-tag tag-env">Environment</span></div>
+            </div>
+
+            <div class="agent-row">
+                <div class="agent-name">action_suggester
+                <div class="agent-subtitle">Content Generation</div></div>
+                <div class="agent-desc">Generates <b>4 contextual actions</b> for the player each turn, scaled from low-risk to risky. This function is fed character abilities, flaws, inventory, environment, and active objectives (user-facing objective data only). These actions make it easy to use Storybound without typing very much.</div>
+                <div><span class="agent-tag tag-action">Action</span></div>
+            </div>
+
+            <div class="agent-row">
+                <div class="agent-name">story_narrator
+                <div class="agent-subtitle">Content Generation</div></div>
+                <div class="agent-desc">The main narrative engine — <b>writes what happens</b> when you take an action. Aware of full world state: character stats, environment, NPCs, history, objectives (including secret objective info), and maturity settings.</div>
+                <div><span class="agent-tag tag-action">Action</span></div>
+            </div>
+
+            <div class="agent-row">
+                <div class="agent-name">state_change_detector
+                <div class="agent-subtitle">Internal Brain</div></div>
+                <div class="agent-desc">After each narration, identifies <b>what changed</b>: did the environment shift? Did the character evolve? Does inventory need updating? Is a trade occuring? Triggers the appropriate downstream agents. This is primarily a change detection agent. It does NOT generate new story content; It flags story information as needing to be updated.</div>
+                <div><span class="agent-tag tag-action">Action</span></div>
+            </div>
+
+            <div class="agent-row">
+                <div class="agent-name">world_state_patcher
+                <div class="agent-subtitle">Internal Brain</div></div>
+                <div class="agent-desc">Receives a list of required environment updates from state_change_detector (above). Applies targeted updates to environment fields and character traits. NPC opinion profiles are updated here too.</div>
+                <div><span class="agent-tag tag-env">Environment</span></div>
+            </div>
+
+            <div class="agent-row">
+                <div class="agent-name">inventory_updater
+                <div class="agent-subtitle">Content Generation</div></div>
+                <div class="agent-desc">Recomputes the <b>player's full inventory</b> after items are gained, used, or lost during an action. Runs conditionally, only when state_change_detector flags an inventory change.</div>
+                <div><span class="agent-tag tag-action">Action</span></div>
+            </div>
+
+            <div class="agent-row">
+                <div class="agent-name">story_log_consolidator
+                <div class="agent-subtitle">Helper - Story Log</div></div>
+                <div class="agent-desc"><b>Summarizes the story so far</b> into a rolling log, preventing context loss over long sessions. Helps anchor the AI to important past events even as history is pruned.</div>
+                <div><span class="agent-tag tag-action">Action</span></div>
+            </div>
+
+            <div class="agent-row">
+                <div class="agent-name">objective_planner
+                <div class="agent-subtitle">Content Generation</div></div>
+                <div class="agent-desc">When a new objective is accepted, <b>writes a step-by-step plan</b>: user-visible steps with hidden AI context to guide NPC behavior toward objective completion.</div>
+                <div><span class="agent-tag tag-obj">Objectives</span></div>
+            </div>
+
+            <div class="agent-row">
+                <div class="agent-name">objective_progress
+                <div class="agent-subtitle">Internal Brain</div></div>
+                <div class="agent-desc"><b>Tracks which objective steps were completed or passed</b> after each action, and marks objectives as finished when all required steps are done.</div>
+                <div><span class="agent-tag tag-obj">Objectives</span></div>
+            </div>
+
+            <div class="agent-row">
+                <div class="agent-name">npc_inventory_gen
+                <div class="agent-subtitle">Content Generation</div></div>
+                <div class="agent-desc">Lazily generates an <b>NPC's inventory on demand</b> — only when the player chooses to inspect it. Context-aware based on who the NPC is and what's happening.</div>
+                <div><span class="agent-tag tag-env">Environment</span></div>
+            </div>
+
+            <div class="agent-row">
+                <div class="agent-name">scene_focus_gen
+                <div class="agent-subtitle">Helper - Image Gen</div></div>
+                <div class="agent-desc">Proposes <b>5 visual focus options</b> for scene illustration — specific framing choices based on what's happening in the current moment.</div>
+                <div><span class="agent-tag tag-scene">Scene</span></div>
+            </div>
+
+            <div class="agent-row">
+                <div class="agent-name">scene_visual_gen
+                <div class="agent-subtitle">Content Generation</div></div>
+                <div class="agent-desc">Builds a detailed <b>image generation prompt</b> from the chosen focus and full scene context, then calls the image model to produce a visual.</div>
+                <div><span class="agent-tag tag-scene">Scene</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NPC opinion profiles -->
+    <div class="section" id="npcs">
+        <div class="section-label">World Simulation</div>
+        <h2 class="section-title">NPC opinion profiles</h2>
+        <div class="section-body">
+            <p>
+                Every character in your world has a <strong>five-dimensional opinion profile</strong>, maintained and updated by the AI after every interaction. These aren't cosmetic — they influence how NPCs behave, what actions they offer, and how the narrator portrays their reactions.
+            </p>
+        </div>
+
+        <div class="schema-block">
+            <div class="schema-block-header">
+                <span>Opinion profile schema — per NPC, range −0.99 to +0.99</span>
+            </div>
+            <div class="schema-rows">
+                <div class="schema-row">
+                    <div class="schema-key">overall</div>
+                    <div class="schema-val">General disposition toward the player. <b>Negative = hostile, positive = friendly.</b></div>
+                </div>
+                <div class="schema-row">
+                    <div class="schema-key">familiarity</div>
+                    <div class="schema-val">How well they know the player. Starts low for strangers, grows through interaction.</div>
+                </div>
+                <div class="schema-row">
+                    <div class="schema-key">trust</div>
+                    <div class="schema-val">Confidence in the player's intentions. Can drop sharply from betrayal or deception.</div>
+                </div>
+                <div class="schema-row">
+                    <div class="schema-key">loyalty</div>
+                    <div class="schema-val">Commitment to the player's cause. High loyalty means the NPC will act on your behalf.</div>
+                </div>
+                <div class="schema-row">
+                    <div class="schema-key">touch_comfort</div>
+                    <div class="schema-val">Physical boundary comfort. Negative = discomfort with contact, positive = comfortable with closeness.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="opinion-demo">
+            <div class="opinion-demo-title">Example — Tavern keeper, mid-game</div>
+            <div class="opinion-row">
+                <div class="opinion-label">overall</div>
+                <div class="opinion-bar-track">
+                    <div class="opinion-bar-fill" style="width:35%;background:linear-gradient(90deg,#6ee7b7,#34d399);"></div>
+                </div>
+                <div class="opinion-value">+0.35</div>
+            </div>
+            <div class="opinion-row">
+                <div class="opinion-label">familiarity</div>
+                <div class="opinion-bar-track">
+                    <div class="opinion-bar-fill" style="width:55%;background:linear-gradient(90deg,#6ee7b7,#34d399);"></div>
+                </div>
+                <div class="opinion-value">+0.55</div>
+            </div>
+            <div class="opinion-row">
+                <div class="opinion-label">trust</div>
+                <div class="opinion-bar-track">
+                    <div class="opinion-bar-fill" style="width:20%;background:linear-gradient(90deg,#fcd34d,#f59e0b);"></div>
+                </div>
+                <div class="opinion-value">+0.20</div>
+            </div>
+            <div class="opinion-row">
+                <div class="opinion-label">loyalty</div>
+                <div class="opinion-bar-track">
+                    <div class="opinion-bar-fill" style="width:8%;background:linear-gradient(90deg,#fca5a5,#ef4444);"></div>
+                </div>
+                <div class="opinion-value">+0.08</div>
+            </div>
+            <div class="opinion-row">
+                <div class="opinion-label">touch_comfort</div>
+                <div class="opinion-bar-track">
+                    <div class="opinion-bar-fill" style="width:15%;background:linear-gradient(90deg,#fca5a5,#ef4444);left:35%;transform:scaleX(-1);transform-origin:left;"></div>
+                </div>
+                <div class="opinion-value">−0.15</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Character evolution -->
+    <div class="section" id="characters">
+        <div class="section-label">Living Characters</div>
+        <h2 class="section-title">Characters that change</h2>
+        <div class="section-body">
+            <p>
+                Your character isn't static. The AI can propose changes to your abilities, limitations, and flaws as the story develops, gaining a skill through training, losing a limitation after growth, or picking up a flaw from a traumatic event.
+            </p>
+            <p>
+                Every AI-proposed change can be <strong>undone</strong> with a single button press. Nothing is permanent unless you allow it to be, since the AI is annoying sometimes and proposes illogical changes.
+            </p>
+        </div>
+
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-card-icon">⚡</div>
+                <div class="feature-card-title">Ability evolution</div>
+                <div class="feature-card-desc">Abilities can be added, modified, or removed based on story events. Each change is tracked and reversible.</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-card-icon">🎯</div>
+                <div class="feature-card-title">Active objectives</div>
+                <div class="feature-card-desc">Objectives have hidden AI context — guiding NPC behavior toward helping or hindering you without breaking immersion.</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-card-icon">🗂️</div>
+                <div class="feature-card-title">Persistent inventory</div>
+                <div class="feature-card-desc">Every item gained or consumed is tracked. The AI updates your inventory after every relevant action.</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-card-icon">📜</div>
+                <div class="feature-card-title">Story log</div>
+                <div class="feature-card-desc">A rolling summary prevents memory loss over long sessions, keeping the AI anchored to what matters.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import / Export -->
+    <div class="section" id="data">
+        <div class="section-label">Data Portability</div>
+        <h2 class="section-title">Import / Export</h2>
+        <div class="section-body">
+            <p>
+                Your characters, story history, and settings can be exported as a single JSON file and re-imported at any time — across browsers or devices. The API key is intentionally excluded from exports.
+            </p>
+        </div>
+
+        <div class="schema-block">
+            <div class="schema-block-header"><span>Export format</span></div>
+            <div class="schema-rows">
+                <div class="schema-row">
+                    <div class="schema-key">_integrity</div>
+                    <div class="schema-val">A <b>SHA-256 hash</b> of the entire payload, computed at export time. On import, the hash is recomputed and compared — a mismatch surfaces a warning but does not block the import. I added this so anyone who "cheats" is acknowledged. Any file with broken integrity is "flagged", but that doesn't really do anything and can probably be easily faked.</div>
+                </div>
+                <div class="schema-row">
+                    <div class="schema-key">storybound_settings</div>
+                    <div class="schema-val">API provider URL, model names, mature content setting. <b>API key is stripped</b> before export.</div>
+                </div>
+                <div class="schema-row">
+                    <div class="schema-key">storybound_characters</div>
+                    <div class="schema-val">Full array of saved characters, each with their environment, NPCs, action history, objectives, and last-played timestamp.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="privacy-card" style="margin-top: 20px;">
+            <div class="privacy-icon">🔐</div>
+            <div class="privacy-text">
+                <strong>Hash verification</strong>
+                <p>The SHA-256 integrity check detects whether a backup file was manually edited after export. It's a tamper warning, not a restriction — modified files still import successfully with a notice. To the cheaters: I see you...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Privacy & API -->
+    <div class="section" id="privacy">
+        <div class="section-label">Privacy & Setup</div>
+        <h2 class="section-title">Your API key, your data</h2>
+        <div class="section-body">
+            <p>
+                StoryboundAI has no backend. Every API request goes directly from your browser to your chosen AI provider. Your API key is stored only in your browser's local storage and is never included in data exports.
+            </p>
+        </div>
+
+        <div class="privacy-card">
+            <div class="privacy-icon">🔒</div>
+            <div class="privacy-text">
+                <strong>Client-side only</strong>
+                <p>No account, no server, no tracking beyond Cloudflare Analytics. Game state, characters, and story history live entirely in your browser's localStorage. Use the built-in export tool to back them up.</p>
+            </div>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <div class="section-label" style="margin-bottom: 10px;">Supported providers</div>
+            <div class="provider-list">
+                <span class="provider-pill">xAI (Grok)</span>
+                <span class="provider-pill">OpenAI</span>
+                <span class="provider-pill">Anthropic</span>
+                <span class="provider-pill">Groq</span>
+                <span class="provider-pill">OpenRouter</span>
+                <span class="provider-pill">Custom endpoint</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="about-footer">
+        <span>Made by <a href="https://github.com/PeterBrownie" target="_blank" rel="noopener noreferrer">Peter Brown</a></span>
+        <span><a href="/storybound">Play StoryboundAI →</a></span>
+    </div>
+
+</div>
+
+<script>
+    const sideToc   = document.getElementById('sideToc');
+    const inlineToc = document.querySelector('.toc');
+    const sections  = document.querySelectorAll('.section[id]');
+    const sideItems = document.querySelectorAll('.side-toc-item');
+
+    // Show side-toc once the inline toc scrolls out of view
+    new IntersectionObserver(([e]) => {
+        sideToc.classList.toggle('visible', !e.isIntersecting);
+    }, { threshold: 0 }).observe(inlineToc);
+
+    // Highlight the active section
+    function setActive(id) {
+        sideItems.forEach(item => {
+            item.classList.toggle('active', item.dataset.section === id);
+        });
+    }
+
+    const sectionObserver = new IntersectionObserver((entries) => {
+        entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+    }, { rootMargin: '-15% 0px -70% 0px' });
+    sections.forEach(s => sectionObserver.observe(s));
+</script>
+</body>
+</html>

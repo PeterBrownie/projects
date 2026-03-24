@@ -53,7 +53,7 @@ var DEMO_KEY_BLOB = 'CPhn0cWNTi6IHnSUCb8kkWpbsrnzakx7NoKaLdjEVQjVrMKBmR+9y8KIXnx
           <label for="settingsImageModel">Image Model</label>
           <input type="text" id="settingsImageModel" placeholder="grok-imagine-image-pro" />
         </div>
-        <div class="settings-toggle-row">
+        <div class="settings-toggle-row" id="settingsMatureContentRow" style="display:none;">
           <input type="checkbox" id="settingsMatureContent" />
           <label for="settingsMatureContent">Allow mature content</label>
         </div>
@@ -113,6 +113,7 @@ var DEMO_KEY_BLOB = 'CPhn0cWNTi6IHnSUCb8kkWpbsrnzakx7NoKaLdjEVQjVrMKBmR+9y8KIXnx
     document.getElementById('settingsApiUrlSelect').addEventListener('change', function() {
       syncUrlCustomInput();
       syncTextModelVisibility();
+      syncMatureContentVisibility();
       checkLocalhostWarning();
       scheduleModelsFetch();
     });
@@ -212,6 +213,7 @@ var DEMO_KEY_BLOB = 'CPhn0cWNTi6IHnSUCb8kkWpbsrnzakx7NoKaLdjEVQjVrMKBmR+9y8KIXnx
     syncModelCustomInput();
 
     document.getElementById('settingsImageModel').value = s.imageModel;
+    syncMatureContentVisibility();
     document.getElementById('settingsMatureContent').checked = s.allowMatureContent;
     document.getElementById('settingsMatureAgeConfirm').checked = s.allowMatureContent;
     syncAgeGate();
@@ -363,6 +365,17 @@ var DEMO_KEY_BLOB = 'CPhn0cWNTi6IHnSUCb8kkWpbsrnzakx7NoKaLdjEVQjVrMKBmR+9y8KIXnx
     msgEl.textContent = 'All local data cleared.';
     msgEl.className = 'clear-data-ok';
     setTimeout(function() { location.reload(); }, 1500);
+  }
+
+  function syncMatureContentVisibility() {
+    const url = getActiveUrl();
+    const isXai = url.indexOf('api.x.ai') !== -1;
+    document.getElementById('settingsMatureContentRow').style.display = isXai ? '' : 'none';
+    if (!isXai) {
+      document.getElementById('settingsMatureContent').checked = false;
+      document.getElementById('settingsMatureAgeGate').style.display = 'none';
+      document.getElementById('settingsMatureAgeConfirm').checked = false;
+    }
   }
 
   function syncAgeGate() {
