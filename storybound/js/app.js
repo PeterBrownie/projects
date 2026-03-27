@@ -110,9 +110,11 @@ async function startGameWithSavedData(character, environment, history) {
   environmentData = environment;
   actionHistory = history || [];
   currentStoryLog = String(character && character.story_log || '');
+  currentObjectives = Array.isArray(character && character.objectives) ? character.objectives : [];
   hydrateRemovedNearbyCharactersFromEnvironment();
   renderGameSidebar();
   setPhase('game');
+  syncObjectivesUI();
   renderActionHistoryPanel();
 
   // Restore last user/AI exchange in the action response area

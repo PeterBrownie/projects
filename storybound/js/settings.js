@@ -83,6 +83,9 @@ var DEMO_KEY_BLOB = 'CPhn0cWNTi6IHnSUCb8kkWpbsrnzakx7NoKaLdjEVQjVrMKBmR+9y8KIXnx
         </div>
         <hr class="settings-divider" />
         <div class="settings-portability">
+          <button id="settingsCopyBackupBtn" title="Copy backup JSON to clipboard">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18px" height="18px" viewBox="0 0 20 20" fill="currentColor" stroke="none"><path d="M7 2a2 2 0 0 0-2 2v1H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H7Zm0 1h9a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1h-1V7a2 2 0 0 0-2-2H6V4a1 1 0 0 1 1-1ZM4 6h9a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z"/></svg>
+          </button>
           <button id="settingsExportBtn">
             <svg xmlns="http://www.w3.org/2000/svg" width="30px" height="30px" viewBox="0 0 20 20" fill="#FFFFFF" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm-2 1a2 2 0 1 1 4 0 2 2 0 0 1-4 0Zm2-14c.28 0 .5.22.5.5v7.8l3.15-3.15a.5.5 0 0 1 .7.7l-4 4a.5.5 0 0 1-.7 0l-4-4a.5.5 0 1 1 .7-.7l3.15 3.14V2.5c0-.28.22-.5.5-.5Z"/></svg>
             Download Data Backup
@@ -128,6 +131,7 @@ var DEMO_KEY_BLOB = 'CPhn0cWNTi6IHnSUCb8kkWpbsrnzakx7NoKaLdjEVQjVrMKBmR+9y8KIXnx
     document.getElementById('settingsTextModelSelect').addEventListener('change', syncModelCustomInput);
     document.getElementById('settingsMatureContent').addEventListener('change', syncAgeGate);
     document.getElementById('settingsExportBtn').addEventListener('click', exportData);
+    document.getElementById('settingsCopyBackupBtn').addEventListener('click', copyBackupToClipboard);
     document.getElementById('settingsImportBtn').addEventListener('click', function() {
       document.getElementById('settingsImportFile').click();
     });
@@ -464,8 +468,12 @@ var DEMO_KEY_BLOB = 'CPhn0cWNTi6IHnSUCb8kkWpbsrnzakx7NoKaLdjEVQjVrMKBmR+9y8KIXnx
     const resultEl = document.getElementById('settingsTestResult');
     resultEl.textContent = 'Testing...';
     resultEl.className = '';
+    const urlSelect = document.getElementById('settingsApiUrlSelect');
+    const apiBaseUrl = (urlSelect && urlSelect.value !== '__custom__')
+      ? urlSelect.value.trim()
+      : document.getElementById('settingsApiUrl').value.trim();
     const tempSettings = {
-      apiBaseUrl: document.getElementById('settingsApiUrl').value.trim(),
+      apiBaseUrl: apiBaseUrl,
       apiKey: document.getElementById('settingsApiKey').value.trim(),
       textModel: document.getElementById('settingsTextModel').value.trim(),
       imageModel: document.getElementById('settingsImageModel').value.trim(),
@@ -482,31 +490,31 @@ var DEMO_KEY_BLOB = 'CPhn0cWNTi6IHnSUCb8kkWpbsrnzakx7NoKaLdjEVQjVrMKBmR+9y8KIXnx
   }
 
   // --- Export ---
+  async function buildBackupJson() {
+    const payload = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('storybound_') && k !== 'storybound_settings') {
+        try { payload[k] = JSON.parse(localStorage.getItem(k)); }
+        catch (e) { payload[k] = localStorage.getItem(k); }
+      }
+    }
+    const s = getSettings();
+    const settingsCopy = Object.assign({}, s);
+    delete settingsCopy.apiKey;
+    payload['storybound_settings'] = settingsCopy;
+
+    const payloadForHash = Object.assign({}, payload);
+    delete payloadForHash._integrity;
+    const sorted = sortedKeys(payloadForHash);
+    const hashHex = await sha256Hex(JSON.stringify(sorted));
+    return JSON.stringify(Object.assign({ _integrity: hashHex }, payload), null, 2);
+  }
+
   async function exportData() {
     try {
-      const payload = {};
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (k && k.startsWith('storybound_') && k !== 'storybound_settings') {
-          try { payload[k] = JSON.parse(localStorage.getItem(k)); }
-          catch (e) { payload[k] = localStorage.getItem(k); }
-        }
-      }
-      // Include settings minus apiKey
-      const s = getSettings();
-      const settingsCopy = Object.assign({}, s);
-      delete settingsCopy.apiKey;
-      payload['storybound_settings'] = settingsCopy;
-
-      // Compute integrity hash over payload with _integrity removed
-      const payloadForHash = Object.assign({}, payload);
-      delete payloadForHash._integrity;
-      const sorted = sortedKeys(payloadForHash);
-      const hashInput = JSON.stringify(sorted);
-      const hashHex = await sha256Hex(hashInput);
-      const exportObj = Object.assign({ _integrity: hashHex }, payload);
-
-      const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+      const json = await buildBackupJson();
+      const blob = new Blob([json], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -516,6 +524,23 @@ var DEMO_KEY_BLOB = 'CPhn0cWNTi6IHnSUCb8kkWpbsrnzakx7NoKaLdjEVQjVrMKBmR+9y8KIXnx
     } catch (err) {
       const msgEl = document.getElementById('settingsImportMsg');
       if (msgEl) msgEl.textContent = 'Download failed: ' + (err.message || 'Unknown error');
+    }
+  }
+
+  async function copyBackupToClipboard() {
+    const btn = document.getElementById('settingsCopyBackupBtn');
+    const msgEl = document.getElementById('settingsImportMsg');
+    try {
+      const json = await buildBackupJson();
+      await navigator.clipboard.writeText(json);
+      if (btn) {
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18px" height="18px" viewBox="0 0 20 20" fill="currentColor"><path d="M16.7 5.3a1 1 0 0 1 0 1.4l-8 8a1 1 0 0 1-1.4 0l-4-4a1 1 0 1 1 1.4-1.4L8 12.58l7.3-7.3a1 1 0 0 1 1.4 0Z"/></svg>';
+        btn.style.color = '#6dbf7e';
+        setTimeout(function() { btn.innerHTML = originalHtml; btn.style.color = ''; }, 2000);
+      }
+    } catch (err) {
+      if (msgEl) msgEl.textContent = 'Copy failed: ' + (err.message || 'Unknown error');
     }
   }
 

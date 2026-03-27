@@ -250,32 +250,26 @@ function buildNpcOpinionTooltipHtml(person) {
 // --- Helper: Render in-game sidebar ---
 function renderGameSidebar() {
     if (!generatedCharacter || !environmentData) return;
-    const REMOVED_LIMIT = 5;
     const removedNearbyHtml = Array.isArray(removedNearbyCharacters) && removedNearbyCharacters.length > 0
         ? (function() {
-            function makeBtn(p, hidden) {
+            function makeBtn(p) {
                 const name = p && p.name ? String(p.name) : '';
                 const escapedName = name.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
                 const tooltipHtml = buildNpcOpinionTooltipHtml(p);
-                const hiddenAttr = hidden ? ' data-overflow="1" style="display:none;"' : '';
-                return `<button class="game-sidebar-return-btn" type="button" data-person-name="${escapedName}" data-tooltip-html="${encodeURIComponent(tooltipHtml)}"${hiddenAttr}>Return ${escapedName}</button>`;
+                return `<button class="game-sidebar-return-btn" type="button" data-person-name="${escapedName}" data-tooltip-html="${encodeURIComponent(tooltipHtml)}">Return ${escapedName}</button>`;
             }
-            const hasMore = removedNearbyCharacters.length > REMOVED_LIMIT;
-            const allBtns = removedNearbyCharacters.map((p, i) => makeBtn(p, i >= REMOVED_LIMIT)).join('');
-            const expandBtn = hasMore
-                ? `<button id="removedNearbyExpandBtn" type="button">+${removedNearbyCharacters.length - REMOVED_LIMIT} more</button>`
-                : '';
+            const count = removedNearbyCharacters.length;
+            const allBtns = removedNearbyCharacters.map(p => makeBtn(p)).join('');
             return `<div style="margin-top:0.45em;">
-                <div style="color:#ffcc80;font-size:0.85em;opacity:0.9;margin-bottom:0.25em;">Recently removed:</div>
-                <div class="removed-nearby-list">${allBtns}</div>
-                ${expandBtn}
+                <button id="removedNearbyToggleBtn" type="button" style="background:transparent;border:none;color:#ffcc80;font-size:0.85em;opacity:0.9;cursor:pointer;padding:0;text-align:left;">Recently removed (${count}) ▸</button>
+                <div id="removedNearbyList" class="removed-nearby-list" style="display:none;margin-top:0.4em;">${allBtns}</div>
             </div>`;
         })()
         : '';
     // --- Condensed environment section ---
     gameSidebar.innerHTML = `
         <div class="game-sidebar-brand">
-            <span class="game-sidebar-brand-title dm-serif-text-regular">StoryboundAI</span>
+            <span class="game-sidebar-brand-title dm-serif-text-regular">StoryboundAI</span><a href="about.html" target="_blank" title="About" style="display:inline-flex;align-items:center;justify-content:center;margin-left:0.5em;color:#FFFFFF;opacity:0.6;text-decoration:none;vertical-align:middle;" aria-label="About"><svg xmlns="http://www.w3.org/2000/svg" width="15px" height="15px" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a8 8 0 1 0 0 16A8 8 0 0 0 10 2Zm0 1a7 7 0 1 1 0 14A7 7 0 0 1 10 3Zm0 3a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm0 4a.75.75 0 0 0-.75.75v3.5a.75.75 0 0 0 1.5 0v-3.5A.75.75 0 0 0 10 10Z"/></svg></a>
             <button class="game-sidebar-settings-btn" id="settingsGearBtnSidebar" title="Settings" aria-label="Settings">
                 <svg xmlns="http://www.w3.org/2000/svg" width="30px" height="30px" viewBox="0 0 20 20" fill="#FFFFFF" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"><path d="M1.91 7.38A8.5 8.5 0 0 1 3.7 4.3a.5.5 0 0 1 .54-.13l1.92.68a1 1 0 0 0 1.32-.76l.36-2a.5.5 0 0 1 .4-.4 8.53 8.53 0 0 1 3.55 0c.2.04.35.2.38.4l.37 2a1 1 0 0 0 1.32.76l1.92-.68a.5.5 0 0 1 .54.13 8.5 8.5 0 0 1 1.78 3.08c.06.2 0 .4-.15.54l-1.56 1.32a1 1 0 0 0 0 1.52l1.56 1.32a.5.5 0 0 1 .15.54 8.5 8.5 0 0 1-1.78 3.08.5.5 0 0 1-.54.13l-1.92-.68a1 1 0 0 0-1.32.76l-.37 2a.5.5 0 0 1-.38.4 8.53 8.53 0 0 1-3.56 0 .5.5 0 0 1-.39-.4l-.36-2a1 1 0 0 0-1.32-.76l-1.92.68a.5.5 0 0 1-.54-.13 8.5 8.5 0 0 1-1.78-3.08.5.5 0 0 1 .15-.54l1.56-1.32a1 1 0 0 0 0-1.52L2.06 7.92a.5.5 0 0 1-.15-.54Zm1.06 0 1.3 1.1a2 2 0 0 1 0 3.04l-1.3 1.1c.3.79.72 1.51 1.25 2.16l1.6-.58a2 2 0 0 1 2.63 1.53l.3 1.67a7.56 7.56 0 0 0 2.5 0l.3-1.67a2 2 0 0 1 2.64-1.53l1.6.58a7.5 7.5 0 0 0 1.24-2.16l-1.3-1.1a2 2 0 0 1 0-3.04l1.3-1.1a7.5 7.5 0 0 0-1.25-2.16l-1.6.58a2 2 0 0 1-2.63-1.53l-.3-1.67a7.55 7.55 0 0 0-2.5 0l-.3 1.67A2 2 0 0 1 5.81 5.8l-1.6-.58a7.5 7.5 0 0 0-1.24 2.16ZM7.5 10a2.5 2.5 0 1 1 5 0 2.5 2.5 0 0 1-5 0Zm1 0a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0Z"/>
                 </svg>
@@ -454,14 +448,14 @@ function renderGameSidebar() {
                 scheduleTooltipHide();
             };
         });
-        // Wire "more" expand button for recently removed
-        const expandBtn = gameSidebar.querySelector('#removedNearbyExpandBtn');
-        if (expandBtn) {
-            expandBtn.onclick = function() {
-                gameSidebar.querySelectorAll('.game-sidebar-return-btn[data-overflow]').forEach(function(btn) {
-                    btn.style.display = '';
-                });
-                expandBtn.style.display = 'none';
+        // Wire toggle for recently removed list
+        const removedToggleBtn = gameSidebar.querySelector('#removedNearbyToggleBtn');
+        const removedList = gameSidebar.querySelector('#removedNearbyList');
+        if (removedToggleBtn && removedList) {
+            removedToggleBtn.onclick = function() {
+                const expanded = removedList.style.display !== 'none';
+                removedList.style.display = expanded ? 'none' : '';
+                removedToggleBtn.textContent = removedToggleBtn.textContent.replace(expanded ? '▾' : '▸', expanded ? '▸' : '▾');
             };
         }
     }, 0);

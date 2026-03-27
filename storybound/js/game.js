@@ -90,7 +90,7 @@ function buildTraitUndoTooltipHtml(action) {
     if (action.changeType === 'removed') {
         return '<strong>' + escapeHtml(currentTitle) + '</strong><br><span style="color:#b0b3b8;">' + traitLabel + ' was removed by AI.</span><br><span style="color:#8ea4ba;">Removed:</span> ' + escapeHtml(oldLabel);
     }
-    return '<strong>' + escapeHtml(currentTitle) + '</strong><br><span style="color:#b0b3b8;">' + traitLabel + ' was modified by AI.</span><br><span style="color:#8ea4ba;">From:</span> ' + escapeHtml(oldLabel) + '<br><span style="color:#8ea4ba;">To:</span> ' + escapeHtml(newLabel);
+    return '<span style="color:#b0b3b8;">' + traitLabel + ' was modified by AI.</span><br><span style="color:#8ea4ba;">From:</span> ' + escapeHtml(oldLabel) + '<br><span style="color:#8ea4ba;">To:</span> ' + escapeHtml(newLabel);
 }
 function buildTraitUndoButtonText(action) {
     if (!action || typeof action !== 'object') return 'Undo change';
@@ -213,6 +213,52 @@ function bindTraitUndoButtons(container) {
 // renderOptionalNpcInv — shows "Generate X inventory" buttons after a turn
 // ---------------------------------------------------------------------------
 
+function appendInventoryToHistory(inventoryTitle, items) {
+    for (var i = actionHistory.length - 1; i >= 0; i--) {
+        if (actionHistory[i].role === 'assistant') {
+            var names = (Array.isArray(items) ? items : [])
+                .map(function(item) { return item && item.name ? String(item.name).trim() : ''; })
+                .filter(Boolean);
+            var summary = '[Generated inventory for: ' + inventoryTitle + '. Items: ' +
+                (names.length ? names.join(', ') : 'none') + ']';
+            actionHistory[i] = { role: 'assistant', content: actionHistory[i].content + '\n\n' + summary };
+            break;
+        }
+    }
+}
+
+function renderDisplayedInventories(inventories) {
+    if (!Array.isArray(inventories) || inventories.length === 0) return;
+    if (!actionResponseArea) return;
+    var html = inventories.map(function(inv) {
+        if (!inv) return '';
+        var title = escapeHtml(inv.inventoryTitle || 'Inventory');
+        var items = Array.isArray(inv.items) ? inv.items : [];
+        if (items.length === 0) {
+            return '<div style="margin-top:0.5em;color:#88939f;font-size:0.86em;">' + title + ': no items.</div>';
+        }
+        var itemsHtml = items.map(function(item) {
+            var itemName = escapeHtml(item && item.name ? item.name : 'Unnamed Item');
+            var qty = Number.isFinite(Number(item && item.quantity)) ? Number(item.quantity) : null;
+            var desc = escapeHtml(item && item.description ? item.description : '');
+            return '<div style="margin-top:0.3em;">' +
+                (qty ? '<span style="color:#b0b3b8;font-size:0.7em;">(x' + qty + ')</span> ' : '') +
+                '<span style="color:hsl(var(--accent-h),100%,85%);font-size:0.82em;">' + itemName + '</span>' +
+                (desc ? '<span style="color:#9aa4ae;font-size:0.72em;"> - ' + desc + '</span>' : '') +
+                '</div>';
+        }).join('');
+        return '<div style="margin-top:0.7em;"><strong style="font-size:0.9em;color:#a9c2d9;">' + title + ':</strong>' + itemsHtml + '</div>';
+    }).join('');
+    if (!html) return;
+    var container = document.createElement('div');
+    container.style.marginTop = '0.6em';
+    container.innerHTML = html;
+    actionResponseArea.appendChild(container);
+    inventories.forEach(function(inv) {
+        if (inv) appendInventoryToHistory(inv.inventoryTitle || 'Inventory', inv.items);
+    });
+}
+
 function renderOptionalNpcInv(names) {
     if (!Array.isArray(names) || names.length === 0) return;
     if (!actionResponseArea) return;
@@ -222,8 +268,8 @@ function renderOptionalNpcInv(names) {
         var safeName = escapeHtml(String(name || '').trim());
         if (!safeName) return '';
         var blockId = 'optionalNpcInv_' + turnId + '_' + idx;
-        return '<div style="margin-top:0.45em;">' +
-            '<button type="button" class="optional-npc-inv-btn" data-name="' + safeName + '" data-target-id="' + blockId + '" style="background:transparent;border:1px solid #2f4258;color:#8ea4ba;font-size:0.78em;padding:0.28em 0.52em;border-radius:6px;cursor:pointer;opacity:0.72;">Generate ' + safeName + ' inventory</button>' +
+        return '<div style="margin-top:0.7em;">' +
+            '<button type="button" class="optional-npc-inv-btn" data-name="' + safeName + '" data-target-id="' + blockId + '" style="background:transparent;border:1px solid #2f4258;color:#8ea4ba;font-size:0.78em;padding:0.4em 0.7em;border-radius:6px;cursor:pointer;opacity:0.72;">Generate ' + safeName + ' inventory</button>' +
             '<div id="' + blockId + '" style="margin-top:0.35em;"></div>' +
             '</div>';
     }).join('');
@@ -265,7 +311,7 @@ function renderOptionalNpcInv(names) {
                     var itemName = escapeHtml(item && item.name ? item.name : 'Unnamed Item');
                     var qty = Number.isFinite(Number(item && item.quantity)) ? Number(item.quantity) : null;
                     var desc = escapeHtml(item && item.description ? item.description : '');
-                    return '<div style="margin-top:0.12em;">' +
+                    return '<div style="margin-top:0.3em;">' +
                         (qty ? '<span style="color:#b0b3b8;font-size:0.7em;">(x' + qty + ')</span> ' : '') +
                         '<span style="color:hsl(var(--accent-h),100%,85%);font-size:0.82em;">' + itemName + '</span>' +
                         (desc ? '<span style="color:#9aa4ae;font-size:0.72em;"> - ' + desc + '</span>' : '') +
@@ -273,6 +319,7 @@ function renderOptionalNpcInv(names) {
                 }).join('');
                 target.innerHTML = '<div style="margin-top:0.2em;"><strong style="font-size:0.9em;color:#a9c2d9;">' + title + ':</strong>' + itemsHtml + '</div>';
                 btn.style.display = 'none';
+                appendInventoryToHistory(invData.inventoryTitle || name, items);
             } catch (err) {
                 console.error('[optional_npc_inventory] Exception:', err);
                 btn.disabled = false;
@@ -667,6 +714,14 @@ async function handleActionLoop(selectedAction) {
   if (isPendingAction) return;
   isPendingAction = true;
 
+  // Collapse removed-nearby list if open
+  var _removedList = document.getElementById('removedNearbyList');
+  var _removedToggle = document.getElementById('removedNearbyToggleBtn');
+  if (_removedList && _removedList.style.display !== 'none') {
+    _removedList.style.display = 'none';
+    if (_removedToggle) _removedToggle.textContent = _removedToggle.textContent.replace('▾', '▸');
+  }
+
   // 1. Show loading — display user action in blue, then loading indicator
   renderActionButtons(null);
   var formattedSelectedAction = escapeHtml(selectedAction);
@@ -742,7 +797,7 @@ async function handleActionLoop(selectedAction) {
 
     // 10. Track removed characters (increment turn counter first so purge logic uses current turn)
     sceneTurnCounter += 1;
-    trackRemovedNearbyCharacters(previousEnvironment, changes.environment, actionHistory.length);
+    trackRemovedNearbyCharacters(previousEnvironment, changes.environment, sceneTurnCounter);
     purgeExpiredRemovedCharacters(sceneTurnCounter);
     persistRemovedNearbyCharactersToEnvironment();
 
@@ -779,6 +834,9 @@ async function handleActionLoop(selectedAction) {
         delete generatedCharacter._pendingObjectives;
         saveFullProgress(generatedCharacter, environmentData, actionHistory);
       }
+    }
+    if (Array.isArray(changes.displayedInventories) && changes.displayedInventories.length > 0) {
+      renderDisplayedInventories(changes.displayedInventories);
     }
     if (Array.isArray(changes.optionalNpcInv) && changes.optionalNpcInv.length > 0) {
       renderOptionalNpcInv(changes.optionalNpcInv);
@@ -882,7 +940,7 @@ function renderStateChanges(changes, previousEnvironment, previousCharacter) {
                     : Number.isFinite(newOv) ? ' (<span style="color:' + colorNew + ';font-size:0.8em;">' + newOv.toFixed(2) + ' ' + opinionLabel(newOv) + '</span>)' : '') +
                 '</li>';
         }).join('');
-        html += fmtRow(fmtLabel('People', '<ul style="margin:0.2em 0 0 1.2em;">' + peopleItems + '</ul>', '#4fc3f7'));
+        html += fmtRow(fmtLabel('People', '<ul style="margin:0.2em 0 0 1.2em;">' + peopleItems + '</ul>', 'hsl(var(--accent-h),100%,85%)'));
     }
 
     // Character patch
@@ -1045,17 +1103,16 @@ function renderOptionalObjectives(candidates) {
             : desc;
         var encodedTooltip = encodeURIComponent(tooltipHtml);
         var blockId = 'optionalObjective_' + turnId + '_' + idx;
-        return '<div style="margin-top:0.45em;">' +
-            '<button type="button" class="optional-objective-btn" data-objective="' + encodedObj + '" data-target-id="' + blockId + '" data-tooltip-html="' + encodedTooltip + '" style="background:transparent;border:1px solid #2f4258;color:#8ea4ba;font-size:0.78em;padding:0.28em 0.52em;border-radius:6px;cursor:pointer;opacity:0.72;">Add objective: ' + title + '</button>' +
-            '<div id="' + blockId + '" style="margin-top:0.35em;"></div>' +
-            '</div>';
+        return '<button type="button" class="optional-objective-btn" data-objective="' + encodedObj + '" data-target-id="' + blockId + '" data-tooltip-html="' + encodedTooltip + '" style="background:transparent;border:1px solid #2f4258;color:#8ea4ba;font-size:0.78em;padding:0.4em 0.7em;border-radius:6px;cursor:pointer;opacity:0.72;">Add objective: ' + title + '</button>' +
+            '<div id="' + blockId + '" style="margin-top:0.35em;"></div>';
     }).join('');
 
     if (!rows) return;
 
     var container = document.createElement('div');
     container.style.marginTop = '0.6em';
-    container.innerHTML = '<div style="color:#7f8a96;font-size:0.86em;opacity:0.78;">Optional objectives:</div>' + rows;
+    container.innerHTML = '<div style="color:#7f8a96;font-size:0.86em;opacity:0.78;margin-bottom:0.5em;">Optional objectives:</div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:0.5em;">' + rows + '</div>';
     actionResponseArea.appendChild(container);
 
     // Bind click handlers

@@ -1481,6 +1481,8 @@ async function detectNeedsStateRegen(character, environment, inventory, action, 
       '- Set to true when the player IMPROVES an existing ability/mastery in a way that should persist.\n' +
       '- Set to true for durable trait shifts (agility, limitations, flaws, or character description) caused by the action/outcome.\n' +
       '- Do NOT set true for temporary boosts/debuffs, short-lived emotions, or one-turn effects.\n' +
+      '- Do NOT set true for limitations unless they are permanent or long-lasting — a temporary injury, tiredness, or situational disadvantage does not qualify.\n' +
+      '- Do NOT set true for abilities unless the player genuinely learned or substantially improved a skill — a single successful action does not qualify.\n' +
       '- character_justification is required ONLY if character=true and should briefly name what changed (example: learned new ability and refined agility).\n' +
       '- If character=false, set character_justification to an empty string.\n\n' +
       'Rule 3 - inventory:\n' +
@@ -1493,8 +1495,8 @@ async function detectNeedsStateRegen(character, environment, inventory, action, 
       '- Add names/locations only when another inventory is strongly relevant now (trade, combat, looting, searching, or look-around context).\n' +
       '- This can include NPCs, creatures, containers, or locations.\n' +
       '- Do not include entities whose inventories were just generated and likely unchanged.\n' +
-      '- IMPORTANT: Only do this if the player\'s action EXPLICITLY asks to inspect/search/loot/inventory/trade.\n' +
-      '- If the player action is normal dialogue (greeting, persuasion, questions, threats, movement), return [].\n' +
+      '- Include when the player\'s action explicitly asks to inspect/search/loot/inventory/trade, AND also when the context strongly implies an inventory would be useful (e.g. a merchant is offering wares, loot is nearby after combat, a container was just discovered).\n' +
+      '- If the player action is normal dialogue (greeting, persuasion, questions, threats, movement) with no inventory relevance, return [].\n' +
       '- If unsure, return [].\n\n' +
       'Rule 5 - story_log_addition:\n' +
       '- Return either few words (string) or an empty string.\n' +
@@ -1569,6 +1571,8 @@ async function detectNeedsStateRegen(character, environment, inventory, action, 
   });
 
   var content = await apiChat(messages, SCHEMA_ACTION_STATE_CHANGES);
+  console.log('[detectNeedsStateRegen] raw response:', content);
+  console.log('[detectNeedsStateRegen] playerExplicitlyRequestedInv:', playerExplicitlyRequestedInv, '| action:', actionText);
 
   var data = {};
   try {
@@ -1637,7 +1641,7 @@ async function detectNeedsStateRegen(character, environment, inventory, action, 
   var optionalObjectives = normalizeObjectiveCandidates(data.optional_objectives || []);
   optionalObjectives = dropObjectiveCandidatesSimilarToActive(optionalObjectives, activeBrief);
 
-  return {
+  var result = {
     environment: environmentFlag,
     environment_justification: environmentJustification,
     character: characterFlag,
@@ -1649,6 +1653,8 @@ async function detectNeedsStateRegen(character, environment, inventory, action, 
     story_log_addition: storyLogAddition,
     secret_story_detail: secretStoryDetail
   };
+  console.log('[detectNeedsStateRegen] final result:', result);
+  return result;
 }
 
 async function regenerateEnvironmentState(character, environment, inventory, action, response, history, environmentJustification, characterJustification, removedPeople) {
@@ -1735,6 +1741,8 @@ async function regenerateEnvironmentState(character, environment, inventory, act
       '- If ability progression happened, character_patch.abilities must be the FULL final ability list after the change.\n' +
       '- For ability improvements, update the existing ability description (or name only if truly renamed).\n' +
       '- Do not add temporary buffs/debuffs to character_patch.\n' +
+      '- Only update limitations when they have permanently and functionally changed — e.g. a permanent injury, a newly discovered hard constraint, or an existing limitation being fully resolved. Do NOT update limitations for temporary states (fatigue, intoxication, emotional state, short-term conditions) or narrative flavor. If the limitation will likely be gone next turn, do not add it.\n' +
+      '- Only update abilities when the player has genuinely learned or meaningfully improved a skill. Do not update abilities for one-off successful actions, temporary boosts, or context-specific advantages.\n' +
       '- If no environment change, use an empty object for environment_patch.\n' +
       '- If no character progression change, use an empty object for character_patch.\n' +
       '- If nothing changed at all, return {"environment_patch": {}, "character_patch": {}}.' +
