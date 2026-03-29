@@ -998,7 +998,7 @@ async function getCharacterTraits(basicInfo) {
       + '- The description should include a physical description of the character. \n'
       + '- Flaws should be minor and unique. Because the player will be assuming this identity, the flaws should be things that affect the way a story unfolds. For example, instead of saying \'unconfident\', it should say \'often fails to assert themselves when they try\'. This allows the player to take an action, and the story can generate an outcome that integrates the flaw in a reasonable way. \n'
       + '- Agility should be something very short, like \'low\', \'average\', or \'high\'. Only add more if there is a considerable fact about them that would affect their agility in a significant way. \n'
-      + '- The abilities should be interesting and not too overpowered. Consider their basic information when generating abilities. Abilities may contain minor magical elements, even if the character\'s job title or role is not magical.\n'
+      + '- The abilities should be interesting and not too overpowered. Consider their basic information when generating abilities. Abilities may contain minor magical elements, even if the character\'s job title or role is not magical. For now, generate one ability, unless they\'re role is very simple; In cases where the character is not particularly interesting, you may make a second minor ability.\n'
       + '- Limitations should address the character\'s abilities, in cases where they are overpowered. You don\'t have to generate limitations if the abilities are reasonably mundane on their own.\n'
       + '- Nickname cannot be \'Sparks\', ever.' // It's just so annoying and repetitite (at least with grok)
     },
@@ -1215,16 +1215,16 @@ async function getActionResponse(character, environment, inventory, action, hist
       'End Player Info; NPCs are not aware of the player\'s abilities, limitations, or flaws unless these have been explicitly revealed through previous player actions in the story. ' +
       'NPCs should only know things about the player that are visually or audibly apparent, or that the player has told them. ' +
       'Inventories currently visible to the player this turn (used to inform trading/looting): ' + JSON.stringify(displayedInventoryContext) + '. ' +
-      'Objective tracker with private hidden notes for GM logic (the player should not be told hidden details directly): ' + JSON.stringify(objectiveContextHidden) + '. ' +
-      'Private one-turn secret story detail for GM context (minor edge, do not reveal directly unless discovered through player action): ' +
+      'Objective tracker (the player should not be told hidden details directly): ' + JSON.stringify(objectiveContextHidden) + '. ' +
+      'Private one-turn secret story detail (minor edge, do not reveal directly unless discovered through player action): ' +
       (secretStoryDetailContext ? secretStoryDetailContext : '[none]') + '. ' +
       'Previously nearby but currently absent entities (can return later; reuse these identities directly if they reappear): ' + JSON.stringify(removedPeopleContext) + '. ' +
       'Current environment: ' + JSON.stringify(environmentContext) + '. ' +
       'Nearby entities by name: ' + JSON.stringify(nearbyNames) + '. ' +
-      'The player does the following: ' + action + '. ' +
-      'If the player action is directed at a nearby entity, include that entity\'s spoken reply now. ' +
+      'The player wants to do the following: ' + action + '. ' +
+      'Your response should be realistic. Remember, this is what the player wants to happen. You should only write the story based off realistic expectations. Don\'t allow the player to assert the actions of others. If the player action is directed at a nearby entity, include that entity\'s spoken reply now. ' +
       'It is not your responsibility to identify when an objective step has been completed. ' +
-      'Now, write the next part of the story after this action, following the rules given. '
+      'Now, write the next part of the story after the players desired/intended action, following the rules given above. '
     )
   });
 
