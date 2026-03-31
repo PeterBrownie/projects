@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="evolve.png">
+    <title>Animation — evolveSVG</title>
+    <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "03a89f35132a4e8aa86bf1ed1b60541a"}'></script><!-- End Cloudflare Web Analytics -->
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg:        #0e0e0e;
+            --surface:   #161616;
+            --surface2:  #1e1e1e;
+            --border:    #2a2a2a;
+            --border2:   #333;
+            --text:      #ccc;
+            --text-dim:  #777;
+            --text-faint:#444;
+            --accent:    #4a9eff;
+            --accent2:   #c0c0c0;
+            --gold:      #f5c542;
+        }
+
+        html, body { height: 100%; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.5;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ── Top nav ───────────────────────────────────────────────── */
+        .topnav {
+            position: relative;
+            z-index: 100;
+            background: rgba(14,14,14,0.97);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 0 20px;
+            height: 48px;
+            flex-shrink: 0;
+        }
+        .topnav-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 4px 9px;
+            border: 1px solid var(--border2);
+            border-radius: 4px;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .topnav-back:hover { background: #1a1a1a; border-color: #555; }
+        .topnav-back .arrow { font-size: 15px; line-height: 1; }
+        .topnav-sep { color: var(--border2); }
+        .topnav-title { font-size: 14px; font-weight: 600; color: #fff; }
+        .topnav-hint { margin-left: auto; font-size: 12px; color: var(--text-faint); }
+
+        /* ── Layout ────────────────────────────────────────────────── */
+        .anim-layout {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* ── Left sidebar ──────────────────────────────────────────── */
+        .anim-sidebar {
+            width: 300px;
+            flex-shrink: 0;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .paste-section {
+            padding: 14px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .paste-section label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 8px;
+        }
+        #svgInput {
+            width: 100%;
+            height: 90px;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: 5px;
+            color: var(--text);
+            font-family: 'Menlo', 'Consolas', monospace;
+            font-size: 11px;
+            padding: 8px;
+            resize: none;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        #svgInput:focus { border-color: var(--accent); }
+        #svgInput::placeholder { color: var(--text-faint); }
+
+        .paste-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+            align-items: center;
+        }
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 6px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .btn-primary:hover { background: #3b82d6; }
+        .btn-secondary {
+            background: var(--surface2);
+            color: var(--text);
+            border: 1px solid var(--border2);
+            border-radius: 5px;
+            padding: 6px 12px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .btn-secondary:hover { background: #252525; border-color: #555; }
+
+        #loadStatus {
+            font-size: 12px;
+            margin-top: 6px;
+            min-height: 16px;
+        }
+        #loadStatus.ok  { color: #4ade80; }
+        #loadStatus.err { color: #f87171; }
+
+        /* ── Parameter tree ────────────────────────────────────────── */
+        .param-panel {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .param-panel-header {
+            padding: 10px 14px 8px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .param-tree {
+            flex: 1;
+            overflow-y: auto;
+            padding: 6px 0;
+        }
+        .param-tree::-webkit-scrollbar { width: 5px; }
+        .param-tree::-webkit-scrollbar-track { background: transparent; }
+        .param-tree::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+        .param-section {
+            padding: 8px 14px 3px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-faint);
+            letter-spacing: 0.4px;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+        .param-section .swatch {
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+        .param-row {
+            display: flex;
+            align-items: center;
+            padding: 5px 14px 5px 26px;
+            cursor: pointer;
+            gap: 8px;
+            transition: background 0.1s;
+            border-radius: 3px;
+            margin: 0 4px;
+        }
+        .param-row:hover { background: var(--surface2); }
+        .param-row.selected { background: #1a2a3a; }
+        .param-row.selected .param-label { color: var(--accent); }
+        .param-label { flex: 1; font-size: 13px; color: var(--text); }
+        .param-value { font-size: 11px; color: var(--text-faint); font-family: 'Menlo', monospace; }
+
+        .param-empty {
+            padding: 20px 14px;
+            color: var(--text-faint);
+            font-size: 13px;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        /* ── Right area ────────────────────────────────────────────── */
+        .anim-right {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ── Preview ───────────────────────────────────────────────── */
+        .preview-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0a0a0a;
+            overflow: hidden;
+            position: relative;
+        }
+        .preview-empty {
+            text-align: center;
+            color: var(--text-faint);
+            font-size: 14px;
+            line-height: 2;
+            pointer-events: none;
+        }
+        .preview-empty strong { color: var(--text-dim); font-weight: 500; }
+        #svgPreviewWrap {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        #svgPreviewWrap svg {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            display: block;
+            border-radius: 4px;
+        }
+        .anim-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(74, 158, 255, 0.15);
+            border: 1px solid rgba(74, 158, 255, 0.35);
+            color: var(--accent);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 9px;
+            border-radius: 20px;
+            letter-spacing: 0.5px;
+            display: none;
+        }
+        .anim-badge.visible { display: block; }
+
+        /* ── Controls panel ────────────────────────────────────────── */
+        .controls-panel {
+            border-top: 1px solid var(--border);
+            background: var(--surface);
+            flex-shrink: 0;
+            padding: 14px 18px;
+        }
+        .controls-panel.hidden { display: none; }
+
+        .controls-selected {
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .controls-selected strong { color: var(--accent); font-weight: 600; }
+
+        .controls-row {
+            display: flex;
+            gap: 18px;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .slider-group {
+            flex: 1;
+        }
+        .slider-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-bottom: 5px;
+        }
+        .slider-group label span { color: var(--text); font-family: 'Menlo', monospace; }
+        .slider-group input[type=range] {
+            width: 100%;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+
+        .controls-timing {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+            margin-bottom: 12px;
+        }
+        .timing-field {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .timing-field label {
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+        .timing-field select,
+        .timing-field input[type=number] {
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: 4px;
+            color: var(--text);
+            padding: 4px 8px;
+            font-size: 13px;
+            outline: none;
+        }
+        .timing-field select:focus,
+        .timing-field input[type=number]:focus { border-color: var(--accent); }
+        .timing-field input[type=number] { width: 68px; }
+
+        .dir-toggle {
+            display: flex;
+            gap: 0;
+            border: 1px solid var(--border2);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .dir-toggle button {
+            background: var(--surface2);
+            border: none;
+            color: var(--text-dim);
+            padding: 4px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.1s, color 0.1s;
+        }
+        .dir-toggle button + button { border-left: 1px solid var(--border2); }
+        .dir-toggle button.active { background: var(--accent); color: #fff; }
+
+        .easing-row {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .easing-label {
+            font-size: 11px;
+            color: var(--text-dim);
+            width: 48px;
+            flex-shrink: 0;
+        }
+        .ease-btn {
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: 4px;
+            color: var(--text-dim);
+            padding: 3px 10px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.1s, color 0.1s, border-color 0.1s;
+        }
+        .ease-btn:hover { color: var(--text); border-color: #555; }
+        .ease-btn.active { background: #1a2a3a; border-color: var(--accent); color: var(--accent); }
+
+        .custom-spline-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .custom-spline-row label { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+        .custom-spline-row input {
+            flex: 1;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: 4px;
+            color: var(--text);
+            padding: 4px 8px;
+            font-size: 12px;
+            font-family: 'Menlo', monospace;
+            outline: none;
+        }
+        .custom-spline-row input:focus { border-color: var(--accent); }
+        #customSplineRow { display: none; }
+
+        .action-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .action-sep {
+            flex: 1;
+        }
+        .btn-icon {
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: 5px;
+            color: var(--text);
+            padding: 5px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .btn-icon:hover { background: #252525; border-color: #555; }
+        .btn-icon.accent { border-color: var(--accent); color: var(--accent); }
+        .btn-icon.accent:hover { background: #0d1e30; }
+    </style>
+</head>
+<body>
+
+<nav class="topnav">
+    <a class="topnav-back" href="/"><span class="arrow">&#8592;</span> evolveSVG</a>
+    <span class="topnav-sep">/</span>
+    <span class="topnav-title">Animation</span>
+    <span class="topnav-hint">SMIL · SVG native animation</span>
+</nav>
+
+<div class="anim-layout">
+
+    <!-- Left sidebar -->
+    <aside class="anim-sidebar">
+        <div class="paste-section">
+            <label for="svgInput">Paste SVG code</label>
+            <textarea id="svgInput" placeholder="Paste an SVG exported from evolveSVG…&#10;(it must contain embedded genome data)"></textarea>
+            <div class="paste-row">
+                <button class="btn-primary" id="loadBtn">Load SVG</button>
+                <button class="btn-secondary" id="clearBtn" style="display:none">Clear</button>
+            </div>
+            <div id="loadStatus"></div>
+        </div>
+
+        <div class="param-panel" id="paramPanel">
+            <div class="param-panel-header">Parameters</div>
+            <div class="param-tree" id="paramTree">
+                <div class="param-empty">
+                    Load an SVG to<br>browse animatable parameters.
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Right: preview + controls -->
+    <div class="anim-right">
+        <div class="preview-area" id="previewArea">
+            <div class="preview-empty" id="previewEmpty">
+                <strong>Paste and load an SVG to begin.</strong><br>
+                Then pick a parameter on the left<br>
+                to configure your animation.
+            </div>
+            <div id="svgPreviewWrap" style="display:none"></div>
+            <div class="anim-badge" id="animBadge">ANIMATING</div>
+        </div>
+
+        <div class="controls-panel hidden" id="controlsPanel">
+            <div class="controls-selected" id="controlsSelected"></div>
+
+            <div class="controls-row">
+                <div class="slider-group">
+                    <label>From <span id="fromValDisplay">0</span></label>
+                    <input type="range" id="fromSlider">
+                </div>
+                <div class="slider-group">
+                    <label>To <span id="toValDisplay">1</span></label>
+                    <input type="range" id="toSlider">
+                </div>
+            </div>
+
+            <div class="controls-timing">
+                <div class="timing-field">
+                    <label>Duration (s)</label>
+                    <input type="number" id="durInput" value="3" min="0.1" max="60" step="0.1">
+                </div>
+                <div class="timing-field">
+                    <label>Repeat</label>
+                    <select id="repeatSelect">
+                        <option value="indefinite">Loop</option>
+                        <option value="1">Once</option>
+                        <option value="2">2×</option>
+                        <option value="3">3×</option>
+                        <option value="5">5×</option>
+                    </select>
+                </div>
+                <div class="timing-field">
+                    <label>Direction</label>
+                    <div class="dir-toggle">
+                        <button class="active" id="dirForward" onclick="setDirection('forward')">Forward</button>
+                        <button id="dirAlternate" onclick="setDirection('alternate')">Alternate</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="easing-row">
+                <span class="easing-label">Easing</span>
+                <button class="ease-btn active" data-ease="linear" onclick="setEasing(this)">Linear</button>
+                <button class="ease-btn" data-ease="ease" onclick="setEasing(this)">Ease</button>
+                <button class="ease-btn" data-ease="easeIn" onclick="setEasing(this)">Ease In</button>
+                <button class="ease-btn" data-ease="easeOut" onclick="setEasing(this)">Ease Out</button>
+                <button class="ease-btn" data-ease="easeInOut" onclick="setEasing(this)">Ease In-Out</button>
+                <button class="ease-btn" data-ease="custom" onclick="setEasing(this)">Custom</button>
+            </div>
+
+            <div class="custom-spline-row" id="customSplineRow">
+                <label>Cubic Bezier</label>
+                <input type="text" id="customSplineInput" value="0.42 0 0.58 1" placeholder="x1 y1 x2 y2">
+            </div>
+
+            <div class="action-row">
+                <button class="btn-primary" id="previewBtn" onclick="applyAnimation()">Preview</button>
+                <button class="btn-secondary" id="stopBtn" onclick="stopAnimation()" style="display:none">Stop</button>
+                <div class="action-sep"></div>
+                <button class="btn-icon accent" id="exportBtn" onclick="exportSVG()" style="display:none">&#8595; Export SVG</button>
+                <button class="btn-icon" id="copyBtn" onclick="copySVG()" style="display:none">&#9003; Copy SVG</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+'use strict';
+
+// ─── Rendering helpers (adapted from evolveSVG index.html) ─────────────────
+
+const TILING_TYPES = new Set(['dots_grid','stripes','crosshatch','checkerboard','waves','zigzag','hexgrid']);
+
+function colorString(c, alpha = 1) {
+    return `hsla(${c.h.toFixed(1)},${c.s.toFixed(1)}%,${c.l.toFixed(1)}%,${alpha.toFixed(3)})`;
+}
+
+function pseudoRand(seed) {
+    const s = Math.imul(seed | 0, 1664525) + 1013904223 | 0;
+    return (s >>> 0) / 0xFFFFFFFF;
+}
+
+function resolveGradient(palette, fill, S, defs, makeGradientId) {
+    const c1 = colorString(palette[fill.paletteIdx % palette.length], fill.alpha);
+    const c2 = colorString(palette[fill.paletteIdx2 % palette.length], fill.alpha);
+    const id = makeGradientId();
+    if (fill.type === 'linear') {
+        const rad = (fill.angle || 0) * Math.PI / 180;
+        const dx = Math.cos(rad) * 0.5, dy = Math.sin(rad) * 0.5;
+        defs.push(`<linearGradient id="${id}" x1="${(0.5-dx)*100}%" y1="${(0.5-dy)*100}%" x2="${(0.5+dx)*100}%" y2="${(0.5+dy)*100}%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></linearGradient>`);
+    } else {
+        defs.push(`<radialGradient id="${id}" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="${c1}"/><stop offset="100%" stop-color="${c2}"/></radialGradient>`);
+    }
+    return `url(#${id})`;
+}
+
+function fillAttr(palette, fill, S, defs, makeGradientId) {
+    if (!fill) return 'none';
+    if (fill.type === 'solid') return colorString(palette[fill.paletteIdx % palette.length], fill.alpha);
+    return resolveGradient(palette, fill, S, defs, makeGradientId);
+}
+
+function renderBackground(genome, W, H, defs, makeGradientId) {
+    const bg = genome.background, palette = genome.palette;
+    if (bg.type === 'solid') {
+        return `<rect width="${W}" height="${H}" fill="${colorString(palette[bg.paletteIdx % palette.length])}"/>`;
+    }
+    const fill = { type: bg.type, paletteIdx: bg.paletteIdx, paletteIdx2: bg.paletteIdx2, alpha: 1, angle: bg.angle };
+    return `<rect width="${W}" height="${H}" fill="${fillAttr(palette, fill, W, defs, makeGradientId)}"/>`;
+}
+
+function buildLayerMask(layer, W, H, defs, makeGradientId) {
+    if (!layer.mask || (layer.hiddenEffects || []).includes('mask')) return '';
+    const { type, cx, cy, r, angle } = layer.mask;
+    const gid = makeGradientId(), mid = makeGradientId();
+    if (type === 'radial') {
+        const mcx = (cx ?? 0.5)*W, mcy = (cy ?? 0.5)*H, mr = (r ?? 0.5)*Math.max(W,H);
+        defs.push(`<radialGradient id="${gid}" cx="${mcx.toFixed(1)}" cy="${mcy.toFixed(1)}" r="${mr.toFixed(1)}" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="white"/><stop offset="100%" stop-color="black"/></radialGradient>`);
+    } else {
+        const rad = (angle ?? 0)*Math.PI/180;
+        const dx = Math.cos(rad)*W/2, dy = Math.sin(rad)*H/2;
+        defs.push(`<linearGradient id="${gid}" x1="${(W/2-dx).toFixed(1)}" y1="${(H/2-dy).toFixed(1)}" x2="${(W/2+dx).toFixed(1)}" y2="${(H/2+dy).toFixed(1)}" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="white"/><stop offset="100%" stop-color="black"/></linearGradient>`);
+    }
+    defs.push(`<mask id="${mid}"><rect x="${-W}" y="${-H}" width="${W*3}" height="${H*3}" fill="url(#${gid})"/></mask>`);
+    return `mask="url(#${mid})"`;
+}
+
+function getInstances(layer, cx, cy, W, H) {
+    const arr = layer.arrangement || 'single';
+    const p = layer.arrangementParams || {};
+    switch (arr) {
+        case 'single': return [[cx, cy, 0]];
+        case 'grid': {
+            const nx = Math.round(p.nx)||3, ny = Math.round(p.ny)||3, res = [];
+            for (let iy = 0; iy < ny; iy++)
+                for (let ix = 0; ix < nx; ix++)
+                    res.push([(ix/(nx-1||1))*W, (iy/(ny-1||1))*H, 0]);
+            return res;
+        }
+        case 'radial': {
+            const count = Math.round(p.count)||6, res = [];
+            for (let i = 0; i < count; i++) {
+                const a = (i/count)*2*Math.PI, dist = Math.min(cx,cy,W-cx,H-cy)*0.5;
+                res.push([cx+Math.cos(a)*dist, cy+Math.sin(a)*dist, (i/count)*360]);
+            }
+            return res;
+        }
+        case 'scatter': {
+            const count = Math.round(p.count)||5, res = [];
+            const seed = ((cx/W)*1000+(cy/H)*997)|0;
+            for (let i = 0; i < count; i++)
+                res.push([pseudoRand(seed+i*3)*W, pseudoRand(seed+i*3+1)*H, pseudoRand(seed+i*3+2)*360]);
+            return res;
+        }
+        default: return [[cx, cy, 0]];
+    }
+}
+
+// ─── SMIL builder ──────────────────────────────────────────────────────────
+
+const EASING_SPLINES = {
+    linear:    null,
+    ease:      '0.25 0.1 0.25 1',
+    easeIn:    '0.42 0 1 1',
+    easeOut:   '0 0 0.58 1',
+    easeInOut: '0.42 0 0.58 1',
+};
+
+// Returns the animate tag attributes (without element wrapper)
+function smilAttrs(attrName, fromVal, toVal, spec) {
+    const alt = spec.direction === 'alternate';
+    const ks  = spec.easing !== 'linear' ? (EASING_SPLINES[spec.easing] || spec.customSpline) : null;
+    let s = `attributeName="${attrName}"`;
+    if (alt) {
+        s += ` values="${fromVal};${toVal};${fromVal}" keyTimes="0;0.5;1"`;
+        if (ks) s += ` calcMode="spline" keySplines="${ks};${ks}"`;
+    } else {
+        s += ` from="${fromVal}" to="${toVal}"`;
+        if (ks) s += ` calcMode="spline" keyTimes="0;1" keySplines="${ks}"`;
+    }
+    s += ` dur="${spec.dur}s" repeatCount="${spec.repeatCount}" fill="freeze"`;
+    return s;
+}
+
+function smilAnimate(attrName, fromVal, toVal, spec) {
+    return `<animate ${smilAttrs(attrName, fromVal, toVal, spec)}/>`;
+}
+
+function smilTransform(type, fromVal, toVal, spec) {
+    const alt = spec.direction === 'alternate';
+    const ks  = spec.easing !== 'linear' ? (EASING_SPLINES[spec.easing] || spec.customSpline) : null;
+    let s = `attributeName="transform" type="${type}"`;
+    if (alt) {
+        s += ` values="${fromVal};${toVal};${fromVal}" keyTimes="0;0.5;1"`;
+        if (ks) s += ` calcMode="spline" keySplines="${ks};${ks}"`;
+    } else {
+        s += ` from="${fromVal}" to="${toVal}"`;
+        if (ks) s += ` calcMode="spline" keyTimes="0;1" keySplines="${ks}"`;
+    }
+    s += ` dur="${spec.dur}s" repeatCount="${spec.repeatCount}" fill="freeze"`;
+    return `<animateTransform ${s}/>`;
+}
+
+// ─── Polygon point helper ──────────────────────────────────────────────────
+
+function polygonPoints(sides, r, W) {
+    const pts = [];
+    for (let i = 0; i < sides; i++) {
+        const a = (i/sides)*2*Math.PI - Math.PI/2;
+        pts.push(`${(r*W*Math.cos(a)).toFixed(2)},${(r*W*Math.sin(a)).toFixed(2)}`);
+    }
+    return pts.join(' ');
+}
+
+// ─── Filter builder (with optional SMIL) ──────────────────────────────────
+
+function buildFilter(layer, layerIdx, palette, defs, makeGradientId, svgW, renderW, svgH, anim) {
+    const isAnimLayer = anim && anim.target === 'layer' && anim.layerIdx === layerIdx;
+    const param = isAnimLayer ? anim.param : null;
+    const hidden = new Set(layer.hiddenEffects || []);
+
+    const hasMorph    = layer.morph    != null && !hidden.has('morph');
+    const hasDisplace = layer.displace != null && !hidden.has('displace');
+    const hasBlur     = layer.blur     != null && !hidden.has('blur');
+    const hasColor    = layer.colorShift != null && !hidden.has('colorShift');
+    const hasCompTrans= layer.componentTransfer != null && !hidden.has('componentTransfer');
+    const hasDiffuse  = layer.diffuseLight != null && !hidden.has('diffuseLight');
+    const hasConvolve = layer.convolve != null && !hidden.has('convolve');
+    const hasShadow   = layer.shadow   != null && !hidden.has('shadow');
+
+    if (!hasMorph && !hasDisplace && !hasBlur && !hasColor && !hasCompTrans && !hasDiffuse && !hasConvolve && !hasShadow) return '';
+
+    const fid = makeGradientId();
+    const steps = [];
+    let cur = 'SourceGraphic';
+
+    if (hasMorph) {
+        const { operator, radiusX, radiusY } = layer.morph;
+        steps.push(`<feMorphology in="${cur}" operator="${operator}" radius="${radiusX.toFixed(1)} ${radiusY.toFixed(1)}" result="morph"/>`);
+        cur = 'morph';
+    }
+    if (hasDisplace) {
+        const { scale, baseFreq, octaves } = layer.displace;
+        const fromScale = param === 'displaceScale' ? anim.fromVal : scale;
+        const scaleAnimEl = (param === 'displaceScale')
+            ? `<animate ${smilAttrs('scale', anim.fromVal.toFixed(1), anim.toVal.toFixed(1), anim)}/>`
+            : '';
+        steps.push(`<feTurbulence type="fractalNoise" baseFrequency="${baseFreq.toFixed(4)}" numOctaves="${Math.round(octaves)}" result="noise"/>`);
+        steps.push(`<feDisplacementMap in="${cur}" in2="noise" scale="${fromScale.toFixed(1)}" xChannelSelector="R" yChannelSelector="G" result="disp">${scaleAnimEl}</feDisplacementMap>`);
+        cur = 'disp';
+    }
+    if (hasBlur) {
+        const fromBlur = param === 'blur' ? anim.fromVal : layer.blur;
+        const blurAnimEl = (param === 'blur')
+            ? `<animate ${smilAttrs('stdDeviation', anim.fromVal.toFixed(2), anim.toVal.toFixed(2), anim)}/>`
+            : '';
+        steps.push(`<feGaussianBlur in="${cur}" stdDeviation="${fromBlur.toFixed(2)}" result="blr">${blurAnimEl}</feGaussianBlur>`);
+        cur = 'blr';
+    }
+    if (hasColor) {
+        const { hueRotate, saturate } = layer.colorShift;
+        if (hueRotate != null) {
+            const fromHue = param === 'hueRotate' ? anim.fromVal : hueRotate;
+            const hueAnimEl = (param === 'hueRotate')
+                ? `<animate ${smilAttrs('values', anim.fromVal.toFixed(1), anim.toVal.toFixed(1), anim)}/>`
+                : '';
+            steps.push(`<feColorMatrix in="${cur}" type="hueRotate" values="${fromHue.toFixed(1)}" result="hued">${hueAnimEl}</feColorMatrix>`);
+            cur = 'hued';
+        }
+        if (saturate != null) {
+            steps.push(`<feColorMatrix in="${cur}" type="saturate" values="${saturate.toFixed(2)}" result="sat"/>`);
+            cur = 'sat';
+        }
+    }
+    if (hasCompTrans) {
+        const { rExp, gExp, bExp } = layer.componentTransfer;
+        steps.push(`<feComponentTransfer in="${cur}" result="ctrans"><feFuncR type="gamma" amplitude="1" exponent="${rExp.toFixed(3)}" offset="0"/><feFuncG type="gamma" amplitude="1" exponent="${gExp.toFixed(3)}" offset="0"/><feFuncB type="gamma" amplitude="1" exponent="${bExp.toFixed(3)}" offset="0"/></feComponentTransfer>`);
+        cur = 'ctrans';
+    }
+    if (hasDiffuse) {
+        const { azimuth, elevation, scale: surfScale, strength } = layer.diffuseLight;
+        steps.push(`<feDiffuseLighting in="${cur}" surfaceScale="${surfScale.toFixed(1)}" diffuseConstant="${strength.toFixed(2)}" result="diffuse"><feDistantLight azimuth="${azimuth.toFixed(1)}" elevation="${elevation.toFixed(1)}"/></feDiffuseLighting>`);
+        steps.push(`<feComposite in="diffuse" in2="${cur}" operator="arithmetic" k1="1" k2="0" k3="0" k4="0" result="lit"/>`);
+        cur = 'lit';
+    }
+    if (hasConvolve) {
+        const kernels = { emboss:'-2 -1 0 -1 1 1 0 1 2', sharpen:'0 -1 0 -1 5 -1 0 -1 0', edge:'-1 -1 -1 -1 8 -1 -1 -1 -1' };
+        steps.push(`<feConvolveMatrix in="${cur}" order="3" kernelMatrix="${kernels[layer.convolve.type]||kernels.emboss}" preserveAlpha="true" result="conv"/>`);
+        cur = 'conv';
+    }
+    if (hasShadow) {
+        const { dx, dy, blur: sBlur, paletteIdx, alpha } = layer.shadow;
+        const shadowColor = colorString(palette[paletteIdx % palette.length], alpha);
+        steps.push(`<feFlood flood-color="${shadowColor}" result="shadowFlood"/>`);
+        steps.push(`<feComposite in="shadowFlood" in2="SourceAlpha" operator="in" result="shadowMask"/>`);
+        if (sBlur > 0) {
+            steps.push(`<feGaussianBlur in="shadowMask" stdDeviation="${sBlur.toFixed(1)}" result="shadowBlur"/>`);
+            steps.push(`<feOffset in="shadowBlur" dx="${dx.toFixed(1)}" dy="${dy.toFixed(1)}" result="shadowOffset"/>`);
+        } else {
+            steps.push(`<feOffset in="shadowMask" dx="${dx.toFixed(1)}" dy="${dy.toFixed(1)}" result="shadowOffset"/>`);
+        }
+        steps.push(`<feMerge><feMergeNode in="shadowOffset"/><feMergeNode in="${cur}"/></feMerge>`);
+    }
+
+    const filterRegionAttr = hasDisplace
+        ? `filterUnits="userSpaceOnUse" x="${(-svgW*0.3).toFixed(1)}" y="${(-svgH*0.3).toFixed(1)}" width="${(svgW*1.6).toFixed(1)}" height="${(svgH*1.6).toFixed(1)}"`
+        : `x="-30%" y="-30%" width="160%" height="160%"`;
+    defs.push(`<filter id="${fid}" ${filterRegionAttr}>${steps.join('')}</filter>`);
+    return `filter="url(#${fid})"`;
+}
+
+// ─── Tiling layer renderer (with opacity animation support) ────────────────
+
+function renderTilingAnim(layer, layerIdx, palette, W, H, defs, makeGradientId, renderW, anim) {
+    const isAnimLayer = anim && anim.target === 'layer' && anim.layerIdx === layerIdx;
+    const param = isAnimLayer ? anim.param : null;
+
+    const fromOpacity = (param === 'opacity') ? anim.fromVal : (layer.opacity ?? 1);
+    const opacityAnimEl = (param === 'opacity')
+        ? smilAnimate('opacity', anim.fromVal.toFixed(3), anim.toVal.toFixed(3), anim)
+        : '';
+
+    const color = fillAttr(palette, layer.fill, W, defs, makeGradientId);
+    const blend = layer.blendMode || 'normal';
+    const s = W / 640;
+    const p = {
+        ...layer.params,
+        spacing:   layer.params.spacing   != null ? layer.params.spacing   * s : undefined,
+        size:      layer.params.size       != null ? layer.params.size      * s : undefined,
+        r:         layer.params.r          != null ? layer.params.r         * s : undefined,
+        lineWidth: layer.params.lineWidth  != null ? layer.params.lineWidth * s : undefined,
+        amplitude: layer.params.amplitude  != null ? layer.params.amplitude * s : undefined,
+    };
+    const pid = makeGradientId();
+    const dashAttr = layer.dash && !(layer.hiddenEffects||[]).includes('dash')
+        ? ` stroke-dasharray="${layer.dash.len.toFixed(1)},${layer.dash.gap.toFixed(1)}"` : '';
+
+    let result = '';
+    switch (layer.type) {
+        case 'dots_grid': {
+            const sp = Math.max(p.spacing, 2), r = Math.min(p.r, sp*0.49);
+            const jitter = (p.jitter||0)*sp*0.45, tileW = sp*2, tileH = sp*2;
+            const dots = [];
+            for (let row=0;row<2;row++) for (let col=0;col<2;col++) {
+                const jx = pseudoRand(row*7+col*13)*jitter*2-jitter;
+                const jy = pseudoRand(row*7+col*13+1)*jitter*2-jitter;
+                dots.push(`<circle cx="${(col*sp+sp/2+jx).toFixed(2)}" cy="${(row*sp+sp/2+jy).toFixed(2)}" r="${r.toFixed(2)}" fill="${color}"/>`);
+            }
+            defs.push(`<pattern id="${pid}" x="0" y="0" width="${tileW}" height="${tileH}" patternUnits="userSpaceOnUse">${dots.join('')}</pattern>`);
+            result = `<rect x="${-W}" y="${-H}" width="${W*3}" height="${H*3}" fill="url(#${pid})"/>`;
+            break;
+        }
+        case 'stripes': {
+            const sp = Math.max(p.spacing,1), lw = Math.min(p.lineWidth, sp*0.98);
+            defs.push(`<pattern id="${pid}" x="0" y="0" width="${sp}" height="${sp}" patternUnits="userSpaceOnUse" patternTransform="rotate(${(p.angle||0).toFixed(1)})"><rect x="0" y="0" width="${lw.toFixed(2)}" height="${sp}" fill="${color}"/></pattern>`);
+            result = `<rect x="${-W}" y="${-H}" width="${W*3}" height="${H*3}" fill="url(#${pid})"/>`;
+            break;
+        }
+        case 'crosshatch': {
+            const sp = Math.max(p.spacing,1), lw = (p.lineWidth||1).toFixed(2);
+            defs.push(`<pattern id="${pid}" x="0" y="0" width="${sp}" height="${sp}" patternUnits="userSpaceOnUse" patternTransform="rotate(${(p.angle||0).toFixed(1)})"><line x1="0" y1="0" x2="0" y2="${sp}" stroke="${color}" stroke-width="${lw}"${dashAttr}/><line x1="0" y1="0" x2="${sp}" y2="0" stroke="${color}" stroke-width="${lw}"${dashAttr}/></pattern>`);
+            result = `<rect x="${-W}" y="${-H}" width="${W*3}" height="${H*3}" fill="url(#${pid})"/>`;
+            break;
+        }
+        case 'checkerboard': {
+            const sz = Math.max(p.size,1);
+            defs.push(`<pattern id="${pid}" x="0" y="0" width="${sz*2}" height="${sz*2}" patternUnits="userSpaceOnUse"><rect x="0" y="0" width="${sz}" height="${sz}" fill="${color}"/><rect x="${sz}" y="${sz}" width="${sz}" height="${sz}" fill="${color}"/></pattern>`);
+            result = `<rect x="${-W}" y="${-H}" width="${W*3}" height="${H*3}" fill="url(#${pid})"/>`;
+            break;
+        }
+        case 'waves': {
+            const sp = Math.max(p.spacing,2), amp = p.amplitude||8, freq = p.frequency||1;
+            const lw = (p.lineWidth||2).toFixed(2), tileW = W/Math.max(freq,0.01);
+            let d = `M 0 ${sp/2}`;
+            for (let x=3;x<=tileW+3;x+=3) { const y=sp/2+amp*Math.sin((x/tileW)*Math.PI*2); d+=` L ${x.toFixed(1)} ${y.toFixed(1)}`; }
+            defs.push(`<pattern id="${pid}" x="0" y="0" width="${tileW.toFixed(2)}" height="${sp}" patternUnits="userSpaceOnUse"><path d="${d}" fill="none" stroke="${color}" stroke-width="${lw}"${dashAttr}/></pattern>`);
+            result = `<rect x="${-W}" y="${-H}" width="${W*3}" height="${H*3}" fill="url(#${pid})"/>`;
+            break;
+        }
+        case 'zigzag': {
+            const sp = Math.max(p.spacing,2), amp = p.amplitude||12, lw = (p.lineWidth||2).toFixed(2);
+            const period = amp*2, midY = sp/2;
+            const pts = `0,${midY} ${(period/4).toFixed(1)},${(midY-amp).toFixed(1)} ${(period*3/4).toFixed(1)},${(midY+amp).toFixed(1)} ${period.toFixed(1)},${midY}`;
+            defs.push(`<pattern id="${pid}" x="0" y="0" width="${period.toFixed(2)}" height="${sp}" patternUnits="userSpaceOnUse"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="${lw}" stroke-linejoin="miter"${dashAttr}/></pattern>`);
+            const cx2=W/2, cy2=H/2;
+            result = `<g transform="rotate(${(p.angle||0).toFixed(1)},${cx2},${cy2})"><rect x="${-W}" y="${-H}" width="${W*3}" height="${H*3}" fill="url(#${pid})"/></g>`;
+            break;
+        }
+        case 'hexgrid': {
+            const size = Math.max(p.size,2), lw = (p.lineWidth||1.5).toFixed(2);
+            const hexW = size*Math.sqrt(3), hexH = size*2, rowH = hexH*0.75;
+            const hexes = [];
+            for (let row=-Math.ceil(H/rowH)-1;row*rowH<H*2+hexH;row++)
+                for (let col=-Math.ceil(W/hexW)-1;col*hexW<W*2+hexW;col++) {
+                    const hcx=col*hexW+(row%2!==0?hexW/2:0), hcy=row*rowH, pts2=[];
+                    for (let i=0;i<6;i++) { const a=(Math.PI/180)*(60*i-30); pts2.push(`${(hcx+size*Math.cos(a)).toFixed(2)},${(hcy+size*Math.sin(a)).toFixed(2)}`); }
+                    hexes.push(`<polygon points="${pts2.join(' ')}" fill="${p.filled?color:'none'}" stroke="${color}" stroke-width="${lw}"${dashAttr}/>`);
+                }
+            result = `<g>${hexes.join('')}</g>`;
+            break;
+        }
+        default: return '';
+    }
+
+    const filterAttr = buildFilter(layer, layerIdx, palette, defs, makeGradientId, W, renderW, H, anim);
+    const maskAttr   = buildLayerMask(layer, W, H, defs, makeGradientId);
+    return `<g opacity="${fromOpacity.toFixed(3)}" style="mix-blend-mode:${blend}" ${filterAttr} ${maskAttr}>${opacityAnimEl}${result}</g>`;
+}
+
+// ─── Shape element builder with optional SMIL ──────────────────────────────
+
+function buildShape(type, params, W, shapeAnims) {
+    // shapeAnims: object like { r: '<animate .../>' }
+    const anims = Object.values(shapeAnims || {}).join('');
+    switch (type) {
+        case 'circle': {
+            const r = (params.r * W).toFixed(2);
+            return anims ? `<circle cx="0" cy="0" r="${r}">${anims}</circle>`
+                         : `<circle cx="0" cy="0" r="${r}"/>`;
+        }
+        case 'ellipse': {
+            const rx = (params.rx*W).toFixed(2), ry = (params.ry*W).toFixed(2);
+            return anims ? `<ellipse cx="0" cy="0" rx="${rx}" ry="${ry}">${anims}</ellipse>`
+                         : `<ellipse cx="0" cy="0" rx="${rx}" ry="${ry}"/>`;
+        }
+        case 'rect': {
+            const w = params.w*W, h = params.h*W, rx = (params.rx||0)*W;
+            return anims
+                ? `<rect x="${(-w/2).toFixed(2)}" y="${(-h/2).toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" rx="${rx.toFixed(2)}">${anims}</rect>`
+                : `<rect x="${(-w/2).toFixed(2)}" y="${(-h/2).toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" rx="${rx.toFixed(2)}"/>`;
+        }
+        case 'polygon': {
+            const sides = Math.round(params.sides)||5, r = params.r*W;
+            const pts = polygonPoints(sides, params.r, W);
+            return anims ? `<polygon points="${pts}">${anims}</polygon>`
+                         : `<polygon points="${pts}"/>`;
+        }
+        case 'path': {
+            const pts = params.pts || [[0,0],[0.5,0],[1,0.5],[0.5,1]];
+            const scaled = pts.map(p => [p[0]*W - W/2, p[1]*W - W/2]);
+            if (scaled.length < 2) return '';
+            let d = `M ${scaled[0][0].toFixed(1)} ${scaled[0][1].toFixed(1)}`;
+            for (let i=1;i<scaled.length;i++) d += ` L ${scaled[i][0].toFixed(1)} ${scaled[i][1].toFixed(1)}`;
+            return `<path d="${d} Z"/>`;
+        }
+        default: return '';
+    }
+}
+
+// ─── Main layer renderer (with SMIL injection) ─────────────────────────────
+
+function renderLayerAnim(layer, layerIdx, palette, W, H, defs, makeGradientId, renderW, anim) {
+    if (TILING_TYPES.has(layer.type)) {
+        return renderTilingAnim(layer, layerIdx, palette, W, H, defs, makeGradientId, renderW, anim);
+    }
+
+    const isAnimLayer = anim && anim.target === 'layer' && anim.layerIdx === layerIdx;
+    const param = isAnimLayer ? anim.param : null;
+
+    // Base values — set "from" state for animated params
+    const rawCx = (param === 'cx') ? anim.fromVal : layer.cx;
+    const rawCy = (param === 'cy') ? anim.fromVal : layer.cy;
+    const cx = rawCx * W, cy = rawCy * H;
+
+    const t = layer.transform || {};
+    const rawRotate = (param === 'rotate') ? anim.fromVal : (t.rotate || 0);
+    const rawScaleX = (param === 'scaleX') ? anim.fromVal : (t.scaleX || 1);
+    const rawScaleY = (param === 'scaleY') ? anim.fromVal : (t.scaleY || 1);
+    const rawOpacity = (param === 'opacity') ? anim.fromVal : (layer.opacity ?? 1);
+
+    // Palette color animation: compute fill
+    let fillStr, fillAnimEl = '';
+    const isPaletteAnim = anim && anim.target === 'palette';
+    if (isPaletteAnim && layer.fill && layer.fill.type === 'solid' &&
+        (layer.fill.paletteIdx % palette.length) === anim.paletteIdx) {
+        const baseColor = { ...palette[anim.paletteIdx] };
+        const fromColor = { ...baseColor };
+        const toColor   = { ...baseColor };
+        if (anim.param === 'paletteH') { fromColor.h = anim.fromVal; toColor.h = anim.toVal; }
+        if (anim.param === 'paletteS') { fromColor.s = anim.fromVal; toColor.s = anim.toVal; }
+        if (anim.param === 'paletteL') { fromColor.l = anim.fromVal; toColor.l = anim.toVal; }
+        const alpha = layer.fill.alpha ?? 1;
+        fillStr    = colorString(fromColor, alpha);
+        fillAnimEl = smilAnimate('fill', colorString(fromColor, alpha), colorString(toColor, alpha), anim);
+    } else {
+        fillStr = fillAttr(palette, layer.fill, W, defs, makeGradientId);
+    }
+
+    const strokeColor = (layer.stroke && layer.stroke.width > 0)
+        ? colorString(palette[layer.stroke.paletteIdx % palette.length], layer.stroke.alpha)
+        : 'none';
+    const strokeWidth = layer.stroke ? (layer.stroke.width * W).toFixed(2) : '0';
+    const blend = layer.blendMode || 'normal';
+    const dashAttr = layer.dash && !(layer.hiddenEffects||[]).includes('dash')
+        ? ` stroke-dasharray="${layer.dash.len.toFixed(1)},${layer.dash.gap.toFixed(1)}"` : '';
+
+    // fillAlpha: animate fill between two alpha versions of same color
+    let fillAlphaAnimEl = '';
+    if (param === 'fillAlpha' && layer.fill && layer.fill.type === 'solid') {
+        const pc = palette[layer.fill.paletteIdx % palette.length];
+        fillStr = colorString(pc, anim.fromVal);
+        fillAlphaAnimEl = smilAnimate('fill',
+            colorString(pc, anim.fromVal), colorString(pc, anim.toVal), anim);
+    }
+
+    // Shape params
+    const shapeP = { ...layer.params };
+    const shapeAnims = {};
+
+    if (isAnimLayer) {
+        if (param === 'r' && shapeP.r !== undefined) {
+            const fromR = (anim.fromVal * W).toFixed(2);
+            const toR   = (anim.toVal   * W).toFixed(2);
+            shapeP.r = anim.fromVal;
+            if (layer.type === 'polygon') {
+                // Animate polygon points
+                shapeAnims.points = smilAnimate('points',
+                    polygonPoints(Math.round(shapeP.sides)||5, anim.fromVal, W),
+                    polygonPoints(Math.round(shapeP.sides)||5, anim.toVal, W),
+                    anim);
+            } else {
+                shapeAnims.r = smilAnimate('r', fromR, toR, anim);
+            }
+        } else if (param === 'rx' && shapeP.rx !== undefined) {
+            shapeAnims.rx = smilAnimate('rx', (anim.fromVal*W).toFixed(2), (anim.toVal*W).toFixed(2), anim);
+            shapeP.rx = anim.fromVal;
+        } else if (param === 'ry' && shapeP.ry !== undefined) {
+            shapeAnims.ry = smilAnimate('ry', (anim.fromVal*W).toFixed(2), (anim.toVal*W).toFixed(2), anim);
+            shapeP.ry = anim.fromVal;
+        } else if (param === 'w' && shapeP.w !== undefined) {
+            const fw = anim.fromVal*W, tw = anim.toVal*W;
+            shapeAnims.width = smilAnimate('width', fw.toFixed(2), tw.toFixed(2), anim);
+            shapeAnims.x     = smilAnimate('x', (-fw/2).toFixed(2), (-tw/2).toFixed(2), anim);
+            shapeP.w = anim.fromVal;
+        } else if (param === 'h' && shapeP.h !== undefined) {
+            const fh = anim.fromVal*W, th = anim.toVal*W;
+            shapeAnims.height = smilAnimate('height', fh.toFixed(2), th.toFixed(2), anim);
+            shapeAnims.y      = smilAnimate('y', (-fh/2).toFixed(2), (-th/2).toFixed(2), anim);
+            shapeP.h = anim.fromVal;
+        }
+    }
+
+    const shapeEl = buildShape(layer.type, shapeP, W, shapeAnims);
+    if (!shapeEl) return '';
+
+    const filterAttr = buildFilter(layer, layerIdx, palette, defs, makeGradientId, W, renderW, H, anim);
+    const maskAttr   = buildLayerMask(layer, W, H, defs, makeGradientId);
+
+    const instances = getInstances(layer, cx, cy, W, H);
+
+    const parts = instances.map(([ix, iy, iExtra]) => {
+        const rot = rawRotate + (iExtra || 0);
+        const fillPart  = `fill="${fillStr}" stroke="${strokeColor}" stroke-width="${strokeWidth}"${dashAttr}`;
+        const blendStyle = `style="mix-blend-mode:${blend}"`;
+
+        if (!isAnimLayer && !isPaletteAnim) {
+            // Standard render
+            const tr = `translate(${ix.toFixed(2)},${iy.toFixed(2)}) rotate(${rot.toFixed(2)}) scale(${rawScaleX.toFixed(3)},${rawScaleY.toFixed(3)})`;
+            return `<g transform="${tr}" ${fillPart} opacity="${rawOpacity.toFixed(3)}" ${blendStyle}>${shapeEl}</g>`;
+        }
+        if (isPaletteAnim) {
+            // Palette color animation: inject fill animate
+            const tr = `translate(${ix.toFixed(2)},${iy.toFixed(2)}) rotate(${rot.toFixed(2)}) scale(${rawScaleX.toFixed(3)},${rawScaleY.toFixed(3)})`;
+            return `<g transform="${tr}" ${fillPart} opacity="${rawOpacity.toFixed(3)}" ${blendStyle}>${fillAnimEl}${shapeEl}</g>`;
+        }
+
+        switch (param) {
+            case 'opacity': {
+                const tr = `translate(${ix.toFixed(2)},${iy.toFixed(2)}) rotate(${rot.toFixed(2)}) scale(${rawScaleX.toFixed(3)},${rawScaleY.toFixed(3)})`;
+                return `<g transform="${tr}" ${fillPart} opacity="${anim.fromVal.toFixed(3)}" ${blendStyle}>${smilAnimate('opacity', anim.fromVal.toFixed(3), anim.toVal.toFixed(3), anim)}${shapeEl}</g>`;
+            }
+            case 'cx': {
+                const fX = (anim.fromVal * W).toFixed(2), tX = (anim.toVal * W).toFixed(2);
+                const transAnim = smilTransform('translate', `${fX},${iy.toFixed(2)}`, `${tX},${iy.toFixed(2)}`, anim);
+                const inner = `rotate(${rot.toFixed(2)}) scale(${rawScaleX.toFixed(3)},${rawScaleY.toFixed(3)})`;
+                return `<g ${blendStyle}>${transAnim}<g transform="${inner}" ${fillPart} opacity="${rawOpacity.toFixed(3)}">${shapeEl}</g></g>`;
+            }
+            case 'cy': {
+                const fY = (anim.fromVal * H).toFixed(2), tY = (anim.toVal * H).toFixed(2);
+                const transAnim = smilTransform('translate', `${ix.toFixed(2)},${fY}`, `${ix.toFixed(2)},${tY}`, anim);
+                const inner = `rotate(${rot.toFixed(2)}) scale(${rawScaleX.toFixed(3)},${rawScaleY.toFixed(3)})`;
+                return `<g ${blendStyle}>${transAnim}<g transform="${inner}" ${fillPart} opacity="${rawOpacity.toFixed(3)}">${shapeEl}</g></g>`;
+            }
+            case 'rotate': {
+                const outerTr = `translate(${ix.toFixed(2)},${iy.toFixed(2)}) scale(${rawScaleX.toFixed(3)},${rawScaleY.toFixed(3)})`;
+                const rotAnim = smilTransform('rotate', anim.fromVal.toFixed(2), anim.toVal.toFixed(2), anim);
+                return `<g transform="${outerTr}" ${blendStyle}><g ${fillPart} opacity="${rawOpacity.toFixed(3)}">${rotAnim}${shapeEl}</g></g>`;
+            }
+            case 'scaleX': {
+                const outerTr = `translate(${ix.toFixed(2)},${iy.toFixed(2)}) rotate(${rot.toFixed(2)})`;
+                const scAnim = smilTransform('scale',
+                    `${anim.fromVal.toFixed(3)} ${rawScaleY.toFixed(3)}`,
+                    `${anim.toVal.toFixed(3)} ${rawScaleY.toFixed(3)}`, anim);
+                return `<g transform="${outerTr}" ${blendStyle}><g ${fillPart} opacity="${rawOpacity.toFixed(3)}">${scAnim}${shapeEl}</g></g>`;
+            }
+            case 'scaleY': {
+                const outerTr = `translate(${ix.toFixed(2)},${iy.toFixed(2)}) rotate(${rot.toFixed(2)})`;
+                const scAnim = smilTransform('scale',
+                    `${rawScaleX.toFixed(3)} ${anim.fromVal.toFixed(3)}`,
+                    `${rawScaleX.toFixed(3)} ${anim.toVal.toFixed(3)}`, anim);
+                return `<g transform="${outerTr}" ${blendStyle}><g ${fillPart} opacity="${rawOpacity.toFixed(3)}">${scAnim}${shapeEl}</g></g>`;
+            }
+            case 'fillAlpha': {
+                const tr = `translate(${ix.toFixed(2)},${iy.toFixed(2)}) rotate(${rot.toFixed(2)}) scale(${rawScaleX.toFixed(3)},${rawScaleY.toFixed(3)})`;
+                return `<g transform="${tr}" fill="${fillStr}" stroke="${strokeColor}" stroke-width="${strokeWidth}"${dashAttr} opacity="${rawOpacity.toFixed(3)}" ${blendStyle}>${fillAlphaAnimEl}${shapeEl}</g>`;
+            }
+            default: {
+                // Shape param animation (r, rx, ry, w, h) — animate already in shapeEl
+                const tr = `translate(${ix.toFixed(2)},${iy.toFixed(2)}) rotate(${rot.toFixed(2)}) scale(${rawScaleX.toFixed(3)},${rawScaleY.toFixed(3)})`;
+                return `<g transform="${tr}" ${fillPart} opacity="${rawOpacity.toFixed(3)}" ${blendStyle}>${shapeEl}</g>`;
+            }
+        }
+    });
+
+    const inner = parts.join('');
+    return (filterAttr || maskAttr) ? `<g ${filterAttr} ${maskAttr}>${inner}</g>` : inner;
+}
+
+// ─── Main SVG generator ────────────────────────────────────────────────────
+
+function genomeToSVGAnimated(genome, animSpec, W=1280, H=720, prefix='anim') {
+    let localCounter = 0;
+    const makeGradientId = () => `${prefix}g${++localCounter}`;
+    const defs = [], bodyParts = [];
+
+    bodyParts.push(renderBackground(genome, W, H, defs, makeGradientId));
+
+    for (let i = 0; i < genome.layers.length; i++) {
+        const layer = genome.layers[i];
+        if (layer.hidden) continue;
+        bodyParts.push(renderLayerAnim(layer, i, genome.palette, W, H, defs, makeGradientId, W, animSpec));
+    }
+
+    const defsBlock = defs.length ? `<defs>${defs.join('')}</defs>` : '';
+    return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice">${defsBlock}${bodyParts.join('')}</svg>`;
+}
+
+// ─── Genome extraction ─────────────────────────────────────────────────────
+
+function extractGenomeFromSVG(svgText) {
+    const match = svgText.match(/<evolvesvg:genome[^>]*>([\s\S]*?)<\/evolvesvg:genome>/);
+    if (!match) return null;
+    try { return JSON.parse(match[1].replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')); }
+    catch { return null; }
+}
+
+// ─── Parameter tree ────────────────────────────────────────────────────────
+
+function getParamRows(genome) {
+    const rows = [];
+
+    // Palette
+    genome.palette.forEach((color, i) => {
+        rows.push({ type: 'section', label: `Color ${i+1}`, swatch: colorString(color) });
+        rows.push({ type: 'param', label: 'Hue', target: 'palette', paletteIdx: i, param: 'paletteH', current: color.h, min: 0, max: 360, step: 1, unit: '°' });
+        rows.push({ type: 'param', label: 'Saturation', target: 'palette', paletteIdx: i, param: 'paletteS', current: color.s, min: 0, max: 100, step: 1, unit: '%' });
+        rows.push({ type: 'param', label: 'Lightness', target: 'palette', paletteIdx: i, param: 'paletteL', current: color.l, min: 5, max: 95, step: 1, unit: '%' });
+    });
+
+    // Layers
+    genome.layers.forEach((layer, i) => {
+        if (layer.hidden) return;
+        const isTiling = TILING_TYPES.has(layer.type);
+        rows.push({ type: 'section', label: `Layer ${i+1}  ·  ${layer.type}` });
+
+        rows.push({ type: 'param', label: 'Opacity', target: 'layer', layerIdx: i, param: 'opacity', current: layer.opacity ?? 1, min: 0, max: 1, step: 0.01, unit: '' });
+
+        if (!isTiling) {
+            rows.push({ type: 'param', label: 'Position X', target: 'layer', layerIdx: i, param: 'cx', current: layer.cx, min: 0, max: 1, step: 0.01, unit: '' });
+            rows.push({ type: 'param', label: 'Position Y', target: 'layer', layerIdx: i, param: 'cy', current: layer.cy, min: 0, max: 1, step: 0.01, unit: '' });
+            rows.push({ type: 'param', label: 'Rotation', target: 'layer', layerIdx: i, param: 'rotate', current: layer.transform?.rotate ?? 0, min: 0, max: 360, step: 1, unit: '°' });
+            rows.push({ type: 'param', label: 'Scale X', target: 'layer', layerIdx: i, param: 'scaleX', current: layer.transform?.scaleX ?? 1, min: 0.05, max: 3, step: 0.05, unit: '×' });
+            rows.push({ type: 'param', label: 'Scale Y', target: 'layer', layerIdx: i, param: 'scaleY', current: layer.transform?.scaleY ?? 1, min: 0.05, max: 3, step: 0.05, unit: '×' });
+
+            const p = layer.params;
+            if (layer.type === 'circle')  rows.push({ type: 'param', label: 'Radius',   target: 'layer', layerIdx: i, param: 'r',  current: p.r,  min: 0.01, max: 0.5,  step: 0.005, unit: '' });
+            if (layer.type === 'ellipse') rows.push({ type: 'param', label: 'Radius X', target: 'layer', layerIdx: i, param: 'rx', current: p.rx, min: 0.01, max: 0.5,  step: 0.005, unit: '' });
+            if (layer.type === 'ellipse') rows.push({ type: 'param', label: 'Radius Y', target: 'layer', layerIdx: i, param: 'ry', current: p.ry, min: 0.01, max: 0.5,  step: 0.005, unit: '' });
+            if (layer.type === 'rect')    rows.push({ type: 'param', label: 'Width',    target: 'layer', layerIdx: i, param: 'w',  current: p.w,  min: 0.01, max: 1,    step: 0.01,  unit: '' });
+            if (layer.type === 'rect')    rows.push({ type: 'param', label: 'Height',   target: 'layer', layerIdx: i, param: 'h',  current: p.h,  min: 0.01, max: 1,    step: 0.01,  unit: '' });
+            if (layer.type === 'polygon') rows.push({ type: 'param', label: 'Radius',   target: 'layer', layerIdx: i, param: 'r',  current: p.r,  min: 0.01, max: 0.5,  step: 0.005, unit: '' });
+
+            if (layer.fill) rows.push({ type: 'param', label: 'Fill Opacity', target: 'layer', layerIdx: i, param: 'fillAlpha', current: layer.fill.alpha ?? 1, min: 0, max: 1, step: 0.01, unit: '' });
+        }
+
+        const hidden = new Set(layer.hiddenEffects || []);
+        if (layer.blur     != null && !hidden.has('blur'))      rows.push({ type: 'param', label: 'Blur',         target: 'layer', layerIdx: i, param: 'blur',          current: layer.blur,                  min: 0,    max: 50,  step: 0.5, unit: '' });
+        if (layer.displace != null && !hidden.has('displace'))  rows.push({ type: 'param', label: 'Displacement', target: 'layer', layerIdx: i, param: 'displaceScale',  current: layer.displace.scale,        min: 0,    max: 300, step: 1,   unit: '' });
+        if (layer.colorShift != null && !hidden.has('colorShift')) rows.push({ type: 'param', label: 'Hue Shift', target: 'layer', layerIdx: i, param: 'hueRotate',      current: layer.colorShift.hueRotate ?? 0, min: -180, max: 180, step: 1,   unit: '°' });
+    });
+
+    return rows;
+}
+
+function renderParamTree(rows) {
+    return rows.map(row => {
+        if (row.type === 'section') {
+            const swatch = row.swatch ? `<span class="swatch" style="background:${row.swatch}"></span>` : '';
+            return `<div class="param-section">${swatch}${row.label}</div>`;
+        }
+        const val = typeof row.current === 'number' ? row.current.toFixed(row.step < 0.01 ? 3 : row.step < 1 ? 2 : 0) + (row.unit||'') : '';
+        const dataAttrs = `data-target="${row.target}" data-param="${row.param}" data-current="${row.current}" data-min="${row.min}" data-max="${row.max}" data-step="${row.step}" data-unit="${row.unit||''}"${row.layerIdx !== undefined ? ` data-layer-idx="${row.layerIdx}"` : ''}${row.paletteIdx !== undefined ? ` data-palette-idx="${row.paletteIdx}"` : ''}`;
+        return `<div class="param-row" ${dataAttrs} onclick="selectParam(this)"><span class="param-label">${row.label}</span><span class="param-value">${val}</span></div>`;
+    }).join('');
+}
+
+// ─── State ─────────────────────────────────────────────────────────────────
+
+let currentGenome = null;
+let selectedParamEl = null;
+let currentAnimSpec = null;
+let currentAnimatedSVG = null;
+let animDirection = 'forward';
+let animEasing = 'linear';
+
+// ─── UI: Load SVG ──────────────────────────────────────────────────────────
+
+document.getElementById('loadBtn').addEventListener('click', loadSVG);
+document.getElementById('svgInput').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) loadSVG(); });
+
+function loadSVG() {
+    const text = document.getElementById('svgInput').value.trim();
+    const status = document.getElementById('loadStatus');
+    if (!text) { setStatus('Paste SVG code above first.', 'err'); return; }
+    const genome = extractGenomeFromSVG(text);
+    if (!genome) { setStatus('No genome data found. Export the SVG from evolveSVG (not PNG).', 'err'); return; }
+
+    currentGenome = genome;
+    setStatus(`Loaded — ${genome.layers.length} layers, ${genome.palette.length} colors`, 'ok');
+    document.getElementById('clearBtn').style.display = '';
+
+    // Show static preview
+    showStaticPreview();
+
+    // Build param tree
+    const rows = getParamRows(genome);
+    document.getElementById('paramTree').innerHTML = renderParamTree(rows);
+
+    // Reset selection
+    selectedParamEl = null;
+    currentAnimSpec = null;
+    document.getElementById('controlsPanel').classList.add('hidden');
+    document.getElementById('animBadge').classList.remove('visible');
+}
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+    document.getElementById('svgInput').value = '';
+    document.getElementById('loadStatus').textContent = '';
+    document.getElementById('clearBtn').style.display = 'none';
+    document.getElementById('paramTree').innerHTML = '<div class="param-empty">Load an SVG to<br>browse animatable parameters.</div>';
+    document.getElementById('svgPreviewWrap').style.display = 'none';
+    document.getElementById('previewEmpty').style.display = '';
+    document.getElementById('controlsPanel').classList.add('hidden');
+    document.getElementById('animBadge').classList.remove('visible');
+    document.getElementById('exportBtn').style.display = 'none';
+    document.getElementById('copyBtn').style.display = 'none';
+    currentGenome = null;
+    selectedParamEl = null;
+    currentAnimSpec = null;
+    currentAnimatedSVG = null;
+});
+
+function setStatus(msg, cls) {
+    const el = document.getElementById('loadStatus');
+    el.textContent = msg;
+    el.className = cls;
+}
+
+function showStaticPreview() {
+    const svg = genomeToSVGAnimated(currentGenome, null, 1280, 720);
+    const wrap = document.getElementById('svgPreviewWrap');
+    wrap.innerHTML = svg;
+    wrap.style.display = 'flex';
+    document.getElementById('previewEmpty').style.display = 'none';
+}
+
+// ─── UI: Select parameter ──────────────────────────────────────────────────
+
+function selectParam(el) {
+    document.querySelectorAll('.param-row.selected').forEach(r => r.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedParamEl = el;
+
+    const current = parseFloat(el.dataset.current);
+    const min = parseFloat(el.dataset.min);
+    const max = parseFloat(el.dataset.max);
+    const step = parseFloat(el.dataset.step);
+    const unit = el.dataset.unit || '';
+
+    // Default from = current, to = current shifted by ~40% of range
+    const range = max - min;
+    let fromDefault = current;
+    let toDefault = Math.min(max, current + range * 0.5);
+    if (toDefault === fromDefault) toDefault = Math.max(min, current - range * 0.5);
+    // Snap to step
+    fromDefault = Math.round(fromDefault / step) * step;
+    toDefault   = Math.round(toDefault   / step) * step;
+
+    // Setup sliders
+    const fromSlider = document.getElementById('fromSlider');
+    const toSlider   = document.getElementById('toSlider');
+    fromSlider.min  = min; fromSlider.max  = max; fromSlider.step = step; fromSlider.value = fromDefault;
+    toSlider.min    = min; toSlider.max    = max; toSlider.step   = step; toSlider.value   = toDefault;
+    updateSliderDisplay();
+
+    // Build label
+    const target = el.dataset.target;
+    let path = '';
+    if (target === 'palette') path = `Color ${parseInt(el.dataset.paletteIdx)+1} › ${el.querySelector('.param-label').textContent}`;
+    else path = `Layer ${parseInt(el.dataset.layerIdx)+1} › ${el.querySelector('.param-label').textContent}`;
+
+    document.getElementById('controlsSelected').innerHTML = `<strong>${path}</strong> <span style="color:var(--text-faint)">(${unit || 'value'})</span>`;
+    document.getElementById('controlsPanel').classList.remove('hidden');
+    document.getElementById('exportBtn').style.display = 'none';
+    document.getElementById('copyBtn').style.display = 'none';
+    document.getElementById('stopBtn').style.display = 'none';
+    document.getElementById('previewBtn').style.display = '';
+    document.getElementById('animBadge').classList.remove('visible');
+
+    // Restore static preview
+    showStaticPreview();
+}
+
+function updateSliderDisplay() {
+    const from = document.getElementById('fromSlider');
+    const to   = document.getElementById('toSlider');
+    const step = parseFloat(selectedParamEl?.dataset.step || 0.01);
+    const decimals = step < 0.01 ? 3 : step < 1 ? 2 : (step < 10 ? 1 : 0);
+    document.getElementById('fromValDisplay').textContent = parseFloat(from.value).toFixed(decimals) + (selectedParamEl?.dataset.unit || '');
+    document.getElementById('toValDisplay').textContent   = parseFloat(to.value).toFixed(decimals) + (selectedParamEl?.dataset.unit || '');
+}
+
+document.getElementById('fromSlider').addEventListener('input', updateSliderDisplay);
+document.getElementById('toSlider').addEventListener('input', updateSliderDisplay);
+
+// ─── UI: Easing / direction ────────────────────────────────────────────────
+
+function setEasing(btn) {
+    document.querySelectorAll('.ease-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    animEasing = btn.dataset.ease;
+    document.getElementById('customSplineRow').style.display = (animEasing === 'custom') ? 'flex' : 'none';
+}
+
+function setDirection(dir) {
+    animDirection = dir;
+    document.getElementById('dirForward').classList.toggle('active', dir === 'forward');
+    document.getElementById('dirAlternate').classList.toggle('active', dir === 'alternate');
+}
+
+// ─── UI: Preview / Stop / Export ──────────────────────────────────────────
+
+function buildAnimSpec() {
+    if (!selectedParamEl) return null;
+    const el = selectedParamEl;
+    const easing = animEasing;
+    return {
+        target:      el.dataset.target,
+        layerIdx:    el.dataset.layerIdx !== undefined ? parseInt(el.dataset.layerIdx) : undefined,
+        paletteIdx:  el.dataset.paletteIdx !== undefined ? parseInt(el.dataset.paletteIdx) : undefined,
+        param:       el.dataset.param,
+        fromVal:     parseFloat(document.getElementById('fromSlider').value),
+        toVal:       parseFloat(document.getElementById('toSlider').value),
+        dur:         parseFloat(document.getElementById('durInput').value) || 3,
+        repeatCount: document.getElementById('repeatSelect').value,
+        direction:   animDirection,
+        easing:      easing,
+        customSpline: document.getElementById('customSplineInput').value.trim(),
+    };
+}
+
+function applyAnimation() {
+    if (!currentGenome || !selectedParamEl) return;
+    const spec = buildAnimSpec();
+    currentAnimSpec = spec;
+    currentAnimatedSVG = genomeToSVGAnimated(currentGenome, spec, 1280, 720);
+
+    const wrap = document.getElementById('svgPreviewWrap');
+    wrap.innerHTML = currentAnimatedSVG;
+    wrap.style.display = 'flex';
+    document.getElementById('animBadge').classList.add('visible');
+    document.getElementById('stopBtn').style.display = '';
+    document.getElementById('previewBtn').style.display = 'none';
+    document.getElementById('exportBtn').style.display = '';
+    document.getElementById('copyBtn').style.display = '';
+}
+
+function stopAnimation() {
+    currentAnimatedSVG = null;
+    showStaticPreview();
+    document.getElementById('animBadge').classList.remove('visible');
+    document.getElementById('stopBtn').style.display = 'none';
+    document.getElementById('previewBtn').style.display = '';
+    document.getElementById('exportBtn').style.display = 'none';
+    document.getElementById('copyBtn').style.display = 'none';
+}
+
+function exportSVG() {
+    if (!currentAnimatedSVG) return;
+    const label = selectedParamEl?.querySelector('.param-label')?.textContent || 'animated';
+    const blob = new Blob([currentAnimatedSVG], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `evolvesvg-${label.toLowerCase().replace(/\s+/g,'-')}-animated.svg`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+function copySVG() {
+    if (!currentAnimatedSVG) return;
+    navigator.clipboard.writeText(currentAnimatedSVG).then(() => {
+        const btn = document.getElementById('copyBtn');
+        const orig = btn.innerHTML;
+        btn.innerHTML = 'Copied!';
+        setTimeout(() => btn.innerHTML = orig, 1500);
+    });
+}
+</script>
+
+</body>
+</html>
