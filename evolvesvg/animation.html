@@ -66,7 +66,8 @@
         .topnav-back .arrow { font-size: 15px; line-height: 1; }
         .topnav-sep { color: var(--border2); }
         .topnav-title { font-size: 14px; font-weight: 600; color: #fff; }
-        .topnav-hint { margin-left: auto; font-size: 12px; color: var(--text-faint); }
+        .topnav-hint { font-size: 12px; color: var(--text-faint); }
+        .topnav-browser-warn { margin-left: auto; font-size: 11px; color: #f59e0b; opacity: 0.85; }
 
         /* ── Layout ────────────────────────────────────────────────── */
         .anim-layout {
@@ -502,9 +503,9 @@
         .custom-spline-row input:focus { border-color: var(--accent); }
         #customSplineRow { display: none; }
 
-.perf-toggle { display: flex; align-items: center; gap: 5px; cursor: pointer; user-select: none; }
+.perf-toggle { display: flex; align-items: center; gap: 5px; cursor: pointer; user-select: none; color: var(--text-faint); font-size: 12px; }
         .perf-toggle input { accent-color: var(--accent); cursor: pointer; margin: 0; }
-        .perf-toggle:hover { color: var(--text); }
+        .perf-toggle:hover { color: var(--text-dim); }
 
         .canvas-action-row {
             display: flex;
@@ -619,6 +620,7 @@
     <span class="topnav-sep">/</span>
     <span class="topnav-title">Animation</span>
     <span class="topnav-hint">SMIL · SVG native animation</span>
+    <span class="topnav-browser-warn" id="browserWarn" style="display:none">Chrome is highly recommended for smooth playback</span>
 </nav>
 
 <div class="anim-layout">
@@ -709,17 +711,6 @@
                                     <button id="dirAlternate" onclick="setDirection('alternate')">Alternate</button>
                                 </div>
                             </div>
-                            <div class="timing-field perf-row" style="margin-bottom:0">
-                                <label>&nbsp;</label>
-                                <div style="display:flex; gap:12px; align-items:center; height:100%">
-                                    <label class="perf-toggle" title="Adds will-change: transform, opacity to all layer groups — hints the browser to promote them to GPU compositor layers">
-                                        <input type="checkbox" id="gpuToggle"> GPU
-                                    </label>
-                                    <label class="perf-toggle" title="Adds shape-rendering, color-rendering, and image-rendering=optimizeSpeed to the SVG root — trades visual quality for render speed">
-                                        <input type="checkbox" id="optimizeSpeedToggle"> optimizeSpeed
-                                    </label>
-                                </div>
-                            </div>
                         </div>
 
                         <div class="easing-wrap">
@@ -762,6 +753,12 @@
                     <div class="controls-output">
                         <button class="btn-primary" id="previewBtn" onclick="applyAnimation()" disabled>Preview</button>
                         <button class="btn-secondary" id="stopBtn" onclick="stopAnimation()" style="display:none">Stop</button>
+                        <label class="perf-toggle" title="Adds will-change: transform, opacity to all layer groups — hints the browser to promote them to GPU compositor layers">
+                            <input type="checkbox" id="gpuToggle"> GPU
+                        </label>
+                        <label class="perf-toggle" title="Adds shape-rendering, color-rendering, and image-rendering=optimizeSpeed to the SVG root — trades visual quality for render speed">
+                            <input type="checkbox" id="optimizeSpeedToggle"> optimizeSpeed
+                        </label>
                         <div class="action-sep"></div>
                         <button class="btn-icon accent" id="exportBtn" onclick="exportSVG()" style="display:none"><svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 20 20" fill="#4a9eff" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 17a.5.5 0 0 1 .09 1H4.5a.5.5 0 0 1-.09-1H15.5ZM10 2a.5.5 0 0 1 .5.41V14.3l3.64-3.65a.5.5 0 0 1 .64-.06l.07.06c.17.17.2.44.06.63l-.06.07-4.5 4.5a.5.5 0 0 1-.25.14L10 16a.5.5 0 0 1-.4-.2l-4.46-4.45a.5.5 0 0 1 .64-.76l.07.06 3.65 3.64V2.5c0-.27.22-.5.5-.5Z"/></svg>Export SVG</button>
                         <button class="btn-icon" id="copyBtn" onclick="copySVG()" style="display:none"><svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 20 20" fill="#FFFFFF" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2a2 2 0 0 0-2 2v10c0 1.1.9 2 2 2h6a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8ZM7 4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4ZM4 6a2 2 0 0 1 1-1.73V14.5A2.5 2.5 0 0 0 7.5 17h6.23A2 2 0 0 1 12 18H7.5A3.5 3.5 0 0 1 4 14.5V6Z"/></svg>Copy SVG</button>
@@ -1205,13 +1202,13 @@ function renderLayerAnim(layer, layerIdx, palette, W, H, defs, makeGradientId, r
     const dashAttr = layer.dash && !(layer.hiddenEffects||[]).includes('dash')
         ? ` stroke-dasharray="${layer.dash.len.toFixed(1)},${layer.dash.gap.toFixed(1)}"` : '';
 
-    // fillAlpha: animate fill between two alpha versions of same color
+    // fillAlpha: animate fill-opacity (not fill color) — SMIL can't reliably
+    // interpolate HSLA strings with embedded alpha, so we split them.
     let fillAlphaAnimEl = '';
     if (param === 'fillAlpha' && layer.fill && layer.fill.type === 'solid') {
         const pc = palette[layer.fill.paletteIdx % palette.length];
-        fillStr = colorString(pc, anim.fromVal);
-        fillAlphaAnimEl = smilAnimate('fill',
-            colorString(pc, anim.fromVal), colorString(pc, anim.toVal), anim);
+        fillStr = colorString(pc, 1); // solid color, alpha handled via fill-opacity
+        fillAlphaAnimEl = smilAnimate('fill-opacity', anim.fromVal.toFixed(3), anim.toVal.toFixed(3), anim);
     }
 
     // Shape params
@@ -1324,7 +1321,7 @@ function renderLayerAnim(layer, layerIdx, palette, W, H, defs, makeGradientId, r
             }
             case 'fillAlpha': {
                 const tr = `translate(${ix.toFixed(2)},${iy.toFixed(2)}) rotate(${rot.toFixed(2)}) scale(${rawScaleX.toFixed(3)},${rawScaleY.toFixed(3)})`;
-                return `<g transform="${tr}" fill="${fillStr}" stroke="${strokeColor}" stroke-width="${strokeWidth}"${dashAttr} opacity="${rawOpacity.toFixed(3)}" ${blendStyle}>${fillAlphaAnimEl}${shapeEl}</g>`;
+                return `<g transform="${tr}" fill="${fillStr}" fill-opacity="${anim.fromVal.toFixed(3)}" stroke="${strokeColor}" stroke-width="${strokeWidth}"${dashAttr} opacity="${rawOpacity.toFixed(3)}" ${blendStyle}>${fillAlphaAnimEl}${shapeEl}</g>`;
             }
             default: {
                 // Shape param animation (r, rx, ry, w, h) — animate already in shapeEl
@@ -1575,6 +1572,35 @@ function resetParamValue(el) {
     updateParamRowDisplay(el, original);
 }
 
+function buildTransitionSpec(el, fromVal, toVal) {
+    return {
+        target:      el.dataset.target,
+        param:       el.dataset.param,
+        layerIdx:    el.dataset.layerIdx !== undefined ? parseInt(el.dataset.layerIdx) : undefined,
+        paletteIdx:  el.dataset.paletteIdx !== undefined ? parseInt(el.dataset.paletteIdx) : undefined,
+        fromVal,
+        toVal,
+        dur:         0.25,
+        repeatCount: '1',
+        direction:   'forward',
+        easing:      'easeOut',
+        customSpline: '',
+    };
+}
+
+function showTransitionPreview(el, fromVal, toVal) {
+    if (!currentGenome) return;
+    // Generate the SVG with the genome reset to fromVal so instance positions
+    // are computed at the start of the animation, not the end.
+    const baseGenome = JSON.parse(JSON.stringify(currentGenome));
+    applyParamToGenome(baseGenome, el, fromVal);
+    const spec = buildTransitionSpec(el, fromVal, toVal);
+    const svg = genomeToSVGAnimated(baseGenome, [spec], 1280, 720);
+    document.getElementById('svgPreviewWrap').innerHTML = svg;
+    clearTimeout(_previewTimer);
+    _previewTimer = setTimeout(showStaticPreview, 280);
+}
+
 // Drag-scrub logic (event delegation on the param tree)
 let _drag = null;
 
@@ -1595,9 +1621,17 @@ document.addEventListener('mousemove', e => {
 
 document.addEventListener('mouseup', e => {
     if (!_drag) return;
-    if (!_drag.moved) selectParam(_drag.el);
+    const { el, startVal, moved } = _drag;
     _drag = null;
     document.body.style.cursor = '';
+    if (!moved) {
+        selectParam(el);
+    } else {
+        const toVal = parseFloat(el.dataset.current);
+        if (Math.abs(toVal - startVal) > parseFloat(el.dataset.step) * 0.5) {
+            showTransitionPreview(el, startVal, toVal);
+        }
+    }
 });
 
 // ─── State ─────────────────────────────────────────────────────────────────
@@ -1920,6 +1954,10 @@ function updateKeyframe() {
     if (editingSpecIdx === null || !selectedParamEl) return;
     animSpecs[editingSpecIdx] = buildAnimSpec();
     editingSpecIdx = null;
+    selectedParamEl = null;
+    document.querySelectorAll('.param-row.selected').forEach(r => r.classList.remove('selected'));
+    document.getElementById('controlsSelected').innerHTML = '';
+    showParamConfig(false);
     updateKfButtons();
     renderKeyframeList();
     refreshParamTree();
@@ -2236,6 +2274,12 @@ async function exportWebM() {
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
+
+// ─── Browser warning ────────────────────────────────────────────────────────
+(function() {
+    const isChrome = /Chrome\//.test(navigator.userAgent) && !/Edg\/|OPR\//.test(navigator.userAgent);
+    if (!isChrome) document.getElementById('browserWarn').style.display = '';
+})();
 
 // ─── Auto-load from main page ───────────────────────────────────────────────
 (function() {
