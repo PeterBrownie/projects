@@ -154,6 +154,20 @@
         #loadStatus.ok  { color: #4ade80; }
         #loadStatus.err { color: #f87171; }
 
+        .paste-collapsed-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        #collapsedStatus {
+            flex: 1;
+            font-size: 12px;
+            color: #4ade80;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
         /* ── Parameter tree ────────────────────────────────────────── */
         .param-panel {
             flex: 1;
@@ -184,33 +198,82 @@
             padding: 8px 14px 3px;
             font-size: 11px;
             font-weight: 600;
+            cursor: pointer;
+            user-select: none;
             color: var(--text-faint);
             letter-spacing: 0.4px;
             display: flex;
             align-items: center;
             gap: 7px;
         }
+        .param-section:hover { color: var(--text-dim); }
         .param-section .swatch {
             width: 10px;
             height: 10px;
             border-radius: 2px;
             flex-shrink: 0;
         }
+        .section-chevron { font-size: 7px; flex-shrink: 0; opacity: 0.6; }
         .param-row {
             display: flex;
             align-items: center;
             padding: 5px 14px 5px 26px;
-            cursor: pointer;
+            cursor: ew-resize;
+            user-select: none;
             gap: 8px;
             transition: background 0.1s;
             border-radius: 3px;
             margin: 0 4px;
+            position: relative;
+            overflow: hidden;
         }
         .param-row:hover { background: var(--surface2); }
         .param-row.selected { background: #1a2a3a; }
         .param-row.selected .param-label { color: var(--accent); }
+        .param-fill {
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            background: rgba(74,158,255,0.09);
+            pointer-events: none;
+            z-index: 0;
+            border-radius: 3px;
+        }
+        .param-row > :not(.param-fill) { position: relative; z-index: 1; }
+        .param-kf-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            flex-shrink: 0;
+        }
         .param-label { flex: 1; font-size: 13px; color: var(--text); }
-        .param-value { font-size: 11px; color: var(--text-faint); font-family: 'Menlo', monospace; }
+        .param-value { font-size: 11px; color: var(--text-faint); font-family: 'Menlo', monospace; transition: opacity 0.15s; }
+        .param-row:hover .param-value { opacity: 0; }
+        .param-hint {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            /* transform: translateY(-50%); */
+            font-size: 10px;
+            color: var(--text-faint);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.15s;
+            white-space: nowrap;
+            z-index: 2;
+        }
+        .param-row:hover .param-hint { opacity: 1; }
+        .param-reset {
+            background: none;
+            border: none;
+            color: var(--text-faint);
+            cursor: pointer;
+            font-size: 13px;
+            padding: 0 0 0 4px;
+            line-height: 1;
+            flex-shrink: 0;
+            opacity: 0.7;
+        }
+        .param-reset:hover { color: var(--accent); opacity: 1; }
 
         .param-empty {
             padding: 20px 14px;
@@ -278,81 +341,100 @@
         }
         .anim-badge.visible { display: block; }
 
-        /* ── Controls panel ────────────────────────────────────────── */
+        /* ── Controls panel ─────────────────────────────────────────── */
         .controls-panel {
             border-top: 1px solid var(--border);
             background: var(--surface);
             flex-shrink: 0;
-            padding: 14px 18px;
+            overflow: hidden;
         }
         .controls-panel.hidden { display: none; }
+
+        .controls-body {
+            display: flex;
+            height: 230px;
+        }
+        .controls-left {
+            width: 60%;
+            flex-shrink: 0;
+            border-right: 1px solid var(--border);
+            padding: 12px 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        .controls-right {
+            flex: 1;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        .controls-hint {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-faint);
+            font-size: 12px;
+            text-align: center;
+            line-height: 1.6;
+        }
 
         .controls-selected {
             font-size: 12px;
             color: var(--text-dim);
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            margin-bottom: 10px;
         }
         .controls-selected strong { color: var(--accent); font-weight: 600; }
 
         .controls-row {
             display: flex;
-            gap: 18px;
+            gap: 14px;
             align-items: flex-start;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
-
-        .slider-group {
-            flex: 1;
-        }
+        .slider-group { flex: 1; }
         .slider-group label {
             display: flex;
             justify-content: space-between;
             font-size: 11px;
             color: var(--text-dim);
-            margin-bottom: 5px;
+            margin-bottom: 4px;
         }
         .slider-group label span { color: var(--text); font-family: 'Menlo', monospace; }
-        .slider-group input[type=range] {
-            width: 100%;
-            accent-color: var(--accent);
-            cursor: pointer;
-        }
+        .slider-group input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; }
 
         .controls-timing {
             display: flex;
-            gap: 12px;
+            gap: 10px;
             align-items: flex-end;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
         }
-        .timing-field {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-        .timing-field label {
-            font-size: 11px;
-            color: var(--text-dim);
-        }
+        .timing-field { display: flex; flex-direction: column; gap: 4px; }
+        .timing-field label { font-size: 11px; color: var(--text-dim); }
         .timing-field select,
         .timing-field input[type=number] {
             background: var(--surface2);
             border: 1px solid var(--border2);
             border-radius: 4px;
             color: var(--text);
-            padding: 4px 8px;
-            font-size: 13px;
+            padding: 4px 6px;
+            font-size: 12px;
             outline: none;
         }
         .timing-field select:focus,
         .timing-field input[type=number]:focus { border-color: var(--accent); }
-        .timing-field input[type=number] { width: 68px; }
+        .timing-field input[type=number] { width: 58px; }
+        .timing-field input[type=number]::-webkit-inner-spin-button,
+        .timing-field input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .timing-field input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 
         .dir-toggle {
             display: flex;
-            gap: 0;
             border: 1px solid var(--border2);
             border-radius: 4px;
             overflow: hidden;
@@ -361,34 +443,39 @@
             background: var(--surface2);
             border: none;
             color: var(--text-dim);
-            padding: 4px 12px;
-            font-size: 12px;
+            padding: 4px 10px;
+            font-size: 11px;
             cursor: pointer;
             transition: background 0.1s, color 0.1s;
         }
         .dir-toggle button + button { border-left: 1px solid var(--border2); }
         .dir-toggle button.active { background: var(--accent); color: #fff; }
 
+        .easing-wrap {
+            margin-bottom: 6px;
+        }
         .easing-row {
             display: flex;
-            gap: 6px;
+            gap: 5px;
             align-items: center;
-            margin-bottom: 12px;
             flex-wrap: wrap;
         }
-        .easing-label {
-            font-size: 11px;
-            color: var(--text-dim);
-            width: 48px;
+        #easingCanvas {
+            width: 50%;
+            height: 44px;
+            border-radius: 4px;
+            border: 1px solid var(--border2);
+            display: block;
             flex-shrink: 0;
         }
+        .easing-label { font-size: 11px; color: var(--text-dim); width: 44px; flex-shrink: 0; }
         .ease-btn {
             background: var(--surface2);
             border: 1px solid var(--border2);
             border-radius: 4px;
             color: var(--text-dim);
-            padding: 3px 10px;
-            font-size: 12px;
+            padding: 2px 8px;
+            font-size: 11px;
             cursor: pointer;
             transition: background 0.1s, color 0.1s, border-color 0.1s;
         }
@@ -399,7 +486,6 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            margin-bottom: 12px;
         }
         .custom-spline-row label { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
         .custom-spline-row input {
@@ -408,28 +494,112 @@
             border: 1px solid var(--border2);
             border-radius: 4px;
             color: var(--text);
-            padding: 4px 8px;
-            font-size: 12px;
+            padding: 3px 6px;
+            font-size: 11px;
             font-family: 'Menlo', monospace;
             outline: none;
         }
         .custom-spline-row input:focus { border-color: var(--accent); }
         #customSplineRow { display: none; }
 
-        .action-row {
+.perf-toggle { display: flex; align-items: center; gap: 5px; cursor: pointer; user-select: none; }
+        .perf-toggle input { accent-color: var(--accent); cursor: pointer; margin: 0; }
+        .perf-toggle:hover { color: var(--text); }
+
+        .canvas-action-row {
             display: flex;
-            gap: 8px;
-            align-items: center;
+            gap: 10px;
+            align-items: flex-end;
+            margin-bottom: 8px;
         }
-        .action-sep {
+        .canvas-action-row .kf-action-row {
             flex: 1;
+            align-items: flex-end;
+            margin-bottom: 0;
         }
+        .kf-action-row {
+            display: flex;
+            gap: 7px;
+            justify-content: flex-end;
+        }
+
+        /* ── Keyframe list (right panel) ─────────────────────────────── */
+        .kf-list-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.7px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            margin-bottom: 7px;
+            flex-shrink: 0;
+        }
+        .kf-count {
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: 10px;
+            padding: 1px 7px;
+            font-size: 10px;
+            color: var(--text-dim);
+            font-weight: 400;
+            letter-spacing: 0;
+        }
+        .kf-list { flex: 1; overflow-y: auto; min-height: 0; }
+        .kf-list::-webkit-scrollbar { width: 4px; }
+        .kf-list::-webkit-scrollbar-track { background: transparent; }
+        .kf-list::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+        .kf-empty {
+            color: var(--text-faint);
+            font-size: 12px;
+            text-align: center;
+            padding: 14px 8px;
+            line-height: 1.7;
+        }
+        .kf-entry {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 6px 9px;
+            border: 1px solid var(--border2);
+            border-radius: 5px;
+            margin-bottom: 5px;
+            cursor: pointer;
+            background: var(--surface2);
+            transition: border-color 0.1s, background 0.1s;
+        }
+        .kf-entry:hover { border-color: #555; background: #252525; }
+        .kf-entry.selected { border-color: var(--accent); background: #0d1e30; }
+        .kf-entry-info { flex: 1; min-width: 0; }
+        .kf-entry-path { font-size: 12px; color: var(--text); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .kf-entry-range { font-size: 10px; color: var(--text-dim); font-family: 'Menlo', monospace; margin-top: 1px; }
+        .kf-entry-del {
+            background: none; border: none; color: var(--text-faint);
+            cursor: pointer; font-size: 12px; padding: 2px 5px;
+            border-radius: 3px; transition: color 0.1s, background 0.1s;
+            flex-shrink: 0; line-height: 1;
+        }
+        .kf-entry-del:hover { color: #f87171; background: rgba(248,113,113,0.12); }
+
+        /* ── Output actions (bottom of right panel) ──────────────────── */
+        .controls-output {
+            display: flex;
+            gap: 7px;
+            align-items: center;
+            padding-top: 9px;
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+            flex-wrap: wrap;
+            margin-top: 6px;
+        }
+        .action-sep { flex: 1; }
         .btn-icon {
             background: var(--surface2);
             border: 1px solid var(--border2);
             border-radius: 5px;
             color: var(--text);
-            padding: 5px 12px;
+            padding: 5px 11px;
             font-size: 12px;
             cursor: pointer;
             transition: background 0.15s, border-color 0.15s;
@@ -456,13 +626,21 @@
     <!-- Left sidebar -->
     <aside class="anim-sidebar">
         <div class="paste-section">
-            <label for="svgInput">Paste SVG code</label>
-            <textarea id="svgInput" placeholder="Paste an SVG exported from evolveSVG…&#10;(it must contain embedded genome data)"></textarea>
-            <div class="paste-row">
-                <button class="btn-primary" id="loadBtn">Load SVG</button>
-                <button class="btn-secondary" id="clearBtn" style="display:none">Clear</button>
+            <div id="pasteExpanded">
+                <label for="svgInput">Paste SVG code</label>
+                <textarea id="svgInput" placeholder="Paste an SVG exported from evolveSVG…&#10;(it must contain embedded genome data)"></textarea>
+                <div class="paste-row">
+                    <button class="btn-primary" id="loadBtn">Load SVG</button>
+                </div>
+                <div id="loadStatus"></div>
             </div>
-            <div id="loadStatus"></div>
+            <div id="pasteCollapsed" style="display:none">
+                <div class="paste-collapsed-row">
+                    <span id="collapsedStatus"></span>
+                    <button class="btn-secondary" id="changeBtn" onclick="expandPaste()">Change…</button>
+                    <button class="btn-secondary" id="clearBtn">Clear</button>
+                </div>
+            </div>
         </div>
 
         <div class="param-panel" id="paramPanel">
@@ -488,64 +666,109 @@
         </div>
 
         <div class="controls-panel hidden" id="controlsPanel">
-            <div class="controls-selected" id="controlsSelected"></div>
+            <div class="controls-body">
 
-            <div class="controls-row">
-                <div class="slider-group">
-                    <label>From <span id="fromValDisplay">0</span></label>
-                    <input type="range" id="fromSlider">
-                </div>
-                <div class="slider-group">
-                    <label>To <span id="toValDisplay">1</span></label>
-                    <input type="range" id="toSlider">
-                </div>
-            </div>
+                <!-- Left: param config -->
+                <div class="controls-left">
+                    <div class="controls-selected" id="controlsSelected"></div>
 
-            <div class="controls-timing">
-                <div class="timing-field">
-                    <label>Duration (s)</label>
-                    <input type="number" id="durInput" value="3" min="0.1" max="60" step="0.1">
-                </div>
-                <div class="timing-field">
-                    <label>Repeat</label>
-                    <select id="repeatSelect">
-                        <option value="indefinite">Loop</option>
-                        <option value="1">Once</option>
-                        <option value="2">2×</option>
-                        <option value="3">3×</option>
-                        <option value="5">5×</option>
-                    </select>
-                </div>
-                <div class="timing-field">
-                    <label>Direction</label>
-                    <div class="dir-toggle">
-                        <button class="active" id="dirForward" onclick="setDirection('forward')">Forward</button>
-                        <button id="dirAlternate" onclick="setDirection('alternate')">Alternate</button>
+                    <div class="controls-hint" id="controlsHint">Select a parameter on the left<br>to configure an animation.</div>
+
+                    <div id="paramConfigArea" style="display:none">
+
+                        <div class="controls-row">
+                            <div class="slider-group">
+                                <label>From <span id="fromValDisplay">0</span></label>
+                                <input type="range" id="fromSlider">
+                            </div>
+                            <div class="slider-group">
+                                <label>To <span id="toValDisplay">1</span></label>
+                                <input type="range" id="toSlider">
+                            </div>
+                        </div>
+
+                        <div class="controls-timing">
+                            <div class="timing-field">
+                                <label>Duration (s)</label>
+                                <input type="number" id="durInput" value="15" min="0.1" max="60" step="0.1">
+                            </div>
+                            <div class="timing-field">
+                                <label>Repeat</label>
+                                <select id="repeatSelect">
+                                    <option value="indefinite">Loop</option>
+                                    <option value="1">Once</option>
+                                    <option value="2">2×</option>
+                                    <option value="3">3×</option>
+                                    <option value="5">5×</option>
+                                </select>
+                            </div>
+                            <div class="timing-field">
+                                <label>Direction</label>
+                                <div class="dir-toggle">
+                                    <button class="active" id="dirForward" onclick="setDirection('forward')">Forward</button>
+                                    <button id="dirAlternate" onclick="setDirection('alternate')">Alternate</button>
+                                </div>
+                            </div>
+                            <div class="timing-field perf-row" style="margin-bottom:0">
+                                <label>&nbsp;</label>
+                                <div style="display:flex; gap:12px; align-items:center; height:100%">
+                                    <label class="perf-toggle" title="Adds will-change: transform, opacity to all layer groups — hints the browser to promote them to GPU compositor layers">
+                                        <input type="checkbox" id="gpuToggle"> GPU
+                                    </label>
+                                    <label class="perf-toggle" title="Adds shape-rendering, color-rendering, and image-rendering=optimizeSpeed to the SVG root — trades visual quality for render speed">
+                                        <input type="checkbox" id="optimizeSpeedToggle"> optimizeSpeed
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="easing-wrap">
+                            <div class="easing-row">
+                                <span class="easing-label">Easing</span>
+                                <button class="ease-btn active" data-ease="linear" onclick="setEasing(this)">Linear</button>
+                                <button class="ease-btn" data-ease="ease" onclick="setEasing(this)">Ease</button>
+                                <button class="ease-btn" data-ease="easeIn" onclick="setEasing(this)">Ease In</button>
+                                <button class="ease-btn" data-ease="easeOut" onclick="setEasing(this)">Ease Out</button>
+                                <button class="ease-btn" data-ease="easeInOut" onclick="setEasing(this)">Ease In-Out</button>
+                                <button class="ease-btn" data-ease="custom" onclick="setEasing(this)">Custom</button>
+                            </div>
+                            <div class="custom-spline-row" id="customSplineRow" style="margin-top:6px">
+                                <label>Cubic Bezier</label>
+                                <input type="text" id="customSplineInput" value="0.42 0 0.58 1" placeholder="x1 y1 x2 y2">
+                            </div>
+                        </div>
+
+                        <div class="canvas-action-row">
+                            <canvas id="easingCanvas" width="324" height="108"></canvas>
+                            <div class="kf-action-row">
+                                <button class="btn-primary" id="addKeyframeBtn" onclick="addKeyframe()" disabled>+ Add Keyframe</button>
+                                <button class="btn-primary" id="updateKeyframeBtn" onclick="updateKeyframe()" style="display:none">Update</button>
+                                <button class="btn-secondary" id="cancelEditBtn" onclick="cancelEdit()" style="display:none">Cancel</button>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
-            </div>
 
-            <div class="easing-row">
-                <span class="easing-label">Easing</span>
-                <button class="ease-btn active" data-ease="linear" onclick="setEasing(this)">Linear</button>
-                <button class="ease-btn" data-ease="ease" onclick="setEasing(this)">Ease</button>
-                <button class="ease-btn" data-ease="easeIn" onclick="setEasing(this)">Ease In</button>
-                <button class="ease-btn" data-ease="easeOut" onclick="setEasing(this)">Ease Out</button>
-                <button class="ease-btn" data-ease="easeInOut" onclick="setEasing(this)">Ease In-Out</button>
-                <button class="ease-btn" data-ease="custom" onclick="setEasing(this)">Custom</button>
-            </div>
+                <!-- Right: keyframe list + output -->
+                <div class="controls-right">
+                    <div class="kf-list-header">
+                        <span>Keyframes</span>
+                        <span id="kfCount" class="kf-count">0</span>
+                    </div>
+                    <div class="kf-list" id="kfList">
+                        <div class="kf-empty">No keyframes yet.<br>Select a parameter and click Add.</div>
+                    </div>
+                    <div class="controls-output">
+                        <button class="btn-primary" id="previewBtn" onclick="applyAnimation()" disabled>Preview</button>
+                        <button class="btn-secondary" id="stopBtn" onclick="stopAnimation()" style="display:none">Stop</button>
+                        <div class="action-sep"></div>
+                        <button class="btn-icon accent" id="exportBtn" onclick="exportSVG()" style="display:none"><svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 20 20" fill="#4a9eff" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 17a.5.5 0 0 1 .09 1H4.5a.5.5 0 0 1-.09-1H15.5ZM10 2a.5.5 0 0 1 .5.41V14.3l3.64-3.65a.5.5 0 0 1 .64-.06l.07.06c.17.17.2.44.06.63l-.06.07-4.5 4.5a.5.5 0 0 1-.25.14L10 16a.5.5 0 0 1-.4-.2l-4.46-4.45a.5.5 0 0 1 .64-.76l.07.06 3.65 3.64V2.5c0-.27.22-.5.5-.5Z"/></svg>Export SVG</button>
+                        <button class="btn-icon" id="copyBtn" onclick="copySVG()" style="display:none"><svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 20 20" fill="#FFFFFF" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2a2 2 0 0 0-2 2v10c0 1.1.9 2 2 2h6a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8ZM7 4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4ZM4 6a2 2 0 0 1 1-1.73V14.5A2.5 2.5 0 0 0 7.5 17h6.23A2 2 0 0 1 12 18H7.5A3.5 3.5 0 0 1 4 14.5V6Z"/></svg>Copy SVG</button>
+                        <button class="btn-icon" id="webmBtn" onclick="exportWebM()" style="display:none">&#9654; Export WebM</button>
+                    </div>
+                </div>
 
-            <div class="custom-spline-row" id="customSplineRow">
-                <label>Cubic Bezier</label>
-                <input type="text" id="customSplineInput" value="0.42 0 0.58 1" placeholder="x1 y1 x2 y2">
-            </div>
-
-            <div class="action-row">
-                <button class="btn-primary" id="previewBtn" onclick="applyAnimation()">Preview</button>
-                <button class="btn-secondary" id="stopBtn" onclick="stopAnimation()" style="display:none">Stop</button>
-                <div class="action-sep"></div>
-                <button class="btn-icon accent" id="exportBtn" onclick="exportSVG()" style="display:none">&#8595; Export SVG</button>
-                <button class="btn-icon" id="copyBtn" onclick="copySVG()" style="display:none">&#9003; Copy SVG</button>
             </div>
         </div>
     </div>
@@ -1035,6 +1258,13 @@ function renderLayerAnim(layer, layerIdx, palette, W, H, defs, makeGradientId, r
     const maskAttr   = buildLayerMask(layer, W, H, defs, makeGradientId);
 
     const instances = getInstances(layer, cx, cy, W, H);
+    // Positional deltas: animate each instance by the same screen-space offset so
+    // that all arrangement types (grid, radial, scatter, single) shift uniformly.
+    // Recomputing instances with a new cx/cy is wrong for radial (orbit radius
+    // changes near edges, making spokes move at angles) and a no-op for grid
+    // (which ignores cx/cy entirely). A flat delta is predictable for all types.
+    const deltaX = (param === 'cx') ? (anim.toVal - anim.fromVal) * W : 0;
+    const deltaY = (param === 'cy') ? (anim.toVal - anim.fromVal) * H : 0;
 
     const parts = instances.map(([ix, iy, iExtra]) => {
         const rot = rawRotate + (iExtra || 0);
@@ -1058,14 +1288,18 @@ function renderLayerAnim(layer, layerIdx, palette, W, H, defs, makeGradientId, r
                 return `<g transform="${tr}" ${fillPart} opacity="${anim.fromVal.toFixed(3)}" ${blendStyle}>${smilAnimate('opacity', anim.fromVal.toFixed(3), anim.toVal.toFixed(3), anim)}${shapeEl}</g>`;
             }
             case 'cx': {
-                const fX = (anim.fromVal * W).toFixed(2), tX = (anim.toVal * W).toFixed(2);
-                const transAnim = smilTransform('translate', `${fX},${iy.toFixed(2)}`, `${tX},${iy.toFixed(2)}`, anim);
+                const transAnim = smilTransform('translate',
+                    `${ix.toFixed(2)},${iy.toFixed(2)}`,
+                    `${(ix + deltaX).toFixed(2)},${iy.toFixed(2)}`,
+                    anim);
                 const inner = `rotate(${rot.toFixed(2)}) scale(${rawScaleX.toFixed(3)},${rawScaleY.toFixed(3)})`;
                 return `<g ${blendStyle}>${transAnim}<g transform="${inner}" ${fillPart} opacity="${rawOpacity.toFixed(3)}">${shapeEl}</g></g>`;
             }
             case 'cy': {
-                const fY = (anim.fromVal * H).toFixed(2), tY = (anim.toVal * H).toFixed(2);
-                const transAnim = smilTransform('translate', `${ix.toFixed(2)},${fY}`, `${ix.toFixed(2)},${tY}`, anim);
+                const transAnim = smilTransform('translate',
+                    `${ix.toFixed(2)},${iy.toFixed(2)}`,
+                    `${ix.toFixed(2)},${(iy + deltaY).toFixed(2)}`,
+                    anim);
                 const inner = `rotate(${rot.toFixed(2)}) scale(${rawScaleX.toFixed(3)},${rawScaleY.toFixed(3)})`;
                 return `<g ${blendStyle}>${transAnim}<g transform="${inner}" ${fillPart} opacity="${rawOpacity.toFixed(3)}">${shapeEl}</g></g>`;
             }
@@ -1106,30 +1340,65 @@ function renderLayerAnim(layer, layerIdx, palette, W, H, defs, makeGradientId, r
 
 // ─── Main SVG generator ────────────────────────────────────────────────────
 
-function genomeToSVGAnimated(genome, animSpec, W=1280, H=720, prefix='anim') {
+function genomeToSVGAnimated(genome, animSpecsInput, W=1280, H=720, prefix='anim', opts={}) {
     let localCounter = 0;
     const makeGradientId = () => `${prefix}g${++localCounter}`;
     const defs = [], bodyParts = [];
 
+    if (opts.gpuOffload) {
+        defs.push('<style>g { will-change: transform, opacity; }</style>');
+    }
+
     bodyParts.push(renderBackground(genome, W, H, defs, makeGradientId));
+
+    const allSpecs = Array.isArray(animSpecsInput) ? animSpecsInput : (animSpecsInput ? [animSpecsInput] : []);
 
     for (let i = 0; i < genome.layers.length; i++) {
         const layer = genome.layers[i];
         if (layer.hidden) continue;
-        bodyParts.push(renderLayerAnim(layer, i, genome.palette, W, H, defs, makeGradientId, W, animSpec));
+        const anim = allSpecs.find(s => s.target === 'layer' && s.layerIdx === i)
+                  || allSpecs.find(s => s.target === 'palette')
+                  || null;
+        bodyParts.push(renderLayerAnim(layer, i, genome.palette, W, H, defs, makeGradientId, W, anim));
     }
 
     const defsBlock = defs.length ? `<defs>${defs.join('')}</defs>` : '';
-    return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice">${defsBlock}${bodyParts.join('')}</svg>`;
+    const renderingAttrs = opts.optimizeSpeed
+        ? ' shape-rendering="optimizeSpeed" color-rendering="optimizeSpeed" image-rendering="optimizeSpeed"'
+        : '';
+    return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"${renderingAttrs}>${defsBlock}${bodyParts.join('')}</svg>`;
 }
 
 // ─── Genome extraction ─────────────────────────────────────────────────────
 
+function decodeMetaJSON(raw) {
+    try { return JSON.parse(raw.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')); }
+    catch { return null; }
+}
+
 function extractGenomeFromSVG(svgText) {
     const match = svgText.match(/<evolvesvg:genome[^>]*>([\s\S]*?)<\/evolvesvg:genome>/);
     if (!match) return null;
-    try { return JSON.parse(match[1].replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')); }
-    catch { return null; }
+    return decodeMetaJSON(match[1]);
+}
+
+function extractAnimSpecsFromSVG(svgText) {
+    const match = svgText.match(/<evolvesvg:animation[^>]*>([\s\S]*?)<\/evolvesvg:animation>/);
+    if (!match) return null;
+    const parsed = decodeMetaJSON(match[1]);
+    return Array.isArray(parsed) ? parsed : null;
+}
+
+function encodeMetaJSON(obj) {
+    return JSON.stringify(obj).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function embedAllMeta(svgStr, genome, specs) {
+    const ns = 'xmlns:evolvesvg="https://evolvesvg"';
+    const genomTag = `<evolvesvg:genome ${ns}>${encodeMetaJSON(genome)}</evolvesvg:genome>`;
+    const animTag  = `<evolvesvg:animation ${ns}>${encodeMetaJSON(specs)}</evolvesvg:animation>`;
+    const block    = `<metadata>${genomTag}${animTag}</metadata>`;
+    return svgStr.replace('</svg>', block + '</svg>');
 }
 
 // ─── Parameter tree ────────────────────────────────────────────────────────
@@ -1139,42 +1408,44 @@ function getParamRows(genome) {
 
     // Palette
     genome.palette.forEach((color, i) => {
-        rows.push({ type: 'section', label: `Color ${i+1}`, swatch: colorString(color) });
-        rows.push({ type: 'param', label: 'Hue', target: 'palette', paletteIdx: i, param: 'paletteH', current: color.h, min: 0, max: 360, step: 1, unit: '°' });
-        rows.push({ type: 'param', label: 'Saturation', target: 'palette', paletteIdx: i, param: 'paletteS', current: color.s, min: 0, max: 100, step: 1, unit: '%' });
-        rows.push({ type: 'param', label: 'Lightness', target: 'palette', paletteIdx: i, param: 'paletteL', current: color.l, min: 5, max: 95, step: 1, unit: '%' });
+        const sectionId = `palette-${i}`;
+        rows.push({ type: 'section', label: `Color ${i+1}`, swatch: colorString(color), sectionId });
+        rows.push({ type: 'param', label: 'Hue', target: 'palette', paletteIdx: i, param: 'paletteH', current: color.h, min: 0, max: 360, step: 1, unit: '°', sectionId });
+        rows.push({ type: 'param', label: 'Saturation', target: 'palette', paletteIdx: i, param: 'paletteS', current: color.s, min: 0, max: 100, step: 1, unit: '%', sectionId });
+        rows.push({ type: 'param', label: 'Lightness', target: 'palette', paletteIdx: i, param: 'paletteL', current: color.l, min: 5, max: 95, step: 1, unit: '%', sectionId });
     });
 
     // Layers
     genome.layers.forEach((layer, i) => {
         if (layer.hidden) return;
         const isTiling = TILING_TYPES.has(layer.type);
-        rows.push({ type: 'section', label: `Layer ${i+1}  ·  ${layer.type}` });
+        const sectionId = `layer-${i}`;
+        rows.push({ type: 'section', label: `Layer ${i+1}  ·  ${layer.type}`, sectionId });
 
-        rows.push({ type: 'param', label: 'Opacity', target: 'layer', layerIdx: i, param: 'opacity', current: layer.opacity ?? 1, min: 0, max: 1, step: 0.01, unit: '' });
+        rows.push({ type: 'param', label: 'Opacity', target: 'layer', layerIdx: i, param: 'opacity', current: layer.opacity ?? 1, min: 0, max: 1, step: 0.01, unit: '', sectionId });
 
         if (!isTiling) {
-            rows.push({ type: 'param', label: 'Position X', target: 'layer', layerIdx: i, param: 'cx', current: layer.cx, min: 0, max: 1, step: 0.01, unit: '' });
-            rows.push({ type: 'param', label: 'Position Y', target: 'layer', layerIdx: i, param: 'cy', current: layer.cy, min: 0, max: 1, step: 0.01, unit: '' });
-            rows.push({ type: 'param', label: 'Rotation', target: 'layer', layerIdx: i, param: 'rotate', current: layer.transform?.rotate ?? 0, min: 0, max: 360, step: 1, unit: '°' });
-            rows.push({ type: 'param', label: 'Scale X', target: 'layer', layerIdx: i, param: 'scaleX', current: layer.transform?.scaleX ?? 1, min: 0.05, max: 3, step: 0.05, unit: '×' });
-            rows.push({ type: 'param', label: 'Scale Y', target: 'layer', layerIdx: i, param: 'scaleY', current: layer.transform?.scaleY ?? 1, min: 0.05, max: 3, step: 0.05, unit: '×' });
+            rows.push({ type: 'param', label: 'Position X', target: 'layer', layerIdx: i, param: 'cx', current: layer.cx, min: 0, max: 1, step: 0.01, unit: '', sectionId });
+            rows.push({ type: 'param', label: 'Position Y', target: 'layer', layerIdx: i, param: 'cy', current: layer.cy, min: 0, max: 1, step: 0.01, unit: '', sectionId });
+            rows.push({ type: 'param', label: 'Rotation', target: 'layer', layerIdx: i, param: 'rotate', current: layer.transform?.rotate ?? 0, min: 0, max: 360, step: 1, unit: '°', sectionId });
+            rows.push({ type: 'param', label: 'Scale X', target: 'layer', layerIdx: i, param: 'scaleX', current: layer.transform?.scaleX ?? 1, min: 0.05, max: 3, step: 0.05, unit: '×', sectionId });
+            rows.push({ type: 'param', label: 'Scale Y', target: 'layer', layerIdx: i, param: 'scaleY', current: layer.transform?.scaleY ?? 1, min: 0.05, max: 3, step: 0.05, unit: '×', sectionId });
 
             const p = layer.params;
-            if (layer.type === 'circle')  rows.push({ type: 'param', label: 'Radius',   target: 'layer', layerIdx: i, param: 'r',  current: p.r,  min: 0.01, max: 0.5,  step: 0.005, unit: '' });
-            if (layer.type === 'ellipse') rows.push({ type: 'param', label: 'Radius X', target: 'layer', layerIdx: i, param: 'rx', current: p.rx, min: 0.01, max: 0.5,  step: 0.005, unit: '' });
-            if (layer.type === 'ellipse') rows.push({ type: 'param', label: 'Radius Y', target: 'layer', layerIdx: i, param: 'ry', current: p.ry, min: 0.01, max: 0.5,  step: 0.005, unit: '' });
-            if (layer.type === 'rect')    rows.push({ type: 'param', label: 'Width',    target: 'layer', layerIdx: i, param: 'w',  current: p.w,  min: 0.01, max: 1,    step: 0.01,  unit: '' });
-            if (layer.type === 'rect')    rows.push({ type: 'param', label: 'Height',   target: 'layer', layerIdx: i, param: 'h',  current: p.h,  min: 0.01, max: 1,    step: 0.01,  unit: '' });
-            if (layer.type === 'polygon') rows.push({ type: 'param', label: 'Radius',   target: 'layer', layerIdx: i, param: 'r',  current: p.r,  min: 0.01, max: 0.5,  step: 0.005, unit: '' });
+            if (layer.type === 'circle')  rows.push({ type: 'param', label: 'Radius',   target: 'layer', layerIdx: i, param: 'r',  current: p.r,  min: 0.01, max: 0.5,  step: 0.005, unit: '', sectionId });
+            if (layer.type === 'ellipse') rows.push({ type: 'param', label: 'Radius X', target: 'layer', layerIdx: i, param: 'rx', current: p.rx, min: 0.01, max: 0.5,  step: 0.005, unit: '', sectionId });
+            if (layer.type === 'ellipse') rows.push({ type: 'param', label: 'Radius Y', target: 'layer', layerIdx: i, param: 'ry', current: p.ry, min: 0.01, max: 0.5,  step: 0.005, unit: '', sectionId });
+            if (layer.type === 'rect')    rows.push({ type: 'param', label: 'Width',    target: 'layer', layerIdx: i, param: 'w',  current: p.w,  min: 0.01, max: 1,    step: 0.01,  unit: '', sectionId });
+            if (layer.type === 'rect')    rows.push({ type: 'param', label: 'Height',   target: 'layer', layerIdx: i, param: 'h',  current: p.h,  min: 0.01, max: 1,    step: 0.01,  unit: '', sectionId });
+            if (layer.type === 'polygon') rows.push({ type: 'param', label: 'Radius',   target: 'layer', layerIdx: i, param: 'r',  current: p.r,  min: 0.01, max: 0.5,  step: 0.005, unit: '', sectionId });
 
-            if (layer.fill) rows.push({ type: 'param', label: 'Fill Opacity', target: 'layer', layerIdx: i, param: 'fillAlpha', current: layer.fill.alpha ?? 1, min: 0, max: 1, step: 0.01, unit: '' });
+            if (layer.fill) rows.push({ type: 'param', label: 'Fill Opacity', target: 'layer', layerIdx: i, param: 'fillAlpha', current: layer.fill.alpha ?? 1, min: 0, max: 1, step: 0.01, unit: '', sectionId });
         }
 
         const hidden = new Set(layer.hiddenEffects || []);
-        if (layer.blur     != null && !hidden.has('blur'))      rows.push({ type: 'param', label: 'Blur',         target: 'layer', layerIdx: i, param: 'blur',          current: layer.blur,                  min: 0,    max: 50,  step: 0.5, unit: '' });
-        if (layer.displace != null && !hidden.has('displace'))  rows.push({ type: 'param', label: 'Displacement', target: 'layer', layerIdx: i, param: 'displaceScale',  current: layer.displace.scale,        min: 0,    max: 300, step: 1,   unit: '' });
-        if (layer.colorShift != null && !hidden.has('colorShift')) rows.push({ type: 'param', label: 'Hue Shift', target: 'layer', layerIdx: i, param: 'hueRotate',      current: layer.colorShift.hueRotate ?? 0, min: -180, max: 180, step: 1,   unit: '°' });
+        if (layer.blur     != null && !hidden.has('blur'))      rows.push({ type: 'param', label: 'Blur',         target: 'layer', layerIdx: i, param: 'blur',          current: layer.blur,                  min: 0,    max: 50,  step: 0.5, unit: '', sectionId });
+        if (layer.displace != null && !hidden.has('displace'))  rows.push({ type: 'param', label: 'Displacement', target: 'layer', layerIdx: i, param: 'displaceScale',  current: layer.displace.scale,        min: 0,    max: 300, step: 1,   unit: '', sectionId });
+        if (layer.colorShift != null && !hidden.has('colorShift')) rows.push({ type: 'param', label: 'Hue Shift', target: 'layer', layerIdx: i, param: 'hueRotate',      current: layer.colorShift.hueRotate ?? 0, min: -180, max: 180, step: 1,   unit: '°', sectionId });
     });
 
     return rows;
@@ -1184,19 +1455,159 @@ function renderParamTree(rows) {
     return rows.map(row => {
         if (row.type === 'section') {
             const swatch = row.swatch ? `<span class="swatch" style="background:${row.swatch}"></span>` : '';
-            return `<div class="param-section">${swatch}${row.label}</div>`;
+            const collapsed = collapsedSections.has(row.sectionId);
+            const chevron = `<span class="section-chevron">${collapsed ? '▶' : '▼'}</span>`;
+            return `<div class="param-section" data-section-id="${row.sectionId}" onclick="toggleSection('${row.sectionId}')">${chevron}${swatch}${row.label}</div>`;
         }
-        const val = typeof row.current === 'number' ? row.current.toFixed(row.step < 0.01 ? 3 : row.step < 1 ? 2 : 0) + (row.unit||'') : '';
-        const dataAttrs = `data-target="${row.target}" data-param="${row.param}" data-current="${row.current}" data-min="${row.min}" data-max="${row.max}" data-step="${row.step}" data-unit="${row.unit||''}"${row.layerIdx !== undefined ? ` data-layer-idx="${row.layerIdx}"` : ''}${row.paletteIdx !== undefined ? ` data-palette-idx="${row.paletteIdx}"` : ''}`;
-        return `<div class="param-row" ${dataAttrs} onclick="selectParam(this)"><span class="param-label">${row.label}</span><span class="param-value">${val}</span></div>`;
+        const rowHidden = collapsedSections.has(row.sectionId) ? ' style="display:none"' : '';
+        const decimals = row.step < 0.01 ? 3 : row.step < 1 ? 2 : 0;
+        const val = typeof row.current === 'number' ? row.current.toFixed(decimals) + (row.unit||'') : '';
+        const fillPct = typeof row.current === 'number'
+            ? Math.max(0, Math.min(100, (row.current - row.min) / (row.max - row.min) * 100)).toFixed(1)
+            : '0';
+        const dataAttrs = `data-target="${row.target}" data-param="${row.param}" data-current="${row.current}" data-original="${row.current}" data-section-id="${row.sectionId}" data-min="${row.min}" data-max="${row.max}" data-step="${row.step}" data-unit="${row.unit||''}"${row.layerIdx !== undefined ? ` data-layer-idx="${row.layerIdx}"` : ''}${row.paletteIdx !== undefined ? ` data-palette-idx="${row.paletteIdx}"` : ''}`;
+        const hasDot = animSpecs.some(s => s.target === row.target && s.param === row.param &&
+            (row.target === 'palette' ? s.paletteIdx === row.paletteIdx : s.layerIdx === row.layerIdx));
+        const dot = hasDot ? `<span class="param-kf-dot"></span>` : '';
+        return `<div class="param-row" ${dataAttrs}${rowHidden}><div class="param-fill" style="width:${fillPct}%"></div>${dot}<span class="param-label">${row.label}</span><span class="param-value">${val}</span><span class="param-hint">Select parameter</span><button class="param-reset" style="display:none" title="Reset to original" onclick="event.stopPropagation();resetParamValue(this.closest('.param-row'))">↺</button></div>`;
     }).join('');
 }
+
+function toggleSection(sectionId) {
+    if (collapsedSections.has(sectionId)) {
+        collapsedSections.delete(sectionId);
+    } else {
+        collapsedSections.add(sectionId);
+    }
+    refreshParamTree();
+}
+
+function refreshParamTree() {
+    if (!currentParamRows.length) return;
+    const tree = document.getElementById('paramTree');
+    // Preserve selected data-attrs so we can restore selection
+    const sel = selectedParamEl;
+    const selTarget = sel ? sel.dataset.target : null;
+    const selParam  = sel ? sel.dataset.param  : null;
+    const selLayer  = sel ? sel.dataset.layerIdx  : undefined;
+    const selPalette = sel ? sel.dataset.paletteIdx : undefined;
+    tree.innerHTML = renderParamTree(currentParamRows);
+    if (selTarget) {
+        const restored = tree.querySelector(
+            `[data-target="${selTarget}"][data-param="${selParam}"]${selLayer !== undefined ? `[data-layer-idx="${selLayer}"]` : ''}${selPalette !== undefined ? `[data-palette-idx="${selPalette}"]` : ''}`
+        );
+        if (restored) { restored.classList.add('selected'); selectedParamEl = restored; }
+    }
+}
+
+// ─── Param scrubber ────────────────────────────────────────────────────────
+
+function applyParamToGenome(genome, el, value) {
+    const target = el.dataset.target;
+    const param  = el.dataset.param;
+    if (target === 'palette') {
+        const pi = parseInt(el.dataset.paletteIdx);
+        if (param === 'paletteH') genome.palette[pi].h = value;
+        else if (param === 'paletteS') genome.palette[pi].s = value;
+        else if (param === 'paletteL') genome.palette[pi].l = value;
+    } else {
+        const li = parseInt(el.dataset.layerIdx);
+        const layer = genome.layers[li];
+        if      (param === 'opacity')       layer.opacity = value;
+        else if (param === 'cx')            layer.cx = value;
+        else if (param === 'cy')            layer.cy = value;
+        else if (param === 'rotate')        { if (!layer.transform) layer.transform = {}; layer.transform.rotate = value; }
+        else if (param === 'scaleX')        { if (!layer.transform) layer.transform = {}; layer.transform.scaleX = value; }
+        else if (param === 'scaleY')        { if (!layer.transform) layer.transform = {}; layer.transform.scaleY = value; }
+        else if (param === 'r' || param === 'rx' || param === 'ry' || param === 'w' || param === 'h') layer.params[param] = value;
+        else if (param === 'fillAlpha')     layer.fill.alpha = value;
+        else if (param === 'blur')          layer.blur = value;
+        else if (param === 'displaceScale') layer.displace.scale = value;
+        else if (param === 'hueRotate')     layer.colorShift.hueRotate = value;
+    }
+}
+
+let _previewTimer = null;
+function debouncedStaticPreview() {
+    clearTimeout(_previewTimer);
+    _previewTimer = setTimeout(showStaticPreview, 40);
+}
+
+function updateParamRowDisplay(el, newVal) {
+    const step    = parseFloat(el.dataset.step);
+    const min     = parseFloat(el.dataset.min);
+    const max     = parseFloat(el.dataset.max);
+    const unit    = el.dataset.unit || '';
+    const decimals = step < 0.01 ? 3 : step < 1 ? 2 : 0;
+    const original = parseFloat(el.dataset.original);
+
+    el.dataset.current = newVal;
+    el.querySelector('.param-value').textContent = newVal.toFixed(decimals) + unit;
+    el.querySelector('.param-fill').style.width = Math.max(0, Math.min(100, (newVal - min) / (max - min) * 100)).toFixed(1) + '%';
+    el.querySelector('.param-reset').style.display = Math.abs(newVal - original) > step * 0.5 ? '' : 'none';
+
+    // Keep currentParamRows in sync so refreshParamTree doesn't revert the display
+    const secId = el.dataset.sectionId;
+    const paramKey = el.dataset.param;
+    const row = currentParamRows.find(r => r.type === 'param' && r.sectionId === secId && r.param === paramKey);
+    if (row) row.current = newVal;
+
+    if (currentGenome) {
+        applyParamToGenome(currentGenome, el, newVal);
+        // Keep palette section swatch in sync
+        if (el.dataset.target === 'palette') {
+            const pi = parseInt(el.dataset.paletteIdx);
+            const secEl = document.querySelector(`.param-section[data-section-id="palette-${pi}"]`);
+            if (secEl) {
+                const newColor = colorString(currentGenome.palette[pi]);
+                const swatchEl = secEl.querySelector('.swatch');
+                if (swatchEl) swatchEl.style.background = newColor;
+                const sectionRow = currentParamRows.find(r => r.type === 'section' && r.sectionId === `palette-${pi}`);
+                if (sectionRow) sectionRow.swatch = newColor;
+            }
+        }
+        debouncedStaticPreview();
+    }
+}
+
+function resetParamValue(el) {
+    const original = parseFloat(el.dataset.original);
+    updateParamRowDisplay(el, original);
+}
+
+// Drag-scrub logic (event delegation on the param tree)
+let _drag = null;
+
+document.addEventListener('mousemove', e => {
+    if (!_drag) return;
+    const dx = e.clientX - _drag.startX;
+    if (Math.abs(dx) > 2) _drag.moved = true;
+    const range = _drag.max - _drag.min;
+    const sensitivity = range / (_drag.el.getBoundingClientRect().width || 200);
+    let newVal = _drag.startVal + dx * sensitivity;
+    newVal = Math.round(newVal / _drag.step) * _drag.step;
+    newVal = Math.max(_drag.min, Math.min(_drag.max, newVal));
+    // Clamp floating point
+    const decimals = _drag.step < 0.01 ? 4 : _drag.step < 1 ? 3 : 1;
+    newVal = parseFloat(newVal.toFixed(decimals));
+    updateParamRowDisplay(_drag.el, newVal);
+});
+
+document.addEventListener('mouseup', e => {
+    if (!_drag) return;
+    if (!_drag.moved) selectParam(_drag.el);
+    _drag = null;
+    document.body.style.cursor = '';
+});
 
 // ─── State ─────────────────────────────────────────────────────────────────
 
 let currentGenome = null;
+let currentParamRows = [];
+let collapsedSections = new Set();
 let selectedParamEl = null;
-let currentAnimSpec = null;
+let animSpecs = [];
+let editingSpecIdx = null;
 let currentAnimatedSVG = null;
 let animDirection = 'forward';
 let animEasing = 'linear';
@@ -1206,6 +1617,34 @@ let animEasing = 'linear';
 document.getElementById('loadBtn').addEventListener('click', loadSVG);
 document.getElementById('svgInput').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) loadSVG(); });
 
+document.getElementById('paramTree').addEventListener('mousedown', e => {
+    const row = e.target.closest('.param-row');
+    if (!row || e.target.classList.contains('param-reset')) return;
+    e.preventDefault();
+    _drag = {
+        el: row,
+        startX: e.clientX,
+        startVal: parseFloat(row.dataset.current),
+        min: parseFloat(row.dataset.min),
+        max: parseFloat(row.dataset.max),
+        step: parseFloat(row.dataset.step),
+        moved: false
+    };
+    document.body.style.cursor = 'ew-resize';
+});
+
+function collapseSVGInput() {
+    document.getElementById('pasteExpanded').style.display = 'none';
+    document.getElementById('pasteCollapsed').style.display = '';
+    document.getElementById('collapsedStatus').textContent =
+        `${currentGenome.layers.length} layers · ${currentGenome.palette.length} colors`;
+}
+
+function expandPaste() {
+    document.getElementById('pasteExpanded').style.display = '';
+    document.getElementById('pasteCollapsed').style.display = 'none';
+}
+
 function loadSVG() {
     const text = document.getElementById('svgInput').value.trim();
     const status = document.getElementById('loadStatus');
@@ -1214,38 +1653,46 @@ function loadSVG() {
     if (!genome) { setStatus('No genome data found. Export the SVG from evolveSVG (not PNG).', 'err'); return; }
 
     currentGenome = genome;
-    setStatus(`Loaded — ${genome.layers.length} layers, ${genome.palette.length} colors`, 'ok');
-    document.getElementById('clearBtn').style.display = '';
+    collapseSVGInput();
 
     // Show static preview
     showStaticPreview();
 
     // Build param tree
-    const rows = getParamRows(genome);
-    document.getElementById('paramTree').innerHTML = renderParamTree(rows);
+    currentParamRows = getParamRows(genome);
+    collapsedSections = new Set(currentParamRows.filter(r => r.type === 'section' && r.sectionId.startsWith('palette-')).map(r => r.sectionId));
+    document.getElementById('paramTree').innerHTML = renderParamTree(currentParamRows);
 
-    // Reset selection
+    // Restore or reset animation state
+    const savedSpecs = extractAnimSpecsFromSVG(text);
+    animSpecs = savedSpecs || [];
+    editingSpecIdx = null;
     selectedParamEl = null;
-    currentAnimSpec = null;
-    document.getElementById('controlsPanel').classList.add('hidden');
+    currentAnimatedSVG = null;
+    showParamConfig(false);
+    updateKfButtons();
+    renderKeyframeList();
+    refreshParamTree();
+    showOutputButtons(false);
+    document.getElementById('controlsPanel').classList.remove('hidden');
+    document.getElementById('controlsSelected').innerHTML = '';
     document.getElementById('animBadge').classList.remove('visible');
 }
 
 document.getElementById('clearBtn').addEventListener('click', () => {
     document.getElementById('svgInput').value = '';
     document.getElementById('loadStatus').textContent = '';
-    document.getElementById('clearBtn').style.display = 'none';
+    expandPaste();
     document.getElementById('paramTree').innerHTML = '<div class="param-empty">Load an SVG to<br>browse animatable parameters.</div>';
     document.getElementById('svgPreviewWrap').style.display = 'none';
     document.getElementById('previewEmpty').style.display = '';
     document.getElementById('controlsPanel').classList.add('hidden');
     document.getElementById('animBadge').classList.remove('visible');
-    document.getElementById('exportBtn').style.display = 'none';
-    document.getElementById('copyBtn').style.display = 'none';
-    currentGenome = null;
+    animSpecs = [];
+    editingSpecIdx = null;
     selectedParamEl = null;
-    currentAnimSpec = null;
     currentAnimatedSVG = null;
+    currentGenome = null;
 });
 
 function setStatus(msg, cls) {
@@ -1275,37 +1722,39 @@ function selectParam(el) {
     const step = parseFloat(el.dataset.step);
     const unit = el.dataset.unit || '';
 
-    // Default from = current, to = current shifted by ~40% of range
-    const range = max - min;
-    let fromDefault = current;
-    let toDefault = Math.min(max, current + range * 0.5);
-    if (toDefault === fromDefault) toDefault = Math.max(min, current - range * 0.5);
-    // Snap to step
-    fromDefault = Math.round(fromDefault / step) * step;
-    toDefault   = Math.round(toDefault   / step) * step;
+    // Check if there's already a spec for this param
+    const existingIdx = animSpecs.findIndex(s =>
+        s.target === el.dataset.target &&
+        s.param === el.dataset.param &&
+        (el.dataset.layerIdx === undefined || s.layerIdx === parseInt(el.dataset.layerIdx)) &&
+        (el.dataset.paletteIdx === undefined || s.paletteIdx === parseInt(el.dataset.paletteIdx))
+    );
 
-    // Setup sliders
-    const fromSlider = document.getElementById('fromSlider');
-    const toSlider   = document.getElementById('toSlider');
-    fromSlider.min  = min; fromSlider.max  = max; fromSlider.step = step; fromSlider.value = fromDefault;
-    toSlider.min    = min; toSlider.max    = max; toSlider.step   = step; toSlider.value   = toDefault;
-    updateSliderDisplay();
+    if (existingIdx !== -1) {
+        editingSpecIdx = existingIdx;
+        populateControlsFromSpec(animSpecs[existingIdx]);
+    } else {
+        editingSpecIdx = null;
+        const range = max - min;
+        let fromDefault = Math.round(current / step) * step;
+        let toDefault = Math.round(Math.min(max, current + range * 0.5) / step) * step;
+        if (toDefault === fromDefault) toDefault = Math.round(Math.max(min, current - range * 0.5) / step) * step;
+        const fromSlider = document.getElementById('fromSlider');
+        const toSlider = document.getElementById('toSlider');
+        fromSlider.min = min; fromSlider.max = max; fromSlider.step = step; fromSlider.value = fromDefault;
+        toSlider.min   = min; toSlider.max   = max; toSlider.step   = step; toSlider.value   = toDefault;
+        updateSliderDisplay();
+    }
 
-    // Build label
     const target = el.dataset.target;
     let path = '';
     if (target === 'palette') path = `Color ${parseInt(el.dataset.paletteIdx)+1} › ${el.querySelector('.param-label').textContent}`;
     else path = `Layer ${parseInt(el.dataset.layerIdx)+1} › ${el.querySelector('.param-label').textContent}`;
-
     document.getElementById('controlsSelected').innerHTML = `<strong>${path}</strong> <span style="color:var(--text-faint)">(${unit || 'value'})</span>`;
-    document.getElementById('controlsPanel').classList.remove('hidden');
-    document.getElementById('exportBtn').style.display = 'none';
-    document.getElementById('copyBtn').style.display = 'none';
-    document.getElementById('stopBtn').style.display = 'none';
-    document.getElementById('previewBtn').style.display = '';
-    document.getElementById('animBadge').classList.remove('visible');
 
-    // Restore static preview
+    showParamConfig(true);
+    updateKfButtons();
+    renderKeyframeList();
     showStaticPreview();
 }
 
@@ -1320,6 +1769,7 @@ function updateSliderDisplay() {
 
 document.getElementById('fromSlider').addEventListener('input', updateSliderDisplay);
 document.getElementById('toSlider').addEventListener('input', updateSliderDisplay);
+document.getElementById('customSplineInput').addEventListener('input', drawEasingCurve);
 
 // ─── UI: Easing / direction ────────────────────────────────────────────────
 
@@ -1328,6 +1778,87 @@ function setEasing(btn) {
     btn.classList.add('active');
     animEasing = btn.dataset.ease;
     document.getElementById('customSplineRow').style.display = (animEasing === 'custom') ? 'flex' : 'none';
+    drawEasingCurve();
+}
+
+function drawEasingCurve() {
+    const canvas = document.getElementById('easingCanvas');
+    if (!canvas) return;
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    const cssW = rect.width || 162, cssH = rect.height || 44;
+    canvas.width = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const W = cssW, H = cssH, pad = 8;
+
+    // Background
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(0, 0, W, H);
+
+    // Subtle grid
+    ctx.strokeStyle = '#2a2a2a';
+    ctx.lineWidth = 0.5;
+    for (let i = 1; i < 4; i++) {
+        const x = pad + (i / 4) * (W - pad * 2);
+        const y = pad + (i / 4) * (H - pad * 2);
+        ctx.beginPath(); ctx.moveTo(x, pad); ctx.lineTo(x, H - pad); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(W - pad, y); ctx.stroke();
+    }
+
+    // Linear reference
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 0.75;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(pad, H - pad);
+    ctx.lineTo(W - pad, pad);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Resolve control points
+    let x1, y1, x2, y2;
+    if (animEasing === 'linear') {
+        x1 = 0; y1 = 0; x2 = 1; y2 = 1;
+    } else {
+        const splineStr = EASING_SPLINES[animEasing] ||
+            (animEasing === 'custom' ? document.getElementById('customSplineInput').value.trim() : null);
+        if (!splineStr) return;
+        const parts = splineStr.split(/\s+/).map(Number);
+        if (parts.length < 4 || parts.some(isNaN)) return;
+        [x1, y1, x2, y2] = parts;
+    }
+
+    const toX = v => pad + v * (W - pad * 2);
+    const toY = v => (H - pad) - v * (H - pad * 2);
+
+    // Handle lines
+    if (animEasing !== 'linear') {
+        ctx.strokeStyle = '#3a3a3a';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(toX(0), toY(0)); ctx.lineTo(toX(x1), toY(y1)); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(toX(1), toY(1)); ctx.lineTo(toX(x2), toY(y2)); ctx.stroke();
+        // Control point dots
+        ctx.fillStyle = '#555';
+        [[x1, y1], [x2, y2]].forEach(([cx, cy]) => {
+            ctx.beginPath(); ctx.arc(toX(cx), toY(cy), 2, 0, Math.PI * 2); ctx.fill();
+        });
+    }
+
+    // Curve
+    ctx.strokeStyle = '#4a9eff';
+    ctx.lineWidth = 1.75;
+    ctx.beginPath();
+    ctx.moveTo(toX(0), toY(0));
+    ctx.bezierCurveTo(toX(x1), toY(y1), toX(x2), toY(y2), toX(1), toY(1));
+    ctx.stroke();
+
+    // End-point dots
+    ctx.fillStyle = '#4a9eff';
+    [[0, 0], [1, 1]].forEach(([ex, ey]) => {
+        ctx.beginPath(); ctx.arc(toX(ex), toY(ey), 2.5, 0, Math.PI * 2); ctx.fill();
+    });
 }
 
 function setDirection(dir) {
@@ -1336,12 +1867,181 @@ function setDirection(dir) {
     document.getElementById('dirAlternate').classList.toggle('active', dir === 'alternate');
 }
 
+// ─── Keyframe management ───────────────────────────────────────────────────
+
+function specLabel(spec) {
+    if (spec.target === 'palette') {
+        return `Color ${spec.paletteIdx + 1} › ${{paletteH:'Hue',paletteS:'Saturation',paletteL:'Lightness'}[spec.param] || spec.param}`;
+    }
+    const paramNames = { cx:'Position X', cy:'Position Y', rotate:'Rotation', scaleX:'Scale X', scaleY:'Scale Y', opacity:'Opacity', fillAlpha:'Fill Opacity', r:'Radius', rx:'Radius X', ry:'Radius Y', w:'Width', h:'Height', blur:'Blur', displaceScale:'Displacement', hueRotate:'Hue Shift' };
+    return `Layer ${spec.layerIdx + 1} › ${paramNames[spec.param] || spec.param}`;
+}
+
+function renderKeyframeList() {
+    const list = document.getElementById('kfList');
+    document.getElementById('kfCount').textContent = animSpecs.length;
+    if (animSpecs.length === 0) {
+        list.innerHTML = '<div class="kf-empty">No keyframes yet.<br>Select a parameter and click Add.</div>';
+        return;
+    }
+    list.innerHTML = animSpecs.map((spec, i) => {
+        const step = spec._step || 0.01;
+        const dec = step < 0.01 ? 3 : step < 1 ? 2 : (step < 10 ? 1 : 0);
+        const unit = spec._unit || '';
+        const rangeStr = `${parseFloat(spec.fromVal).toFixed(dec)}${unit} → ${parseFloat(spec.toVal).toFixed(dec)}${unit}`;
+        const durStr = `${spec.dur}s`;
+        const sel = (editingSpecIdx === i) ? ' selected' : '';
+        return `<div class="kf-entry${sel}" onclick="editKeyframe(${i})">
+            <div class="kf-entry-info">
+                <div class="kf-entry-path">${specLabel(spec)}</div>
+                <div class="kf-entry-range">${rangeStr} · ${durStr} · ${spec.repeatCount === 'indefinite' ? 'loop' : spec.repeatCount + '×'}</div>
+            </div>
+            <button class="kf-entry-del" onclick="event.stopPropagation(); deleteKeyframe(${i})" title="Remove">✕</button>
+        </div>`;
+    }).join('');
+}
+
+function addKeyframe() {
+    if (!selectedParamEl) return;
+    const spec = buildAnimSpec();
+    animSpecs.push(spec);
+    editingSpecIdx = null;
+    selectedParamEl = null;
+    document.querySelectorAll('.param-row.selected').forEach(r => r.classList.remove('selected'));
+    document.getElementById('controlsSelected').innerHTML = '';
+    showParamConfig(false);
+    updateKfButtons();
+    renderKeyframeList();
+    refreshParamTree();
+    showOutputButtons(false);
+}
+
+function updateKeyframe() {
+    if (editingSpecIdx === null || !selectedParamEl) return;
+    animSpecs[editingSpecIdx] = buildAnimSpec();
+    editingSpecIdx = null;
+    updateKfButtons();
+    renderKeyframeList();
+    refreshParamTree();
+    showOutputButtons(false);
+}
+
+function deleteKeyframe(idx) {
+    animSpecs.splice(idx, 1);
+    if (editingSpecIdx === idx) { editingSpecIdx = null; updateKfButtons(); }
+    else if (editingSpecIdx !== null && editingSpecIdx > idx) editingSpecIdx--;
+    renderKeyframeList();
+    refreshParamTree();
+    showOutputButtons(false);
+}
+
+function editKeyframe(idx) {
+    const spec = animSpecs[idx];
+    editingSpecIdx = idx;
+    // Re-select the param row that matches this spec
+    const row = findParamRow(spec);
+    if (row) {
+        document.querySelectorAll('.param-row.selected').forEach(r => r.classList.remove('selected'));
+        row.classList.add('selected');
+        selectedParamEl = row;
+        populateControlsFromSpec(spec);
+        showParamConfig(true);
+    }
+    updateKfButtons();
+    renderKeyframeList();
+}
+
+function findParamRow(spec) {
+    for (const row of document.querySelectorAll('.param-row')) {
+        if (row.dataset.target !== spec.target) continue;
+        if (spec.target === 'layer' && parseInt(row.dataset.layerIdx) !== spec.layerIdx) continue;
+        if (spec.target === 'palette' && parseInt(row.dataset.paletteIdx) !== spec.paletteIdx) continue;
+        if (row.dataset.param !== spec.param) continue;
+        return row;
+    }
+    return null;
+}
+
+function populateControlsFromSpec(spec) {
+    const fromSlider = document.getElementById('fromSlider');
+    const toSlider = document.getElementById('toSlider');
+    // Set slider bounds from the param row
+    const row = findParamRow(spec);
+    if (row) {
+        const min = parseFloat(row.dataset.min);
+        const max = parseFloat(row.dataset.max);
+        const step = parseFloat(row.dataset.step);
+        fromSlider.min = min; fromSlider.max = max; fromSlider.step = step;
+        toSlider.min   = min; toSlider.max   = max; toSlider.step   = step;
+    }
+    fromSlider.value = spec.fromVal;
+    toSlider.value = spec.toVal;
+    document.getElementById('durInput').value = spec.dur;
+    document.getElementById('repeatSelect').value = spec.repeatCount;
+    setDirection(spec.direction);
+    // Set easing
+    const easingBtn = document.querySelector(`.ease-btn[data-ease="${spec.easing}"]`);
+    document.querySelectorAll('.ease-btn').forEach(b => b.classList.remove('active'));
+    if (easingBtn) { easingBtn.classList.add('active'); animEasing = spec.easing; }
+    else { document.querySelector('.ease-btn[data-ease="linear"]').classList.add('active'); animEasing = 'linear'; }
+    document.getElementById('customSplineRow').style.display = spec.easing === 'custom' ? 'flex' : 'none';
+    if (spec.customSpline) document.getElementById('customSplineInput').value = spec.customSpline;
+    updateSliderDisplay();
+    drawEasingCurve();
+}
+
+function updateKfButtons() {
+    const hasParam = !!selectedParamEl;
+    const editing = editingSpecIdx !== null;
+    document.getElementById('addKeyframeBtn').style.display = (!editing) ? '' : 'none';
+    document.getElementById('addKeyframeBtn').disabled = !hasParam;
+    document.getElementById('updateKeyframeBtn').style.display = editing ? '' : 'none';
+    document.getElementById('cancelEditBtn').style.display = editing ? '' : 'none';
+}
+
+function cancelEdit() {
+    editingSpecIdx = null;
+    selectedParamEl = null;
+    document.querySelectorAll('.param-row.selected').forEach(r => r.classList.remove('selected'));
+    document.getElementById('controlsSelected').innerHTML = '';
+    showParamConfig(false);
+    updateKfButtons();
+    renderKeyframeList();
+}
+
+function showParamConfig(visible) {
+    const area = document.getElementById('paramConfigArea');
+    area.style.display = visible ? 'flex' : 'none';
+    area.style.flexDirection = visible ? 'column' : '';
+    document.getElementById('controlsHint').style.display = visible ? 'none' : '';
+    if (visible) drawEasingCurve();
+}
+
+function showOutputButtons(animating) {
+    const hasSpecs = animSpecs.length > 0;
+    document.getElementById('previewBtn').disabled = !hasSpecs;
+    document.getElementById('stopBtn').style.display = animating ? '' : 'none';
+    document.getElementById('previewBtn').style.display = animating ? 'none' : '';
+    document.getElementById('exportBtn').style.display = hasSpecs ? '' : 'none';
+    document.getElementById('copyBtn').style.display = hasSpecs ? '' : 'none';
+    document.getElementById('webmBtn').style.display = 'none';
+}
+
+function getOrBuildAnimatedSVG() {
+    if (currentAnimatedSVG) return currentAnimatedSVG;
+    const opts = {
+        gpuOffload: document.getElementById('gpuToggle').checked,
+        optimizeSpeed: document.getElementById('optimizeSpeedToggle').checked,
+    };
+    const svg = genomeToSVGAnimated(currentGenome, animSpecs, 1280, 720, 'anim', opts);
+    return embedAllMeta(svg, currentGenome, animSpecs);
+}
+
 // ─── UI: Preview / Stop / Export ──────────────────────────────────────────
 
 function buildAnimSpec() {
     if (!selectedParamEl) return null;
     const el = selectedParamEl;
-    const easing = animEasing;
     return {
         target:      el.dataset.target,
         layerIdx:    el.dataset.layerIdx !== undefined ? parseInt(el.dataset.layerIdx) : undefined,
@@ -1352,57 +2052,199 @@ function buildAnimSpec() {
         dur:         parseFloat(document.getElementById('durInput').value) || 3,
         repeatCount: document.getElementById('repeatSelect').value,
         direction:   animDirection,
-        easing:      easing,
+        easing:      animEasing,
         customSpline: document.getElementById('customSplineInput').value.trim(),
+        _step:       parseFloat(el.dataset.step),
+        _unit:       el.dataset.unit || '',
     };
 }
 
 function applyAnimation() {
-    if (!currentGenome || !selectedParamEl) return;
-    const spec = buildAnimSpec();
-    currentAnimSpec = spec;
-    currentAnimatedSVG = genomeToSVGAnimated(currentGenome, spec, 1280, 720);
-
+    if (!currentGenome || animSpecs.length === 0) return;
+    const opts = {
+        gpuOffload: document.getElementById('gpuToggle').checked,
+        optimizeSpeed: document.getElementById('optimizeSpeedToggle').checked,
+    };
+    currentAnimatedSVG = embedAllMeta(genomeToSVGAnimated(currentGenome, animSpecs, 1280, 720, 'anim', opts), currentGenome, animSpecs);
     const wrap = document.getElementById('svgPreviewWrap');
     wrap.innerHTML = currentAnimatedSVG;
     wrap.style.display = 'flex';
+    document.getElementById('previewEmpty').style.display = 'none';
     document.getElementById('animBadge').classList.add('visible');
-    document.getElementById('stopBtn').style.display = '';
-    document.getElementById('previewBtn').style.display = 'none';
-    document.getElementById('exportBtn').style.display = '';
-    document.getElementById('copyBtn').style.display = '';
+    showOutputButtons(true);
 }
 
 function stopAnimation() {
     currentAnimatedSVG = null;
     showStaticPreview();
     document.getElementById('animBadge').classList.remove('visible');
-    document.getElementById('stopBtn').style.display = 'none';
-    document.getElementById('previewBtn').style.display = '';
-    document.getElementById('exportBtn').style.display = 'none';
-    document.getElementById('copyBtn').style.display = 'none';
+    showOutputButtons(false);
 }
 
 function exportSVG() {
-    if (!currentAnimatedSVG) return;
-    const label = selectedParamEl?.querySelector('.param-label')?.textContent || 'animated';
-    const blob = new Blob([currentAnimatedSVG], { type: 'image/svg+xml' });
+    if (!animSpecs.length) return;
+    const svg = getOrBuildAnimatedSVG();
+    const label = animSpecs[0] ? specLabel(animSpecs[0]).toLowerCase().replace(/[^a-z0-9]+/g,'-') : 'animated';
+    const blob = new Blob([svg], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `evolvesvg-${label.toLowerCase().replace(/\s+/g,'-')}-animated.svg`;
+    a.href = url; a.download = `evolvesvg-${label}-animated.svg`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
 function copySVG() {
-    if (!currentAnimatedSVG) return;
-    navigator.clipboard.writeText(currentAnimatedSVG).then(() => {
+    if (!animSpecs.length) return;
+    const svg = getOrBuildAnimatedSVG();
+    navigator.clipboard.writeText(svg).then(() => {
         const btn = document.getElementById('copyBtn');
         const orig = btn.innerHTML;
         btn.innerHTML = 'Copied!';
         setTimeout(() => btn.innerHTML = orig, 1500);
     });
 }
+
+// ─── WebM Export ────────────────────────────────────────────────────────────
+
+// Solve cubic bezier: given x (progress along time axis), find y (eased value).
+// Uses binary search since there's no closed-form inverse.
+function solveCubicBezier(x, x1, y1, x2, y2) {
+    let lo = 0, hi = 1;
+    for (let i = 0; i < 24; i++) {
+        const mid = (lo + hi) * 0.5;
+        const cx = 3*x1*mid*(1-mid)*(1-mid) + 3*x2*mid*mid*(1-mid) + mid*mid*mid;
+        if (cx < x) lo = mid; else hi = mid;
+    }
+    const t = (lo + hi) * 0.5;
+    return 3*y1*t*(1-t)*(1-t) + 3*y2*t*t*(1-t) + t*t*t;
+}
+
+function applyEasing(progress, easing, customSpline) {
+    if (easing === 'linear') return progress;
+    const splineStr = EASING_SPLINES[easing] || (easing === 'custom' ? customSpline : null);
+    if (!splineStr) return progress;
+    const [x1, y1, x2, y2] = splineStr.split(/\s+/).map(Number);
+    return solveCubicBezier(progress, x1, y1, x2, y2);
+}
+
+function applySpecValue(genome, spec, value) {
+    if (spec.target === 'palette') {
+        const pi = spec.paletteIdx;
+        if      (spec.param === 'paletteH') genome.palette[pi].h = value;
+        else if (spec.param === 'paletteS') genome.palette[pi].s = value;
+        else if (spec.param === 'paletteL') genome.palette[pi].l = value;
+    } else {
+        const li = spec.layerIdx;
+        const layer = genome.layers[li];
+        if      (spec.param === 'opacity')       layer.opacity = value;
+        else if (spec.param === 'cx')            layer.cx = value;
+        else if (spec.param === 'cy')            layer.cy = value;
+        else if (spec.param === 'rotate')        { if (!layer.transform) layer.transform = {}; layer.transform.rotate = value; }
+        else if (spec.param === 'scaleX')        { if (!layer.transform) layer.transform = {}; layer.transform.scaleX = value; }
+        else if (spec.param === 'scaleY')        { if (!layer.transform) layer.transform = {}; layer.transform.scaleY = value; }
+        else if (['r','rx','ry','w','h'].includes(spec.param)) layer.params[spec.param] = value;
+        else if (spec.param === 'fillAlpha')     layer.fill.alpha = value;
+        else if (spec.param === 'blur')          layer.blur = value;
+        else if (spec.param === 'displaceScale') layer.displace.scale = value;
+        else if (spec.param === 'hueRotate')     layer.colorShift.hueRotate = value;
+    }
+}
+
+function buildFrameGenome(tSeconds) {
+    const g = JSON.parse(JSON.stringify(currentGenome));
+    for (const spec of animSpecs) {
+        const dur = spec.dur;
+        let cycleT = (tSeconds % dur) / dur;            // 0-1 within one cycle
+        const cycleIdx = Math.floor(tSeconds / dur);
+        if (spec.direction === 'alternate' && cycleIdx % 2 === 1) cycleT = 1 - cycleT;
+        const eased = applyEasing(cycleT, spec.easing, spec.customSpline);
+        applySpecValue(g, spec, spec.fromVal + (spec.toVal - spec.fromVal) * eased);
+    }
+    return g;
+}
+
+function drawFrameToCanvas(ctx, W, H, tSeconds) {
+    return new Promise(resolve => {
+        const g = buildFrameGenome(tSeconds);
+        const svg = genomeToSVGAnimated(g, null, W, H, 'webm');
+        const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+        const url  = URL.createObjectURL(blob);
+        const img  = new Image();
+        img.onload = () => {
+            ctx.clearRect(0, 0, W, H);
+            ctx.drawImage(img, 0, 0, W, H);
+            URL.revokeObjectURL(url);
+            resolve();
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); resolve(); };
+        img.src = url;
+    });
+}
+
+let _webmAbort = false;
+
+async function exportWebM() {
+    if (!animSpecs.length) return;
+
+    const FPS = 30;
+    const maxDur = Math.max(...animSpecs.map(s => s.dur));
+    const totalSeconds = maxDur;
+    const totalFrames  = Math.ceil(totalSeconds * FPS);
+    const W = 1280, H = 720;
+
+    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+        ? 'video/webm;codecs=vp9'
+        : 'video/webm';
+
+    // Set up canvas + stream + recorder
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx    = canvas.getContext('2d');
+    const stream = canvas.captureStream(0); // manual frame push
+    const track  = stream.getVideoTracks()[0];
+    const chunks = [];
+    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 });
+    recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+
+    const btn = document.getElementById('webmBtn');
+    const origLabel = btn.innerHTML;
+    _webmAbort = false;
+
+    const finished = new Promise(resolve => { recorder.onstop = resolve; });
+    recorder.start();
+
+    for (let f = 0; f < totalFrames && !_webmAbort; f++) {
+        await drawFrameToCanvas(ctx, W, H, f / FPS);
+        track.requestFrame();
+        // Yield to keep UI responsive and maintain correct frame timing
+        await new Promise(r => setTimeout(r, 1000 / FPS));
+        const pct = Math.round((f + 1) / totalFrames * 100);
+        btn.innerHTML = `Encoding… ${pct}%`;
+    }
+
+    recorder.stop();
+    await finished;
+
+    btn.innerHTML = origLabel;
+    if (_webmAbort) return;
+
+    const blob = new Blob(chunks, { type: 'video/webm' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `evolvesvg-animated.webm`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+// ─── Auto-load from main page ───────────────────────────────────────────────
+(function() {
+    const svg = sessionStorage.getItem('evolvesvg_animate');
+    if (!svg) return;
+    sessionStorage.removeItem('evolvesvg_animate');
+    document.getElementById('svgInput').value = svg;
+    loadSVG();
+})();
 </script>
 
 </body>

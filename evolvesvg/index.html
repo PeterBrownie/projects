@@ -1617,6 +1617,7 @@
                             <div class="download-menu-title">Save as SVG</div>
                             <div class="download-menu-item" id="sidebar-copy-svg">Copy SVG Code</div>
                             <div class="download-menu-item" id="sidebar-download-svg">Download SVG</div>
+                            <div class="download-menu-item" id="sidebar-animate-svg">Customize/Animate...</div>
                             <div class="download-menu-divider"></div>
                             <div class="download-menu-title">Save as PNG</div>
                             <div id="sidebar-save-png-items"></div>
@@ -3374,7 +3375,8 @@ document.getElementById('saveImageBtn').addEventListener('click', e => {
 document.getElementById('sidebar-copy-svg').addEventListener('click', () => {
     if (selectedIdx < 0) return;
     closeSidebarSaveMenu();
-    const svg = genomeToSVG(genomes[selectedIdx], 640, 360, 'ex');
+    const genome = genomes[selectedIdx];
+    const svg = svgWithGenomeMeta(genomeToSVG(genome, 640, 360, 'ex'), genome);
     navigator.clipboard.writeText(svg).then(() => {
         const btn = document.getElementById('saveImageBtn');
         const orig = btn.textContent;
@@ -3401,6 +3403,15 @@ document.getElementById('sidebar-download-svg').addEventListener('click', () => 
     a.download = `${generatePatternName(genome)}.svg`;
     a.click();
     URL.revokeObjectURL(a.href);
+});
+
+document.getElementById('sidebar-animate-svg').addEventListener('click', () => {
+    if (selectedIdx < 0) return;
+    closeSidebarSaveMenu();
+    const genome = genomes[selectedIdx];
+    const svg = svgWithGenomeMeta(genomeToSVG(genome, 1280, 720, 'ex'), genome);
+    sessionStorage.setItem('evolvesvg_animate', svg);
+    window.open('animation.html', '_blank');
 });
 
 // ─── Import SVG ────────────────────────────────────────────────────────────
