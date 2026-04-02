@@ -1301,9 +1301,13 @@ function renderLayerAnim(layer, layerIdx, palette, W, H, defs, makeGradientId, r
                 return `<g ${blendStyle}>${transAnim}<g transform="${inner}" ${fillPart} opacity="${rawOpacity.toFixed(3)}">${shapeEl}</g></g>`;
             }
             case 'rotate': {
-                const outerTr = `translate(${ix.toFixed(2)},${iy.toFixed(2)}) scale(${rawScaleX.toFixed(3)},${rawScaleY.toFixed(3)})`;
-                const rotAnim = smilTransform('rotate', anim.fromVal.toFixed(2), anim.toVal.toFixed(2), anim);
-                return `<g transform="${outerTr}" ${blendStyle}><g ${fillPart} opacity="${rawOpacity.toFixed(3)}">${rotAnim}${shapeEl}</g></g>`;
+                const iExtraVal = iExtra || 0;
+                const fromRot = (anim.fromVal + iExtraVal).toFixed(2);
+                const toRot   = (anim.toVal   + iExtraVal).toFixed(2);
+                const rotAnim = smilTransform('rotate', fromRot, toRot, anim);
+                // Three nested groups preserve T→R→S order, matching the static render exactly.
+                // Outer: translate, Middle: rotate (animated), Inner: scale + fill
+                return `<g transform="translate(${ix.toFixed(2)},${iy.toFixed(2)})" ${blendStyle}><g transform="rotate(${fromRot})">${rotAnim}<g transform="scale(${rawScaleX.toFixed(3)},${rawScaleY.toFixed(3)})" ${fillPart} opacity="${rawOpacity.toFixed(3)}">${shapeEl}</g></g></g>`;
             }
             case 'scaleX': {
                 const outerTr = `translate(${ix.toFixed(2)},${iy.toFixed(2)}) rotate(${rot.toFixed(2)})`;
@@ -1421,9 +1425,15 @@ function getParamRows(genome) {
 
         rows.push({ type: 'param', label: 'Opacity', target: 'layer', layerIdx: i, param: 'opacity', current: layer.opacity ?? 1, min: 0, max: 1, step: 0.01, unit: '', sectionId });
 
+        const arrangement = layer.arrangement || 'single';
         if (!isTiling) {
-            rows.push({ type: 'param', label: 'Position X', target: 'layer', layerIdx: i, param: 'cx', current: layer.cx, min: 0, max: 1, step: 0.01, unit: '', sectionId });
-            rows.push({ type: 'param', label: 'Position Y', target: 'layer', layerIdx: i, param: 'cy', current: layer.cy, min: 0, max: 1, step: 0.01, unit: '', sectionId });
+            // Grid ignores cx/cy for positioning; scatter uses them only as a random seed.
+            // Neither produces a meaningful smooth position animation, so omit them.
+            const hasPosition = arrangement === 'single' || arrangement === 'radial';
+            if (hasPosition) {
+                rows.push({ type: 'param', label: 'Position X', target: 'layer', layerIdx: i, param: 'cx', current: layer.cx, min: 0, max: 1, step: 0.01, unit: '', sectionId });
+                rows.push({ type: 'param', label: 'Position Y', target: 'layer', layerIdx: i, param: 'cy', current: layer.cy, min: 0, max: 1, step: 0.01, unit: '', sectionId });
+            }
             rows.push({ type: 'param', label: 'Rotation', target: 'layer', layerIdx: i, param: 'rotate', current: layer.transform?.rotate ?? 0, min: 0, max: 360, step: 1, unit: '°', sectionId });
             rows.push({ type: 'param', label: 'Scale X', target: 'layer', layerIdx: i, param: 'scaleX', current: layer.transform?.scaleX ?? 1, min: 0.05, max: 3, step: 0.05, unit: '×', sectionId });
             rows.push({ type: 'param', label: 'Scale Y', target: 'layer', layerIdx: i, param: 'scaleY', current: layer.transform?.scaleY ?? 1, min: 0.05, max: 3, step: 0.05, unit: '×', sectionId });
@@ -1563,13 +1573,20 @@ function updateParamRowDisplay(el, newVal) {
                 if (sectionRow) sectionRow.swatch = newColor;
             }
         }
-        debouncedStaticPreview();
+        if (!_drag) debouncedStaticPreview();
     }
 }
 
 function resetParamValue(el) {
+    const fromVal  = parseFloat(el.dataset.current);
     const original = parseFloat(el.dataset.original);
+    if (Math.abs(fromVal - original) < parseFloat(el.dataset.step) * 0.5) return;
+    // Suppress debouncedStaticPreview inside updateParamRowDisplay while we handle preview ourselves
+    const prevDrag = _drag;
+    _drag = _drag || {};
     updateParamRowDisplay(el, original);
+    _drag = prevDrag;
+    showTransitionPreview(el, fromVal, original);
 }
 
 function buildTransitionSpec(el, fromVal, toVal) {
@@ -1595,13 +1612,93 @@ function showTransitionPreview(el, fromVal, toVal) {
     const baseGenome = JSON.parse(JSON.stringify(currentGenome));
     applyParamToGenome(baseGenome, el, fromVal);
     const spec = buildTransitionSpec(el, fromVal, toVal);
-    const svg = genomeToSVGAnimated(baseGenome, [spec], 1280, 720);
-    document.getElementById('svgPreviewWrap').innerHTML = svg;
+    const animSvg = genomeToSVGAnimated(baseGenome, [spec], 1280, 720);
+    // Snapshot the end-state static SVG NOW (genome at toVal) so that when the
+    // animation finishes we always display the frame we animated TO — not whatever
+    // the slider has moved to in the meantime.
+    const endGenome = JSON.parse(JSON.stringify(baseGenome));
+    applyParamToGenome(endGenome, el, toVal);
+    const endSvg = genomeToSVGAnimated(endGenome, null, 1280, 720);
+    const wrap = document.getElementById('svgPreviewWrap');
+    wrap.innerHTML = animSvg;
     clearTimeout(_previewTimer);
-    _previewTimer = setTimeout(showStaticPreview, 280);
+    // Only swap in the static end-frame when not actively dragging.
+    // During drag, SMIL fill="freeze" already holds the end state visually;
+    // swapping here would cause a jump before the next interval chunk fires.
+    _previewTimer = setTimeout(() => { if (!_drag) wrap.innerHTML = endSvg; }, 280);
 }
 
-// Drag-scrub logic (event delegation on the param tree)
+// ─── Preview animation chain ──────────────────────────────────────────────
+// State machine for the 300ms-gated animation loop during slider drag.
+//
+//   _chainFromVal   — toVal of the last animation played (current visual state)
+//   _chainAnimating — true while a SMIL animation is in flight
+//   _chainGateTimer — 300ms debounce before the first animation in a burst fires
+//   _chainIdleTimer — 2s after last slider change → show static preview
+//
+// Flow:
+//   slider change → reset idle timer → if idle: start 300ms gate
+//   gate fires → animate(_chainFromVal → currentVal) → _chainFromVal = currentVal
+//   animation ends → if currentVal changed: chain immediately (no gate)
+//   2s no slider changes → showStaticPreview
+
+let _chainEl        = null;
+let _chainFromVal   = null;
+let _chainAnimating = false;
+let _chainGateTimer = null;
+let _chainIdleTimer = null;
+
+function _chainFire() {
+    _chainGateTimer = null;
+    if (!_chainEl) return;
+    const currentVal = parseFloat(_chainEl.dataset.current);
+    const step       = parseFloat(_chainEl.dataset.step);
+    if (Math.abs(currentVal - _chainFromVal) <= step * 0.5) {
+        _chainAnimating = false;
+        return;
+    }
+    _chainAnimating = true;
+    showTransitionPreview(_chainEl, _chainFromVal, currentVal);
+    _chainFromVal = currentVal;
+    // When this animation ends, immediately chain if value moved further
+    setTimeout(_chainOnEnd, 260);
+}
+
+function _chainOnEnd() {
+    _chainAnimating = false;
+    if (!_chainEl) return;
+    const currentVal = parseFloat(_chainEl.dataset.current);
+    const step       = parseFloat(_chainEl.dataset.step);
+    if (Math.abs(currentVal - _chainFromVal) > step * 0.5) {
+        _chainFire(); // chain immediately — no 300ms gate
+    }
+}
+
+function _chainReset() {
+    clearTimeout(_chainGateTimer);
+    clearTimeout(_chainIdleTimer);
+    _chainGateTimer = null;
+    _chainIdleTimer = null;
+    _chainAnimating = false;
+    _chainEl        = null;
+    _chainFromVal   = null;
+}
+
+// Called on every slider value change during drag
+function _chainOnSliderChange(el) {
+    // Reset 2s idle → static preview countdown from last slider movement
+    clearTimeout(_chainIdleTimer);
+    _chainIdleTimer = setTimeout(showStaticPreview, 2000);
+
+    // If already animating or gate is pending, the existing flow will pick up
+    // the new value automatically — nothing to schedule.
+    if (_chainAnimating || _chainGateTimer !== null) return;
+
+    // First change of this burst: start 300ms gate
+    _chainGateTimer = setTimeout(_chainFire, 300);
+}
+
+// ─── Drag-scrub logic (event delegation on the param tree) ────────────────
 let _drag = null;
 
 document.addEventListener('mousemove', e => {
@@ -1613,25 +1710,28 @@ document.addEventListener('mousemove', e => {
     let newVal = _drag.startVal + dx * sensitivity;
     newVal = Math.round(newVal / _drag.step) * _drag.step;
     newVal = Math.max(_drag.min, Math.min(_drag.max, newVal));
-    // Clamp floating point
     const decimals = _drag.step < 0.01 ? 4 : _drag.step < 1 ? 3 : 1;
     newVal = parseFloat(newVal.toFixed(decimals));
     updateParamRowDisplay(_drag.el, newVal);
+    _chainOnSliderChange(_drag.el);
 });
 
 document.addEventListener('mouseup', e => {
     if (!_drag) return;
-    const { el, startVal, moved } = _drag;
+    const { el, moved } = _drag;
     _drag = null;
     document.body.style.cursor = '';
     if (!moved) {
         selectParam(el);
-    } else {
-        const toVal = parseFloat(el.dataset.current);
-        if (Math.abs(toVal - startVal) > parseFloat(el.dataset.step) * 0.5) {
-            showTransitionPreview(el, startVal, toVal);
-        }
+        return;
     }
+    // If gate is pending on mouseup, fire immediately rather than making the
+    // user wait 300ms after releasing.
+    if (_chainGateTimer !== null) {
+        clearTimeout(_chainGateTimer);
+        _chainFire();
+    }
+    // Chained animations and the idle→static timer continue running naturally.
 });
 
 // ─── State ─────────────────────────────────────────────────────────────────
@@ -1655,14 +1755,19 @@ document.getElementById('paramTree').addEventListener('mousedown', e => {
     const row = e.target.closest('.param-row');
     if (!row || e.target.classList.contains('param-reset')) return;
     e.preventDefault();
+    const startVal = parseFloat(row.dataset.current);
+    // Initialise chain state so _chainFromVal is the pre-drag visual state
+    _chainReset();
+    _chainEl      = row;
+    _chainFromVal = startVal;
     _drag = {
         el: row,
         startX: e.clientX,
-        startVal: parseFloat(row.dataset.current),
+        startVal,
         min: parseFloat(row.dataset.min),
         max: parseFloat(row.dataset.max),
         step: parseFloat(row.dataset.step),
-        moved: false
+        moved: false,
     };
     document.body.style.cursor = 'ew-resize';
 });
