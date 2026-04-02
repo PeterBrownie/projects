@@ -741,6 +741,17 @@
             padding: 0 2px;
         }
         #layer-panel-close:hover { color: #fff; }
+        #layer-panel-customize {
+            background: none;
+            border: 1px solid #555;
+            border-radius: 4px;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 11px;
+            padding: 2px 7px;
+            margin-right: 6px;
+        }
+        #layer-panel-customize:hover { background: #2a2a2a; color: #fff; border-color: #888; }
         #layer-panel-list {
             padding: 8px;
             display: flex;
@@ -1502,7 +1513,10 @@
 <div id="layer-panel">
     <div id="layer-panel-header">
         <span id="layer-panel-title">Layers</span>
-        <button id="layer-panel-close">×</button>
+        <div style="display:flex;align-items:center;gap:4px">
+            <button id="layer-panel-customize">Customize…</button>
+            <button id="layer-panel-close">×</button>
+        </div>
     </div>
     <div id="layer-panel-list"></div>
 </div>
@@ -3405,13 +3419,24 @@ document.getElementById('sidebar-download-svg').addEventListener('click', () => 
     URL.revokeObjectURL(a.href);
 });
 
-document.getElementById('sidebar-animate-svg').addEventListener('click', () => {
-    if (selectedIdx < 0) return;
-    closeSidebarSaveMenu();
-    const genome = genomes[selectedIdx];
+function openInAnimationPage(cellIdx) {
+    const genome = genomes[cellIdx];
     const svg = svgWithGenomeMeta(genomeToSVG(genome, 1280, 720, 'ex'), genome);
     sessionStorage.setItem('evolvesvg_animate', svg);
     window.open('animation.html', '_blank');
+}
+
+document.getElementById('sidebar-animate-svg').addEventListener('click', () => {
+    if (selectedIdx < 0) return;
+    closeSidebarSaveMenu();
+    openInAnimationPage(selectedIdx);
+});
+
+document.getElementById('layer-panel-customize').addEventListener('click', () => {
+    const idx = layerPanelCellIdx;
+    if (idx < 0) return;
+    closeLayerPanel();
+    openInAnimationPage(idx);
 });
 
 // ─── Import SVG ────────────────────────────────────────────────────────────

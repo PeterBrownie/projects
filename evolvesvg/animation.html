@@ -588,11 +588,11 @@
             display: flex;
             gap: 7px;
             align-items: center;
-            padding-top: 9px;
-            border-top: 1px solid var(--border);
+            padding-bottom: 9px;
+            border-bottom: 1px solid var(--border);
             flex-shrink: 0;
             flex-wrap: wrap;
-            margin-top: 6px;
+            margin-bottom: 6px;
         }
         .action-sep { flex: 1; }
         .btn-icon {
@@ -743,13 +743,6 @@
 
                 <!-- Right: keyframe list + output -->
                 <div class="controls-right">
-                    <div class="kf-list-header">
-                        <span>Keyframes</span>
-                        <span id="kfCount" class="kf-count">0</span>
-                    </div>
-                    <div class="kf-list" id="kfList">
-                        <div class="kf-empty">No keyframes yet.<br>Select a parameter and click Add.</div>
-                    </div>
                     <div class="controls-output">
                         <button class="btn-primary" id="previewBtn" onclick="applyAnimation()" disabled>Preview</button>
                         <button class="btn-secondary" id="stopBtn" onclick="stopAnimation()" style="display:none">Stop</button>
@@ -760,9 +753,16 @@
                             <input type="checkbox" id="optimizeSpeedToggle"> optimizeSpeed
                         </label>
                         <div class="action-sep"></div>
-                        <button class="btn-icon accent" id="exportBtn" onclick="exportSVG()" style="display:none"><svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 20 20" fill="#4a9eff" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 17a.5.5 0 0 1 .09 1H4.5a.5.5 0 0 1-.09-1H15.5ZM10 2a.5.5 0 0 1 .5.41V14.3l3.64-3.65a.5.5 0 0 1 .64-.06l.07.06c.17.17.2.44.06.63l-.06.07-4.5 4.5a.5.5 0 0 1-.25.14L10 16a.5.5 0 0 1-.4-.2l-4.46-4.45a.5.5 0 0 1 .64-.76l.07.06 3.65 3.64V2.5c0-.27.22-.5.5-.5Z"/></svg>Export SVG</button>
-                        <button class="btn-icon" id="copyBtn" onclick="copySVG()" style="display:none"><svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 20 20" fill="#FFFFFF" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2a2 2 0 0 0-2 2v10c0 1.1.9 2 2 2h6a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8ZM7 4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4ZM4 6a2 2 0 0 1 1-1.73V14.5A2.5 2.5 0 0 0 7.5 17h6.23A2 2 0 0 1 12 18H7.5A3.5 3.5 0 0 1 4 14.5V6Z"/></svg>Copy SVG</button>
+                        <button class="btn-icon accent" id="exportBtn" onclick="exportSVG()"><svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 20 20" fill="#4a9eff" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 17a.5.5 0 0 1 .09 1H4.5a.5.5 0 0 1-.09-1H15.5ZM10 2a.5.5 0 0 1 .5.41V14.3l3.64-3.65a.5.5 0 0 1 .64-.06l.07.06c.17.17.2.44.06.63l-.06.07-4.5 4.5a.5.5 0 0 1-.25.14L10 16a.5.5 0 0 1-.4-.2l-4.46-4.45a.5.5 0 0 1 .64-.76l.07.06 3.65 3.64V2.5c0-.27.22-.5.5-.5Z"/></svg>Export SVG</button>
+                        <button class="btn-icon" id="copyBtn" onclick="copySVG()"><svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 20 20" fill="#FFFFFF" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2a2 2 0 0 0-2 2v10c0 1.1.9 2 2 2h6a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8ZM7 4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4ZM4 6a2 2 0 0 1 1-1.73V14.5A2.5 2.5 0 0 0 7.5 17h6.23A2 2 0 0 1 12 18H7.5A3.5 3.5 0 0 1 4 14.5V6Z"/></svg>Copy SVG</button>
                         <button class="btn-icon" id="webmBtn" onclick="exportWebM()" style="display:none">&#9654; Export WebM</button>
+                    </div>
+                    <div class="kf-list-header">
+                        <span>Keyframes</span>
+                        <span id="kfCount" class="kf-count">0</span>
+                    </div>
+                    <div class="kf-list" id="kfList">
+                        <div class="kf-empty">No keyframes yet.<br>Select a parameter and click Add.</div>
                     </div>
                 </div>
 
@@ -2200,8 +2200,8 @@ function showOutputButtons(animating) {
     document.getElementById('previewBtn').disabled = !hasSpecs;
     document.getElementById('stopBtn').style.display = animating ? '' : 'none';
     document.getElementById('previewBtn').style.display = animating ? 'none' : '';
-    document.getElementById('exportBtn').style.display = hasSpecs ? '' : 'none';
-    document.getElementById('copyBtn').style.display = hasSpecs ? '' : 'none';
+    document.getElementById('exportBtn').style.display = '';
+    document.getElementById('copyBtn').style.display = '';
     document.getElementById('webmBtn').style.display = 'none';
 }
 
@@ -2260,19 +2260,19 @@ function stopAnimation() {
 }
 
 function exportSVG() {
-    if (!animSpecs.length) return;
+    if (!currentGenome) return;
     const svg = getOrBuildAnimatedSVG();
-    const label = animSpecs[0] ? specLabel(animSpecs[0]).toLowerCase().replace(/[^a-z0-9]+/g,'-') : 'animated';
+    const label = animSpecs[0] ? specLabel(animSpecs[0]).toLowerCase().replace(/[^a-z0-9]+/g,'-') : 'static';
     const blob = new Blob([svg], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `evolvesvg-${label}-animated.svg`;
+    a.href = url; a.download = `evolvesvg-${label}${animSpecs.length ? '-animated' : ''}.svg`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
 function copySVG() {
-    if (!animSpecs.length) return;
+    if (!currentGenome) return;
     const svg = getOrBuildAnimatedSVG();
     navigator.clipboard.writeText(svg).then(() => {
         const btn = document.getElementById('copyBtn');
