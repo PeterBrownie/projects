@@ -1621,6 +1621,13 @@ function showTransitionPreview(el, fromVal, toVal) {
     const endSvg = genomeToSVGAnimated(endGenome, null, 1280, 720);
     const wrap = document.getElementById('svgPreviewWrap');
     wrap.innerHTML = animSvg;
+    // Firefox inherits the page's SMIL timeline for dynamically inserted SVGs,
+    // so begin="0s" (the default) resolves to a time already in the past and
+    // the animation completes instantly. beginElement() starts each animation
+    // explicitly "right now", bypassing the document timeline entirely.
+    wrap.querySelectorAll('animate, animateTransform').forEach(a => {
+        try { a.beginElement(); } catch(e) {}
+    });
     clearTimeout(_previewTimer);
     // Only swap in the static end-frame when not actively dragging.
     // During drag, SMIL fill="freeze" already holds the end state visually;
@@ -1701,10 +1708,10 @@ function _chainOnSliderChange(el) {
 // ─── Drag-scrub logic (event delegation on the param tree) ────────────────
 let _drag = null;
 
-document.addEventListener('mousemove', e => {
+// Use pointer events + setPointerCapture for reliable cross-browser drag ordering.
+document.addEventListener('pointermove', e => {
     if (!_drag) return;
     const dx = e.clientX - _drag.startX;
-    if (Math.abs(dx) > 2) _drag.moved = true;
     const range = _drag.max - _drag.min;
     const sensitivity = range / (_drag.el.getBoundingClientRect().width || 200);
     let newVal = _drag.startVal + dx * sensitivity;
@@ -1716,22 +1723,48 @@ document.addEventListener('mousemove', e => {
     _chainOnSliderChange(_drag.el);
 });
 
-document.addEventListener('mouseup', e => {
+document.addEventListener('pointerup', e => {
     if (!_drag) return;
-    const { el, moved } = _drag;
+    const { el, startX, startVal, min, max, step } = _drag;
+
+    // Always recompute final value from release position. This catches Firefox
+    // fast-drag cases where pointermove may not have fired before pointerup,
+    // even with setPointerCapture.
+    const dx = e.clientX - startX;
+    if (dx !== 0) {
+        const range = max - min;
+        const sensitivity = range / (el.getBoundingClientRect().width || 200);
+        let finalVal = Math.round((startVal + dx * sensitivity) / step) * step;
+        finalVal = Math.max(min, Math.min(max, finalVal));
+        const decimals = step < 0.01 ? 4 : step < 1 ? 3 : 1;
+        finalVal = parseFloat(finalVal.toFixed(decimals));
+        if (finalVal !== parseFloat(el.dataset.current)) {
+            updateParamRowDisplay(el, finalVal);
+        }
+    }
+
+    // Use VALUE change — not pixel distance — to distinguish drag from click.
+    // A fast drag can register under 2 pixels but still change the value.
+    // Using pixel threshold was the root cause of Firefox showing a static
+    // preview update via selectParam() → showStaticPreview() when it should
+    // have animated.
+    const valueChanged = parseFloat(el.dataset.current) !== startVal;
+
     _drag = null;
     document.body.style.cursor = '';
-    if (!moved) {
+
+    if (!valueChanged) {
         selectParam(el);
         return;
     }
-    // If gate is pending on mouseup, fire immediately rather than making the
-    // user wait 300ms after releasing.
-    if (_chainGateTimer !== null) {
-        clearTimeout(_chainGateTimer);
-        _chainFire();
-    }
-    // Chained animations and the idle→static timer continue running naturally.
+
+    // Ensure idle timer is always armed on release (pointermove may never have
+    // fired to set it in Firefox fast-drag cases).
+    clearTimeout(_chainIdleTimer);
+    _chainIdleTimer = setTimeout(showStaticPreview, 2000);
+    clearTimeout(_chainGateTimer);
+    _chainGateTimer = null;
+    _chainFire();
 });
 
 // ─── State ─────────────────────────────────────────────────────────────────
@@ -1751,10 +1784,13 @@ let animEasing = 'linear';
 document.getElementById('loadBtn').addEventListener('click', loadSVG);
 document.getElementById('svgInput').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) loadSVG(); });
 
-document.getElementById('paramTree').addEventListener('mousedown', e => {
+document.getElementById('paramTree').addEventListener('pointerdown', e => {
     const row = e.target.closest('.param-row');
     if (!row || e.target.classList.contains('param-reset')) return;
     e.preventDefault();
+    // Capture pointer so all pointermove/pointerup events are guaranteed to
+    // arrive on this element in order, even during fast gestures in Firefox.
+    row.setPointerCapture(e.pointerId);
     const startVal = parseFloat(row.dataset.current);
     // Initialise chain state so _chainFromVal is the pre-drag visual state
     _chainReset();
@@ -1767,7 +1803,6 @@ document.getElementById('paramTree').addEventListener('mousedown', e => {
         min: parseFloat(row.dataset.min),
         max: parseFloat(row.dataset.max),
         step: parseFloat(row.dataset.step),
-        moved: false,
     };
     document.body.style.cursor = 'ew-resize';
 });
