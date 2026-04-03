@@ -356,7 +356,7 @@
             height: 230px;
         }
         .controls-left {
-            width: 60%;
+            width: 50%;
             flex-shrink: 0;
             border-right: 1px solid var(--border);
             padding: 12px 16px;
@@ -387,7 +387,7 @@
         .controls-selected {
             font-size: 12px;
             color: var(--text-dim);
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
         .controls-selected strong { color: var(--accent); font-weight: 600; }
 
@@ -395,7 +395,7 @@
             display: flex;
             gap: 14px;
             align-items: flex-start;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
         .slider-group { flex: 1; }
         .slider-group label {
@@ -412,7 +412,7 @@
             display: flex;
             gap: 10px;
             align-items: flex-end;
-            margin-bottom: 10px;
+            margin-bottom: 7px;
             flex-wrap: wrap;
         }
         .timing-field { display: flex; flex-direction: column; gap: 4px; }
@@ -511,7 +511,7 @@
             display: flex;
             gap: 10px;
             align-items: flex-end;
-            margin-bottom: 8px;
+            margin-top: 5px;
         }
         .canvas-action-row .kf-action-row {
             flex: 1;
@@ -611,6 +611,40 @@
         .btn-icon:hover { background: #252525; border-color: #555; }
         .btn-icon.accent { border-color: var(--accent); color: var(--accent); }
         .btn-icon.accent:hover { background: #0d1e30; }
+
+        .size-field {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            flex-shrink: 0;
+        }
+        .size-field label { font-size: 11px; color: var(--text-dim); }
+        .size-field select {
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: 4px;
+            color: var(--text);
+            padding: 4px 6px;
+            font-size: 12px;
+            outline: none;
+        }
+        .size-field select:focus { border-color: var(--accent); }
+        .size-field input[type=number] {
+            width: 48px;
+            background: var(--surface2);
+            border: 1px solid var(--border2);
+            border-radius: 4px;
+            color: var(--text);
+            padding: 4px 5px;
+            font-size: 12px;
+            outline: none;
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+        .size-field input[type=number]:focus { border-color: var(--accent); }
+        .size-field input[type=number]::-webkit-inner-spin-button,
+        .size-field input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .size-sep { color: var(--text-faint); font-size: 11px; }
     </style>
 </head>
 <body>
@@ -752,8 +786,23 @@
                         <label class="perf-toggle" title="Adds shape-rendering, color-rendering, and image-rendering=optimizeSpeed to the SVG root — trades visual quality for render speed">
                             <input type="checkbox" id="optimizeSpeedToggle"> optimizeSpeed
                         </label>
+                        <div class="size-field">
+                            <label>Size</label>
+                            <select id="aspectSelect" onchange="onAspectChange()">
+                                <option value="16:9">16:9</option>
+                                <option value="4:3">4:3</option>
+                                <option value="1:1">1:1</option>
+                                <option value="9:16">9:16</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                            <span id="customSizeFields" style="display:none;align-items:center;gap:4px">
+                                <input type="number" id="customW" value="1280" min="100" max="4096" step="1" onchange="onCustomSizeChange()">
+                                <span class="size-sep">×</span>
+                                <input type="number" id="customH" value="720" min="100" max="4096" step="1" onchange="onCustomSizeChange()">
+                            </span>
+                        </div>
                         <div class="action-sep"></div>
-                        <button class="btn-icon accent" id="exportBtn" onclick="exportSVG()"><svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 20 20" fill="#4a9eff" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 17a.5.5 0 0 1 .09 1H4.5a.5.5 0 0 1-.09-1H15.5ZM10 2a.5.5 0 0 1 .5.41V14.3l3.64-3.65a.5.5 0 0 1 .64-.06l.07.06c.17.17.2.44.06.63l-.06.07-4.5 4.5a.5.5 0 0 1-.25.14L10 16a.5.5 0 0 1-.4-.2l-4.46-4.45a.5.5 0 0 1 .64-.76l.07.06 3.65 3.64V2.5c0-.27.22-.5.5-.5Z"/></svg>Export SVG</button>
+                        <button class="btn-icon accent" id="exportBtn" onclick="exportSVG()"><svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 20 20" fill="#4a9eff" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 17a.5.5 0 0 1 .09 1H4.5a.5.5 0 0 1-.09-1H15.5ZM10 2a.5.5 0 0 1 .5.41V14.3l3.64-3.65a.5.5 0 0 1 .64-.06l.07.06c.17.17.2.44.06.63l-.06.07-4.5 4.5a.5.5 0 0 1-.25.14L10 16a.5.5 0 0 1-.4-.2l-4.46-4.45a.5.5 0 0 1 .64-.76l.07.06 3.65 3.64V2.5c0-.27.22-.5.5-.5Z"/></svg>Save SVG</button>
                         <button class="btn-icon" id="copyBtn" onclick="copySVG()"><svg xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 20 20" fill="#FFFFFF" stroke="none" stroke-width="0" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2a2 2 0 0 0-2 2v10c0 1.1.9 2 2 2h6a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8ZM7 4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4ZM4 6a2 2 0 0 1 1-1.73V14.5A2.5 2.5 0 0 0 7.5 17h6.23A2 2 0 0 1 12 18H7.5A3.5 3.5 0 0 1 4 14.5V6Z"/></svg>Copy SVG</button>
                         <button class="btn-icon" id="webmBtn" onclick="exportWebM()" style="display:none">&#9654; Export WebM</button>
                     </div>
@@ -887,6 +936,7 @@ function smilAttrs(attrName, fromVal, toVal, spec) {
         if (ks) s += ` calcMode="spline" keyTimes="0;1" keySplines="${ks}"`;
     }
     s += ` dur="${spec.dur}s" repeatCount="${spec.repeatCount}" fill="freeze"`;
+    if (spec.beginIndefinite) s += ` begin="indefinite"`;
     return s;
 }
 
@@ -906,6 +956,7 @@ function smilTransform(type, fromVal, toVal, spec) {
         if (ks) s += ` calcMode="spline" keyTimes="0;1" keySplines="${ks}"`;
     }
     s += ` dur="${spec.dur}s" repeatCount="${spec.repeatCount}" fill="freeze"`;
+    if (spec.beginIndefinite) s += ` begin="indefinite"`;
     return `<animateTransform ${s}/>`;
 }
 
@@ -1367,7 +1418,10 @@ function genomeToSVGAnimated(genome, animSpecsInput, W=1280, H=720, prefix='anim
     const renderingAttrs = opts.optimizeSpeed
         ? ' shape-rendering="optimizeSpeed" color-rendering="optimizeSpeed" image-rendering="optimizeSpeed"'
         : '';
-    return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice"${renderingAttrs}>${defsBlock}${bodyParts.join('')}</svg>`;
+    const viewBox  = opts.viewBox || `0 0 ${W} ${H}`;
+    const outW     = opts.outW   || W;
+    const outH     = opts.outH   || H;
+    return `<svg viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg" width="${outW}" height="${outH}" preserveAspectRatio="xMidYMid meet"${renderingAttrs}>${defsBlock}${bodyParts.join('')}</svg>`;
 }
 
 // ─── Genome extraction ─────────────────────────────────────────────────────
@@ -1586,22 +1640,32 @@ function resetParamValue(el) {
     _drag = _drag || {};
     updateParamRowDisplay(el, original);
     _drag = prevDrag;
+    // If a drag just ended, _chainOnEnd may fire ~260ms from now. It checks
+    // (el.dataset.current - _chainFromVal) to decide whether to chain another
+    // animation. el.dataset.current is now `original`, so if _chainFromVal is
+    // still the pre-reset dragged value the delta will be large and _chainOnEnd
+    // will restart our transition mid-play. Setting _chainFromVal = original
+    // here means _chainOnEnd sees zero delta and does nothing.
+    _chainFromVal = original;
     showTransitionPreview(el, fromVal, original);
 }
 
 function buildTransitionSpec(el, fromVal, toVal) {
     return {
-        target:      el.dataset.target,
-        param:       el.dataset.param,
-        layerIdx:    el.dataset.layerIdx !== undefined ? parseInt(el.dataset.layerIdx) : undefined,
-        paletteIdx:  el.dataset.paletteIdx !== undefined ? parseInt(el.dataset.paletteIdx) : undefined,
+        target:         el.dataset.target,
+        param:          el.dataset.param,
+        layerIdx:       el.dataset.layerIdx !== undefined ? parseInt(el.dataset.layerIdx) : undefined,
+        paletteIdx:     el.dataset.paletteIdx !== undefined ? parseInt(el.dataset.paletteIdx) : undefined,
         fromVal,
         toVal,
-        dur:         0.25,
-        repeatCount: '1',
-        direction:   'forward',
-        easing:      'easeOut',
-        customSpline: '',
+        dur:            0.25,
+        repeatCount:    '1',
+        direction:      'forward',
+        easing:         'easeOut',
+        customSpline:   '',
+        // Prevents animateTransform from auto-firing on the document timeline
+        // before beginElement() is called, which would flash the end-state value.
+        beginIndefinite: true,
     };
 }
 
@@ -1612,13 +1676,15 @@ function showTransitionPreview(el, fromVal, toVal) {
     const baseGenome = JSON.parse(JSON.stringify(currentGenome));
     applyParamToGenome(baseGenome, el, fromVal);
     const spec = buildTransitionSpec(el, fromVal, toVal);
-    const animSvg = genomeToSVGAnimated(baseGenome, [spec], 1280, 720);
+    const { W: _W, H: _H, outW: _oW, outH: _oH, viewBox: _vb } = getViewportConfig();
+    const _vpOpts = { viewBox: _vb, outW: _oW, outH: _oH };
+    const animSvg = genomeToSVGAnimated(baseGenome, [spec], _W, _H, 'anim', _vpOpts);
     // Snapshot the end-state static SVG NOW (genome at toVal) so that when the
     // animation finishes we always display the frame we animated TO — not whatever
     // the slider has moved to in the meantime.
     const endGenome = JSON.parse(JSON.stringify(baseGenome));
     applyParamToGenome(endGenome, el, toVal);
-    const endSvg = genomeToSVGAnimated(endGenome, null, 1280, 720);
+    const endSvg = genomeToSVGAnimated(endGenome, null, _W, _H, 'anim', _vpOpts);
     const wrap = document.getElementById('svgPreviewWrap');
     wrap.innerHTML = animSvg;
     // Firefox inherits the page's SMIL timeline for dynamically inserted SVGs,
@@ -1876,7 +1942,8 @@ function setStatus(msg, cls) {
 }
 
 function showStaticPreview() {
-    const svg = genomeToSVGAnimated(currentGenome, null, 1280, 720);
+    const { W, H, outW, outH, viewBox } = getViewportConfig();
+    const svg = genomeToSVGAnimated(currentGenome, null, W, H, 'anim', { viewBox, outW, outH });
     const wrap = document.getElementById('svgPreviewWrap');
     wrap.innerHTML = svg;
     wrap.style.display = 'flex';
@@ -2195,6 +2262,53 @@ function showParamConfig(visible) {
     if (visible) drawEasingCurve();
 }
 
+// ─── Aspect ratio / viewport config ───────────────────────────────────────
+// Always renders at BASE_W × BASE_H; crops viewBox to the chosen aspect ratio.
+
+const BASE_W = 1280, BASE_H = 720;
+
+function getViewportConfig() {
+    const sel = document.getElementById('aspectSelect').value;
+    let outW, outH;
+    if      (sel === '16:9') { outW = 1280; outH = 720;  }
+    else if (sel === '4:3')  { outW = 960;  outH = 720;  }
+    else if (sel === '1:1')  { outW = 720;  outH = 720;  }
+    else if (sel === '9:16') { outW = 405;  outH = 720;  }
+    else {
+        outW = Math.max(100, Math.min(4096, parseInt(document.getElementById('customW').value) || 1280));
+        outH = Math.max(100, Math.min(4096, parseInt(document.getElementById('customH').value) || 720));
+    }
+
+    const ar      = outW / outH;
+    const base_ar = BASE_W / BASE_H;
+    let vbX, vbY, vbW, vbH;
+    if (ar >= base_ar) {
+        // Same or wider — crop top/bottom
+        vbW = BASE_W; vbH = BASE_W / ar;
+        vbX = 0;      vbY = (BASE_H - vbH) / 2;
+    } else {
+        // Taller — crop left/right
+        vbH = BASE_H; vbW = BASE_H * ar;
+        vbX = (BASE_W - vbW) / 2; vbY = 0;
+    }
+    return {
+        W: BASE_W, H: BASE_H, outW, outH,
+        viewBox: `${vbX.toFixed(2)} ${vbY.toFixed(2)} ${vbW.toFixed(2)} ${vbH.toFixed(2)}`
+    };
+}
+
+function onAspectChange() {
+    const sel = document.getElementById('aspectSelect').value;
+    document.getElementById('customSizeFields').style.display = sel === 'custom' ? 'inline-flex' : 'none';
+    currentAnimatedSVG = null;
+    if (currentGenome) showStaticPreview();
+}
+
+function onCustomSizeChange() {
+    currentAnimatedSVG = null;
+    if (currentGenome) showStaticPreview();
+}
+
 function showOutputButtons(animating) {
     const hasSpecs = animSpecs.length > 0;
     document.getElementById('previewBtn').disabled = !hasSpecs;
@@ -2211,7 +2325,9 @@ function getOrBuildAnimatedSVG() {
         gpuOffload: document.getElementById('gpuToggle').checked,
         optimizeSpeed: document.getElementById('optimizeSpeedToggle').checked,
     };
-    const svg = genomeToSVGAnimated(currentGenome, animSpecs, 1280, 720, 'anim', opts);
+    const { W, H, outW, outH, viewBox } = getViewportConfig();
+    Object.assign(opts, { viewBox, outW, outH });
+    const svg = genomeToSVGAnimated(currentGenome, animSpecs, W, H, 'anim', opts);
     return embedAllMeta(svg, currentGenome, animSpecs);
 }
 
@@ -2243,7 +2359,9 @@ function applyAnimation() {
         gpuOffload: document.getElementById('gpuToggle').checked,
         optimizeSpeed: document.getElementById('optimizeSpeedToggle').checked,
     };
-    currentAnimatedSVG = embedAllMeta(genomeToSVGAnimated(currentGenome, animSpecs, 1280, 720, 'anim', opts), currentGenome, animSpecs);
+    const { W, H, outW, outH, viewBox } = getViewportConfig();
+    Object.assign(opts, { viewBox, outW, outH });
+    currentAnimatedSVG = embedAllMeta(genomeToSVGAnimated(currentGenome, animSpecs, W, H, 'anim', opts), currentGenome, animSpecs);
     const wrap = document.getElementById('svgPreviewWrap');
     wrap.innerHTML = currentAnimatedSVG;
     wrap.style.display = 'flex';
@@ -2341,16 +2459,17 @@ function buildFrameGenome(tSeconds) {
     return g;
 }
 
-function drawFrameToCanvas(ctx, W, H, tSeconds) {
+function drawFrameToCanvas(ctx, outW, outH, tSeconds, vpConfig) {
     return new Promise(resolve => {
         const g = buildFrameGenome(tSeconds);
-        const svg = genomeToSVGAnimated(g, null, W, H, 'webm');
+        const opts = { viewBox: vpConfig.viewBox, outW: vpConfig.outW, outH: vpConfig.outH };
+        const svg = genomeToSVGAnimated(g, null, vpConfig.W, vpConfig.H, 'webm', opts);
         const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
         const url  = URL.createObjectURL(blob);
         const img  = new Image();
         img.onload = () => {
-            ctx.clearRect(0, 0, W, H);
-            ctx.drawImage(img, 0, 0, W, H);
+            ctx.clearRect(0, 0, outW, outH);
+            ctx.drawImage(img, 0, 0, outW, outH);
             URL.revokeObjectURL(url);
             resolve();
         };
@@ -2368,7 +2487,8 @@ async function exportWebM() {
     const maxDur = Math.max(...animSpecs.map(s => s.dur));
     const totalSeconds = maxDur;
     const totalFrames  = Math.ceil(totalSeconds * FPS);
-    const W = 1280, H = 720;
+    const vpConfig = getViewportConfig();
+    const { outW: W, outH: H } = vpConfig;
 
     const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
         ? 'video/webm;codecs=vp9'
@@ -2392,7 +2512,7 @@ async function exportWebM() {
     recorder.start();
 
     for (let f = 0; f < totalFrames && !_webmAbort; f++) {
-        await drawFrameToCanvas(ctx, W, H, f / FPS);
+        await drawFrameToCanvas(ctx, W, H, f / FPS, vpConfig);
         track.requestFrame();
         // Yield to keep UI responsive and maintain correct frame timing
         await new Promise(r => setTimeout(r, 1000 / FPS));
