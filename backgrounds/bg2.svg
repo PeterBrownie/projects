@@ -1,0 +1,199 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+  <defs>
+    <linearGradient id="a" x1="96.35%" x2="3.65%" y1="31.24%" y2="68.76%">
+      <stop offset="0%" stop-color="hsla(213.2,73.6%,52.8%,1.000)"/>
+      <stop offset="100%" stop-color="hsla(114.9,82.0%,7.7%,1.000)"/>
+    </linearGradient>
+    <linearGradient id="c" x1="55.59%" x2="44.41%" y1="99.69%" y2=".31%">
+      <stop offset="0%" stop-color="hsla(114.9,82.0%,7.7%,0.976)"/>
+      <stop offset="100%" stop-color="hsla(114.9,82.0%,7.7%,0.976)"/>
+    </linearGradient>
+    <radialGradient id="d" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="hsla(114.9,82.0%,7.7%,0.566)"/>
+      <stop offset="100%" stop-color="hsla(213.2,73.6%,52.8%,0.566)"/>
+    </radialGradient>
+    <filter id="b" width="2048" height="1152" x="-384" y="-216" filterUnits="userSpaceOnUse">
+      <feTurbulence baseFrequency=".01" numOctaves="3" result="noise" type="fractalNoise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" result="disp" scale="36" xChannelSelector="R" yChannelSelector="G">
+        <animate fill="freeze" attributeName="scale" calcMode="spline" dur="10s" from="36" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="216"/>
+      </feDisplacementMap>
+      <feColorMatrix in="disp" result="hued" type="hueRotate" values="194.4"/>
+      <feColorMatrix in="hued" result="sat" type="saturate" values=".27"/>
+    </filter>
+  </defs>
+  <path fill="url(#a)" d="M0 0h1280v720H0z"/>
+  <g filter="url(#b)">
+    <g style="mix-blend-mode:difference" transform="rotate(276)">
+      <g fill="url(#c)" stroke="hsla(323.0,67.2%,91.5%,0.426)" stroke-width="5.17" opacity=".91" transform="scale(1.8 2.3)">
+        <animateTransform fill="freeze" attributeName="transform" calcMode="spline" dur="10s" from="1.800 2.300" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="2.500 2.300" type="scale"/>
+        <circle r="217.6"/>
+      </g>
+    </g>
+    <g style="mix-blend-mode:difference" transform="translate(320)">
+      <g transform="rotate(276)">
+        <g fill="url(#c)" stroke="hsla(323.0,67.2%,91.5%,0.426)" stroke-width="5.17" opacity=".91" transform="scale(1.8 2.3)">
+          <animateTransform fill="freeze" attributeName="transform" calcMode="spline" dur="10s" from="1.800 2.300" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="2.500 2.300" type="scale"/>
+          <circle r="217.6"/>
+        </g>
+      </g>
+    </g>
+    <g style="mix-blend-mode:difference" transform="translate(640)">
+      <g transform="rotate(276)">
+        <g fill="url(#c)" stroke="hsla(323.0,67.2%,91.5%,0.426)" stroke-width="5.17" opacity=".91" transform="scale(1.8 2.3)">
+          <animateTransform fill="freeze" attributeName="transform" calcMode="spline" dur="10s" from="1.800 2.300" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="2.500 2.300" type="scale"/>
+          <circle r="217.6"/>
+        </g>
+      </g>
+    </g>
+    <g style="mix-blend-mode:difference" transform="translate(960)">
+      <g transform="rotate(276)">
+        <g fill="url(#c)" stroke="hsla(323.0,67.2%,91.5%,0.426)" stroke-width="5.17" opacity=".91" transform="scale(1.8 2.3)">
+          <animateTransform fill="freeze" attributeName="transform" calcMode="spline" dur="10s" from="1.800 2.300" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="2.500 2.300" type="scale"/>
+          <circle r="217.6"/>
+        </g>
+      </g>
+    </g>
+    <g style="mix-blend-mode:difference" transform="translate(1280)">
+      <g transform="rotate(276)">
+        <g fill="url(#c)" stroke="hsla(323.0,67.2%,91.5%,0.426)" stroke-width="5.17" opacity=".91" transform="scale(1.8 2.3)">
+          <animateTransform fill="freeze" attributeName="transform" calcMode="spline" dur="10s" from="1.800 2.300" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="2.500 2.300" type="scale"/>
+          <circle r="217.6"/>
+        </g>
+      </g>
+    </g>
+    <g style="mix-blend-mode:difference" transform="translate(0 720)">
+      <g transform="rotate(276)">
+        <g fill="url(#c)" stroke="hsla(323.0,67.2%,91.5%,0.426)" stroke-width="5.17" opacity=".91" transform="scale(1.8 2.3)">
+          <animateTransform fill="freeze" attributeName="transform" calcMode="spline" dur="10s" from="1.800 2.300" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="2.500 2.300" type="scale"/>
+          <circle r="217.6"/>
+        </g>
+      </g>
+    </g>
+    <g style="mix-blend-mode:difference" transform="translate(320 720)">
+      <g transform="rotate(276)">
+        <g fill="url(#c)" stroke="hsla(323.0,67.2%,91.5%,0.426)" stroke-width="5.17" opacity=".91" transform="scale(1.8 2.3)">
+          <animateTransform fill="freeze" attributeName="transform" calcMode="spline" dur="10s" from="1.800 2.300" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="2.500 2.300" type="scale"/>
+          <circle r="217.6"/>
+        </g>
+      </g>
+    </g>
+    <g style="mix-blend-mode:difference" transform="translate(640 720)">
+      <g transform="rotate(276)">
+        <g fill="url(#c)" stroke="hsla(323.0,67.2%,91.5%,0.426)" stroke-width="5.17" opacity=".91" transform="scale(1.8 2.3)">
+          <animateTransform fill="freeze" attributeName="transform" calcMode="spline" dur="10s" from="1.800 2.300" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="2.500 2.300" type="scale"/>
+          <circle r="217.6"/>
+        </g>
+      </g>
+    </g>
+    <g style="mix-blend-mode:difference" transform="translate(960 720)">
+      <g transform="rotate(276)">
+        <g fill="url(#c)" stroke="hsla(323.0,67.2%,91.5%,0.426)" stroke-width="5.17" opacity=".91" transform="scale(1.8 2.3)">
+          <animateTransform fill="freeze" attributeName="transform" calcMode="spline" dur="10s" from="1.800 2.300" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="2.500 2.300" type="scale"/>
+          <circle r="217.6"/>
+        </g>
+      </g>
+    </g>
+    <g style="mix-blend-mode:difference" transform="translate(1280 720)">
+      <g transform="rotate(276)">
+        <g fill="url(#c)" stroke="hsla(323.0,67.2%,91.5%,0.426)" stroke-width="5.17" opacity=".91" transform="scale(1.8 2.3)">
+          <animateTransform fill="freeze" attributeName="transform" calcMode="spline" dur="10s" from="1.800 2.300" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="2.500 2.300" type="scale"/>
+          <circle r="217.6"/>
+        </g>
+      </g>
+    </g>
+  </g>
+  <g style="mix-blend-mode:overlay" transform="rotate(353)">
+    <g fill="url(#d)" stroke="hsla(213.2,73.6%,52.8%,0.487)" stroke-width="19.07" opacity=".8" transform="scale(1.8 .8)">
+      <animateTransform fill="freeze" attributeName="transform" calcMode="spline" dur="10s" from="1.800 0.838" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="3.000 0.838" type="scale"/>
+      <ellipse rx="620.8" ry="270.45"/>
+    </g>
+  </g>
+  <g style="mix-blend-mode:overlay" transform="translate(426.67)">
+    <g transform="rotate(353)">
+      <g fill="url(#d)" stroke="hsla(213.2,73.6%,52.8%,0.487)" stroke-width="19.07" opacity=".8" transform="scale(1.8 .8)">
+        <animateTransform fill="freeze" attributeName="transform" calcMode="spline" dur="10s" from="1.800 0.838" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="3.000 0.838" type="scale"/>
+        <ellipse rx="620.8" ry="270.45"/>
+      </g>
+    </g>
+  </g>
+  <g style="mix-blend-mode:overlay" transform="translate(853.33)">
+    <g transform="rotate(353)">
+      <g fill="url(#d)" stroke="hsla(213.2,73.6%,52.8%,0.487)" stroke-width="19.07" opacity=".8" transform="scale(1.8 .8)">
+        <animateTransform fill="freeze" attributeName="transform" calcMode="spline" dur="10s" from="1.800 0.838" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="3.000 0.838" type="scale"/>
+        <ellipse rx="620.8" ry="270.45"/>
+      </g>
+    </g>
+  </g>
+  <g style="mix-blend-mode:overlay" transform="translate(1280)">
+    <g transform="rotate(353)">
+      <g fill="url(#d)" stroke="hsla(213.2,73.6%,52.8%,0.487)" stroke-width="19.07" opacity=".8" transform="scale(1.8 .8)">
+        <animateTransform fill="freeze" attributeName="transform" calcMode="spline" dur="10s" from="1.800 0.838" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="3.000 0.838" type="scale"/>
+        <ellipse rx="620.8" ry="270.45"/>
+      </g>
+    </g>
+  </g>
+  <g style="mix-blend-mode:overlay" transform="translate(0 360)">
+    <g transform="rotate(353)">
+      <g fill="url(#d)" stroke="hsla(213.2,73.6%,52.8%,0.487)" stroke-width="19.07" opacity=".8" transform="scale(1.8 .8)">
+        <animateTransform fill="freeze" attributeName="transform" calcMode="spline" dur="10s" from="1.800 0.838" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="3.000 0.838" type="scale"/>
+        <ellipse rx="620.8" ry="270.45"/>
+      </g>
+    </g>
+  </g>
+  <g style="mix-blend-mode:overlay" transform="translate(426.67 360)">
+    <g transform="rotate(353)">
+      <g fill="url(#d)" stroke="hsla(213.2,73.6%,52.8%,0.487)" stroke-width="19.07" opacity=".8" transform="scale(1.8 .8)">
+        <animateTransform fill="freeze" attributeName="transform" calcMode="spline" dur="10s" from="1.800 0.838" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="3.000 0.838" type="scale"/>
+        <ellipse rx="620.8" ry="270.45"/>
+      </g>
+    </g>
+  </g>
+  <g style="mix-blend-mode:overlay" transform="translate(853.33 360)">
+    <g transform="rotate(353)">
+      <g fill="url(#d)" stroke="hsla(213.2,73.6%,52.8%,0.487)" stroke-width="19.07" opacity=".8" transform="scale(1.8 .8)">
+        <animateTransform fill="freeze" attributeName="transform" calcMode="spline" dur="10s" from="1.800 0.838" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="3.000 0.838" type="scale"/>
+        <ellipse rx="620.8" ry="270.45"/>
+      </g>
+    </g>
+  </g>
+  <g style="mix-blend-mode:overlay" transform="translate(1280 360)">
+    <g transform="rotate(353)">
+      <g fill="url(#d)" stroke="hsla(213.2,73.6%,52.8%,0.487)" stroke-width="19.07" opacity=".8" transform="scale(1.8 .8)">
+        <animateTransform fill="freeze" attributeName="transform" calcMode="spline" dur="10s" from="1.800 0.838" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="3.000 0.838" type="scale"/>
+        <ellipse rx="620.8" ry="270.45"/>
+      </g>
+    </g>
+  </g>
+  <g style="mix-blend-mode:overlay" transform="translate(0 720)">
+    <g transform="rotate(353)">
+      <g fill="url(#d)" stroke="hsla(213.2,73.6%,52.8%,0.487)" stroke-width="19.07" opacity=".8" transform="scale(1.8 .8)">
+        <animateTransform fill="freeze" attributeName="transform" calcMode="spline" dur="10s" from="1.800 0.838" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="3.000 0.838" type="scale"/>
+        <ellipse rx="620.8" ry="270.45"/>
+      </g>
+    </g>
+  </g>
+  <g style="mix-blend-mode:overlay" transform="translate(426.67 720)">
+    <g transform="rotate(353)">
+      <g fill="url(#d)" stroke="hsla(213.2,73.6%,52.8%,0.487)" stroke-width="19.07" opacity=".8" transform="scale(1.8 .8)">
+        <animateTransform fill="freeze" attributeName="transform" calcMode="spline" dur="10s" from="1.800 0.838" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="3.000 0.838" type="scale"/>
+        <ellipse rx="620.8" ry="270.45"/>
+      </g>
+    </g>
+  </g>
+  <g style="mix-blend-mode:overlay" transform="translate(853.33 720)">
+    <g transform="rotate(353)">
+      <g fill="url(#d)" stroke="hsla(213.2,73.6%,52.8%,0.487)" stroke-width="19.07" opacity=".8" transform="scale(1.8 .8)">
+        <animateTransform fill="freeze" attributeName="transform" calcMode="spline" dur="10s" from="1.800 0.838" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="3.000 0.838" type="scale"/>
+        <ellipse rx="620.8" ry="270.45"/>
+      </g>
+    </g>
+  </g>
+  <g style="mix-blend-mode:overlay" transform="translate(1280 720)">
+    <g transform="rotate(353)">
+      <g fill="url(#d)" stroke="hsla(213.2,73.6%,52.8%,0.487)" stroke-width="19.07" opacity=".8" transform="scale(1.8 .8)">
+        <animateTransform fill="freeze" attributeName="transform" calcMode="spline" dur="10s" from="1.800 0.838" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="3.000 0.838" type="scale"/>
+        <ellipse rx="620.8" ry="270.45"/>
+      </g>
+    </g>
+  </g>
+</svg>

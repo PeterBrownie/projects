@@ -1118,6 +1118,74 @@
             overflow: hidden;
         }
         #sidebar-save-menu.open { display: block; }
+        #sidebar-load-wrap {
+            grid-column: 1 / -1;
+            position: relative;
+        }
+        #sidebar-load-menu {
+            display: none;
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 0;
+            background: rgba(18,18,18,0.97);
+            border: 1px solid #555;
+            border-radius: 7px;
+            padding: 6px 0;
+            min-width: 185px;
+            width: 100%;
+            z-index: 500;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+            pointer-events: auto;
+            overflow: hidden;
+        }
+        #sidebar-load-menu.open { display: block; }
+        #load-paste-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: rgba(0,0,0,0.7);
+            align-items: center;
+            justify-content: center;
+        }
+        #load-paste-modal.open { display: flex; }
+        #load-paste-box {
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: min(480px, 90vw);
+        }
+        #load-paste-box textarea {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #ccc;
+            font-family: monospace;
+            font-size: 12px;
+            height: 200px;
+            padding: 8px;
+            resize: vertical;
+            width: 100%;
+        }
+        #load-paste-box .paste-title {
+            color: #ddd;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        #load-paste-box .paste-hint {
+            color: #666;
+            font-size: 11px;
+        }
+        #load-paste-box .paste-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
         #expand-more-wrap {
             position: relative;
         }
@@ -1638,7 +1706,13 @@
                             <div class="download-menu-item" id="sidebar-expand-for-png">More options…<span class="dim-label">Expand view</span></div>
                         </div>
                     </div>
-                    <button class="action-btn secondary" id="loadSvgBtn" style="grid-column: 1 / -1">Load SVG…</button>
+                    <div id="sidebar-load-wrap">
+                        <button class="action-btn secondary" id="loadOptionsBtn" style="width: 100%">Load Options…</button>
+                        <div id="sidebar-load-menu">
+                            <div class="download-menu-item" id="load-from-file">Upload SVG File</div>
+                            <div class="download-menu-item" id="load-from-paste">Paste SVG Code</div>
+                        </div>
+                    </div>
                     <button class="action-btn secondary" id="randomTemplateBtn" style="display:none; grid-column: 1 / -1">Random Template</button>
                 </div>
                 <div class="help-text" id="templatesHelp" style="display:none"></div>
@@ -1736,6 +1810,18 @@
     <div id="grid"></div>
     <button id="float-restart" title="Restart (New Random)">↺</button>
     <button id="reset-view" title="Reset view">Reset view</button>
+</div>
+
+<div id="load-paste-modal">
+    <div id="load-paste-box">
+        <span class="paste-title">Paste SVG Code</span>
+        <span class="paste-hint">Paste an SVG exported from this app — it must contain valid genome metadata.</span>
+        <textarea id="load-paste-input" placeholder="&lt;svg …&gt;…&lt;/svg&gt;"></textarea>
+        <div class="paste-actions">
+            <button class="action-btn secondary" id="load-paste-cancel">Cancel</button>
+            <button class="action-btn" id="load-paste-confirm">Load</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -3440,7 +3526,44 @@ document.getElementById('layer-panel-customize').addEventListener('click', () =>
 });
 
 // ─── Import SVG ────────────────────────────────────────────────────────────
-document.getElementById('loadSvgBtn').addEventListener('click', () => {
+function handleLoadedSVGText(svgText) {
+    const genome = extractGenomeFromSVG(svgText);
+    const helpEl = document.getElementById('templatesHelp');
+    const templateCount = templateGenomes.length;
+    const restoreHelp = () => {
+        if (templateCount) {
+            helpEl.textContent = `${templateCount} template${templateCount === 1 ? '' : 's'} available`;
+            helpEl.style.color = '';
+        } else {
+            helpEl.style.display = 'none';
+        }
+    };
+    helpEl.style.display = '';
+    if (!genome) {
+        helpEl.textContent = 'No genome found — only SVGs exported from this app can be loaded.';
+        helpEl.style.color = '#c06040';
+        setTimeout(restoreHelp, 3000);
+    } else {
+        helpEl.textContent = 'Loaded! Evolving from imported pattern…';
+        helpEl.style.color = '#60c080';
+        setTimeout(restoreHelp, 2500);
+        breedFromGenome(genome);
+    }
+}
+
+function toggleLoadMenu() {
+    const menu = document.getElementById('sidebar-load-menu');
+    menu.classList.toggle('open');
+}
+
+function closeLoadMenu() {
+    document.getElementById('sidebar-load-menu').classList.remove('open');
+}
+
+document.getElementById('loadOptionsBtn').addEventListener('click', toggleLoadMenu);
+
+document.getElementById('load-from-file').addEventListener('click', () => {
+    closeLoadMenu();
     document.getElementById('loadSvgInput').click();
 });
 
@@ -3448,32 +3571,37 @@ document.getElementById('loadSvgInput').addEventListener('change', e => {
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = ev => {
-        const genome = extractGenomeFromSVG(ev.target.result);
-        const helpEl = document.getElementById('templatesHelp');
-        const templateCount = templateGenomes.length;
-        const restoreHelp = () => {
-            if (templateCount) {
-                helpEl.textContent = `${templateCount} template${templateCount === 1 ? '' : 's'} available`;
-                helpEl.style.color = '';
-            } else {
-                helpEl.style.display = 'none';
-            }
-        };
-        helpEl.style.display = '';
-        if (!genome) {
-            helpEl.textContent = 'No genome found — only SVGs exported from this app can be loaded.';
-            helpEl.style.color = '#c06040';
-            setTimeout(restoreHelp, 3000);
-        } else {
-            helpEl.textContent = 'Loaded! Evolving from imported pattern…';
-            helpEl.style.color = '#60c080';
-            setTimeout(restoreHelp, 2500);
-            breedFromGenome(genome);
-        }
-    };
+    reader.onload = ev => handleLoadedSVGText(ev.target.result);
     reader.readAsText(file);
     e.target.value = '';
+});
+
+document.getElementById('load-from-paste').addEventListener('click', () => {
+    closeLoadMenu();
+    document.getElementById('load-paste-input').value = '';
+    document.getElementById('load-paste-modal').classList.add('open');
+});
+
+document.getElementById('load-paste-cancel').addEventListener('click', () => {
+    document.getElementById('load-paste-modal').classList.remove('open');
+});
+
+document.getElementById('load-paste-confirm').addEventListener('click', () => {
+    const text = document.getElementById('load-paste-input').value.trim();
+    document.getElementById('load-paste-modal').classList.remove('open');
+    if (text) handleLoadedSVGText(text);
+});
+
+document.getElementById('load-paste-modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('load-paste-modal')) {
+        document.getElementById('load-paste-modal').classList.remove('open');
+    }
+});
+
+document.addEventListener('click', e => {
+    if (!document.getElementById('sidebar-load-wrap').contains(e.target)) {
+        closeLoadMenu();
+    }
 });
 
 // ─── Bookmarks ────────────────────────────────────────────────────────────

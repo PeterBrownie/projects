@@ -151,6 +151,15 @@
 	</style>
 </head>
 <body>
+	<img id="bg-img" aria-hidden="true" style="position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2;pointer-events:none;">
+	<script>
+		const bgs = [
+			"backgrounds/bg.svg",
+			"backgrounds/bg2.svg",
+		];
+		document.getElementById("bg-img").src = bgs[Math.floor(Math.random() * bgs.length)] + '?v=' + Date.now();
+	</script>
+	<div aria-hidden="true" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:-1;pointer-events:none;"></div>
 	<div class="page-wrapper">
 	<div class="header">
 		<h1>Peter Brown</h1>

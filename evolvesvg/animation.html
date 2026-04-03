@@ -1070,13 +1070,13 @@ function buildFilter(layer, layerIdx, palette, defs, makeGradientId, svgW, rende
 
 // ─── Tiling layer renderer (with opacity animation support) ────────────────
 
-function renderTilingAnim(layer, layerIdx, palette, W, H, defs, makeGradientId, renderW, anim) {
-    const isAnimLayer = anim && anim.target === 'layer' && anim.layerIdx === layerIdx;
-    const param = isAnimLayer ? anim.param : null;
+function renderTilingAnim(layer, layerIdx, palette, W, H, defs, makeGradientId, renderW, anims) {
+    const myAnims = Array.isArray(anims) ? anims.filter(s => s.target === 'layer' && s.layerIdx === layerIdx) : [];
+    const opacitySpec = myAnims.find(s => s.param === 'opacity');
 
-    const fromOpacity = (param === 'opacity') ? anim.fromVal : (layer.opacity ?? 1);
-    const opacityAnimEl = (param === 'opacity')
-        ? smilAnimate('opacity', anim.fromVal.toFixed(3), anim.toVal.toFixed(3), anim)
+    const fromOpacity = opacitySpec ? opacitySpec.fromVal : (layer.opacity ?? 1);
+    const opacityAnimEl = opacitySpec
+        ? smilAnimate('opacity', opacitySpec.fromVal.toFixed(3), opacitySpec.toVal.toFixed(3), opacitySpec)
         : '';
 
     const color = fillAttr(palette, layer.fill, W, defs, makeGradientId);
@@ -1161,7 +1161,8 @@ function renderTilingAnim(layer, layerIdx, palette, W, H, defs, makeGradientId, 
         default: return '';
     }
 
-    const filterAttr = buildFilter(layer, layerIdx, palette, defs, makeGradientId, W, renderW, H, anim);
+    const filterAnim = myAnims.find(s => s.param === 'blur' || s.param === 'displaceScale' || s.param === 'hueRotate') || myAnims[0] || null;
+    const filterAttr = buildFilter(layer, layerIdx, palette, defs, makeGradientId, W, renderW, H, filterAnim);
     const maskAttr   = buildLayerMask(layer, W, H, defs, makeGradientId);
     return `<g opacity="${fromOpacity.toFixed(3)}" style="mix-blend-mode:${blend}" ${filterAttr} ${maskAttr}>${opacityAnimEl}${result}</g>`;
 }
@@ -1208,39 +1209,47 @@ function buildShape(type, params, W, shapeAnims) {
 
 // ─── Main layer renderer (with SMIL injection) ─────────────────────────────
 
-function renderLayerAnim(layer, layerIdx, palette, W, H, defs, makeGradientId, renderW, anim) {
+function renderLayerAnim(layer, layerIdx, palette, W, H, defs, makeGradientId, renderW, anims) {
     if (TILING_TYPES.has(layer.type)) {
-        return renderTilingAnim(layer, layerIdx, palette, W, H, defs, makeGradientId, renderW, anim);
+        return renderTilingAnim(layer, layerIdx, palette, W, H, defs, makeGradientId, renderW, anims);
     }
 
-    const isAnimLayer = anim && anim.target === 'layer' && anim.layerIdx === layerIdx;
-    const param = isAnimLayer ? anim.param : null;
+    const paletteAnim   = anims.find(s => s.target === 'palette');
+    const myAnims       = anims.filter(s => s.target === 'layer' && s.layerIdx === layerIdx);
+    const getAnim       = (param) => myAnims.find(s => s.param === param);
 
-    // Base values — set "from" state for animated params
-    const rawCx = (param === 'cx') ? anim.fromVal : layer.cx;
-    const rawCy = (param === 'cy') ? anim.fromVal : layer.cy;
+    const cxAnim        = getAnim('cx');
+    const cyAnim        = getAnim('cy');
+    const rotateAnim    = getAnim('rotate');
+    const scaleXAnim    = getAnim('scaleX');
+    const scaleYAnim    = getAnim('scaleY');
+    const opacityAnim   = getAnim('opacity');
+    const fillAlphaAnim = getAnim('fillAlpha');
+
+    // Base values — "from" state for animated params
+    const rawCx = cxAnim  ? cxAnim.fromVal  : layer.cx;
+    const rawCy = cyAnim  ? cyAnim.fromVal  : layer.cy;
     const cx = rawCx * W, cy = rawCy * H;
 
     const t = layer.transform || {};
-    const rawRotate = (param === 'rotate') ? anim.fromVal : (t.rotate || 0);
-    const rawScaleX = (param === 'scaleX') ? anim.fromVal : (t.scaleX || 1);
-    const rawScaleY = (param === 'scaleY') ? anim.fromVal : (t.scaleY || 1);
-    const rawOpacity = (param === 'opacity') ? anim.fromVal : (layer.opacity ?? 1);
+    const rawRotate  = rotateAnim  ? rotateAnim.fromVal  : (t.rotate || 0);
+    const rawScaleX  = scaleXAnim  ? scaleXAnim.fromVal  : (t.scaleX || 1);
+    const rawScaleY  = scaleYAnim  ? scaleYAnim.fromVal  : (t.scaleY || 1);
+    const rawOpacity = opacityAnim ? opacityAnim.fromVal : (layer.opacity ?? 1);
 
-    // Palette color animation: compute fill
+    // Palette color animation
     let fillStr, fillAnimEl = '';
-    const isPaletteAnim = anim && anim.target === 'palette';
-    if (isPaletteAnim && layer.fill && layer.fill.type === 'solid' &&
-        (layer.fill.paletteIdx % palette.length) === anim.paletteIdx) {
-        const baseColor = { ...palette[anim.paletteIdx] };
+    if (paletteAnim && layer.fill && layer.fill.type === 'solid' &&
+        (layer.fill.paletteIdx % palette.length) === paletteAnim.paletteIdx) {
+        const baseColor = { ...palette[paletteAnim.paletteIdx] };
         const fromColor = { ...baseColor };
         const toColor   = { ...baseColor };
-        if (anim.param === 'paletteH') { fromColor.h = anim.fromVal; toColor.h = anim.toVal; }
-        if (anim.param === 'paletteS') { fromColor.s = anim.fromVal; toColor.s = anim.toVal; }
-        if (anim.param === 'paletteL') { fromColor.l = anim.fromVal; toColor.l = anim.toVal; }
+        if (paletteAnim.param === 'paletteH') { fromColor.h = paletteAnim.fromVal; toColor.h = paletteAnim.toVal; }
+        if (paletteAnim.param === 'paletteS') { fromColor.s = paletteAnim.fromVal; toColor.s = paletteAnim.toVal; }
+        if (paletteAnim.param === 'paletteL') { fromColor.l = paletteAnim.fromVal; toColor.l = paletteAnim.toVal; }
         const alpha = layer.fill.alpha ?? 1;
         fillStr    = colorString(fromColor, alpha);
-        fillAnimEl = smilAnimate('fill', colorString(fromColor, alpha), colorString(toColor, alpha), anim);
+        fillAnimEl = smilAnimate('fill', colorString(fromColor, alpha), colorString(toColor, alpha), paletteAnim);
     } else {
         fillStr = fillAttr(palette, layer.fill, W, defs, makeGradientId);
     }
@@ -1253,137 +1262,133 @@ function renderLayerAnim(layer, layerIdx, palette, W, H, defs, makeGradientId, r
     const dashAttr = layer.dash && !(layer.hiddenEffects||[]).includes('dash')
         ? ` stroke-dasharray="${layer.dash.len.toFixed(1)},${layer.dash.gap.toFixed(1)}"` : '';
 
-    // fillAlpha: animate fill-opacity (not fill color) — SMIL can't reliably
-    // interpolate HSLA strings with embedded alpha, so we split them.
+    // fillAlpha: animate fill-opacity — SMIL can't reliably interpolate HSLA strings
     let fillAlphaAnimEl = '';
-    if (param === 'fillAlpha' && layer.fill && layer.fill.type === 'solid') {
+    if (fillAlphaAnim && layer.fill && layer.fill.type === 'solid') {
         const pc = palette[layer.fill.paletteIdx % palette.length];
-        fillStr = colorString(pc, 1); // solid color, alpha handled via fill-opacity
-        fillAlphaAnimEl = smilAnimate('fill-opacity', anim.fromVal.toFixed(3), anim.toVal.toFixed(3), anim);
+        fillStr = colorString(pc, 1);
+        fillAlphaAnimEl = smilAnimate('fill-opacity', fillAlphaAnim.fromVal.toFixed(3), fillAlphaAnim.toVal.toFixed(3), fillAlphaAnim);
     }
 
-    // Shape params
+    // Shape params — collect all shape animations
     const shapeP = { ...layer.params };
     const shapeAnims = {};
 
-    if (isAnimLayer) {
-        if (param === 'r' && shapeP.r !== undefined) {
-            const fromR = (anim.fromVal * W).toFixed(2);
-            const toR   = (anim.toVal   * W).toFixed(2);
-            shapeP.r = anim.fromVal;
-            if (layer.type === 'polygon') {
-                // Animate polygon points
-                shapeAnims.points = smilAnimate('points',
-                    polygonPoints(Math.round(shapeP.sides)||5, anim.fromVal, W),
-                    polygonPoints(Math.round(shapeP.sides)||5, anim.toVal, W),
-                    anim);
-            } else {
-                shapeAnims.r = smilAnimate('r', fromR, toR, anim);
-            }
-        } else if (param === 'rx' && shapeP.rx !== undefined) {
-            shapeAnims.rx = smilAnimate('rx', (anim.fromVal*W).toFixed(2), (anim.toVal*W).toFixed(2), anim);
-            shapeP.rx = anim.fromVal;
-        } else if (param === 'ry' && shapeP.ry !== undefined) {
-            shapeAnims.ry = smilAnimate('ry', (anim.fromVal*W).toFixed(2), (anim.toVal*W).toFixed(2), anim);
-            shapeP.ry = anim.fromVal;
-        } else if (param === 'w' && shapeP.w !== undefined) {
-            const fw = anim.fromVal*W, tw = anim.toVal*W;
-            shapeAnims.width = smilAnimate('width', fw.toFixed(2), tw.toFixed(2), anim);
-            shapeAnims.x     = smilAnimate('x', (-fw/2).toFixed(2), (-tw/2).toFixed(2), anim);
-            shapeP.w = anim.fromVal;
-        } else if (param === 'h' && shapeP.h !== undefined) {
-            const fh = anim.fromVal*W, th = anim.toVal*W;
-            shapeAnims.height = smilAnimate('height', fh.toFixed(2), th.toFixed(2), anim);
-            shapeAnims.y      = smilAnimate('y', (-fh/2).toFixed(2), (-th/2).toFixed(2), anim);
-            shapeP.h = anim.fromVal;
+    const rAnim  = getAnim('r');
+    const rxAnim = getAnim('rx');
+    const ryAnim = getAnim('ry');
+    const wAnim  = getAnim('w');
+    const hAnim  = getAnim('h');
+
+    if (rAnim && shapeP.r !== undefined) {
+        shapeP.r = rAnim.fromVal;
+        if (layer.type === 'polygon') {
+            shapeAnims.points = smilAnimate('points',
+                polygonPoints(Math.round(shapeP.sides)||5, rAnim.fromVal, W),
+                polygonPoints(Math.round(shapeP.sides)||5, rAnim.toVal, W),
+                rAnim);
+        } else {
+            shapeAnims.r = smilAnimate('r', (rAnim.fromVal*W).toFixed(2), (rAnim.toVal*W).toFixed(2), rAnim);
         }
+    }
+    if (rxAnim && shapeP.rx !== undefined) {
+        shapeAnims.rx = smilAnimate('rx', (rxAnim.fromVal*W).toFixed(2), (rxAnim.toVal*W).toFixed(2), rxAnim);
+        shapeP.rx = rxAnim.fromVal;
+    }
+    if (ryAnim && shapeP.ry !== undefined) {
+        shapeAnims.ry = smilAnimate('ry', (ryAnim.fromVal*W).toFixed(2), (ryAnim.toVal*W).toFixed(2), ryAnim);
+        shapeP.ry = ryAnim.fromVal;
+    }
+    if (wAnim && shapeP.w !== undefined) {
+        const fw = wAnim.fromVal*W, tw = wAnim.toVal*W;
+        shapeAnims.width = smilAnimate('width', fw.toFixed(2), tw.toFixed(2), wAnim);
+        shapeAnims.x     = smilAnimate('x', (-fw/2).toFixed(2), (-tw/2).toFixed(2), wAnim);
+        shapeP.w = wAnim.fromVal;
+    }
+    if (hAnim && shapeP.h !== undefined) {
+        const fh = hAnim.fromVal*W, th = hAnim.toVal*W;
+        shapeAnims.height = smilAnimate('height', fh.toFixed(2), th.toFixed(2), hAnim);
+        shapeAnims.y      = smilAnimate('y', (-fh/2).toFixed(2), (-th/2).toFixed(2), hAnim);
+        shapeP.h = hAnim.fromVal;
     }
 
     const shapeEl = buildShape(layer.type, shapeP, W, shapeAnims);
     if (!shapeEl) return '';
 
-    const filterAttr = buildFilter(layer, layerIdx, palette, defs, makeGradientId, W, renderW, H, anim);
+    // Pass the most relevant anim spec to buildFilter for filter-param animation
+    const filterAnim = getAnim('blur') || getAnim('displaceScale') || getAnim('hueRotate') || myAnims[0] || null;
+    const filterAttr = buildFilter(layer, layerIdx, palette, defs, makeGradientId, W, renderW, H, filterAnim);
     const maskAttr   = buildLayerMask(layer, W, H, defs, makeGradientId);
 
     const instances = getInstances(layer, cx, cy, W, H);
     // Positional deltas: animate each instance by the same screen-space offset so
     // that all arrangement types (grid, radial, scatter, single) shift uniformly.
-    // Recomputing instances with a new cx/cy is wrong for radial (orbit radius
-    // changes near edges, making spokes move at angles) and a no-op for grid
-    // (which ignores cx/cy entirely). A flat delta is predictable for all types.
-    const deltaX = (param === 'cx') ? (anim.toVal - anim.fromVal) * W : 0;
-    const deltaY = (param === 'cy') ? (anim.toVal - anim.fromVal) * H : 0;
+    const deltaX = cxAnim ? (cxAnim.toVal - cxAnim.fromVal) * W : 0;
+    const deltaY = cyAnim ? (cyAnim.toVal - cyAnim.fromVal) * H : 0;
+
+    const hasAnyAnim       = myAnims.length > 0 || paletteAnim;
+    const hasTransformAnim = cxAnim || cyAnim || rotateAnim || scaleXAnim || scaleYAnim;
 
     const parts = instances.map(([ix, iy, iExtra]) => {
         const rot = rawRotate + (iExtra || 0);
-        const fillPart  = `fill="${fillStr}" stroke="${strokeColor}" stroke-width="${strokeWidth}"${dashAttr}`;
+        const fillPart   = `fill="${fillStr}" stroke="${strokeColor}" stroke-width="${strokeWidth}"${dashAttr}`;
         const blendStyle = `style="mix-blend-mode:${blend}"`;
 
-        if (!isAnimLayer && !isPaletteAnim) {
-            // Standard render
+        // No animation — static render
+        if (!hasAnyAnim) {
             const tr = `translate(${ix.toFixed(2)},${iy.toFixed(2)}) rotate(${rot.toFixed(2)}) scale(${rawScaleX.toFixed(3)},${rawScaleY.toFixed(3)})`;
             return `<g transform="${tr}" ${fillPart} opacity="${rawOpacity.toFixed(3)}" ${blendStyle}>${shapeEl}</g>`;
         }
-        if (isPaletteAnim) {
-            // Palette color animation: inject fill animate
+
+        // No transform animation — single flat group is sufficient
+        if (!hasTransformAnim && !opacityAnim && !fillAlphaAnim) {
             const tr = `translate(${ix.toFixed(2)},${iy.toFixed(2)}) rotate(${rot.toFixed(2)}) scale(${rawScaleX.toFixed(3)},${rawScaleY.toFixed(3)})`;
             return `<g transform="${tr}" ${fillPart} opacity="${rawOpacity.toFixed(3)}" ${blendStyle}>${fillAnimEl}${shapeEl}</g>`;
         }
 
-        switch (param) {
-            case 'opacity': {
-                const tr = `translate(${ix.toFixed(2)},${iy.toFixed(2)}) rotate(${rot.toFixed(2)}) scale(${rawScaleX.toFixed(3)},${rawScaleY.toFixed(3)})`;
-                return `<g transform="${tr}" ${fillPart} opacity="${anim.fromVal.toFixed(3)}" ${blendStyle}>${smilAnimate('opacity', anim.fromVal.toFixed(3), anim.toVal.toFixed(3), anim)}${shapeEl}</g>`;
-            }
-            case 'cx': {
-                const transAnim = smilTransform('translate',
-                    `${ix.toFixed(2)},${iy.toFixed(2)}`,
-                    `${(ix + deltaX).toFixed(2)},${iy.toFixed(2)}`,
-                    anim);
-                const inner = `rotate(${rot.toFixed(2)}) scale(${rawScaleX.toFixed(3)},${rawScaleY.toFixed(3)})`;
-                return `<g ${blendStyle}>${transAnim}<g transform="${inner}" ${fillPart} opacity="${rawOpacity.toFixed(3)}">${shapeEl}</g></g>`;
-            }
-            case 'cy': {
-                const transAnim = smilTransform('translate',
-                    `${ix.toFixed(2)},${iy.toFixed(2)}`,
-                    `${ix.toFixed(2)},${(iy + deltaY).toFixed(2)}`,
-                    anim);
-                const inner = `rotate(${rot.toFixed(2)}) scale(${rawScaleX.toFixed(3)},${rawScaleY.toFixed(3)})`;
-                return `<g ${blendStyle}>${transAnim}<g transform="${inner}" ${fillPart} opacity="${rawOpacity.toFixed(3)}">${shapeEl}</g></g>`;
-            }
-            case 'rotate': {
-                const iExtraVal = iExtra || 0;
-                const fromRot = (anim.fromVal + iExtraVal).toFixed(2);
-                const toRot   = (anim.toVal   + iExtraVal).toFixed(2);
-                const rotAnim = smilTransform('rotate', fromRot, toRot, anim);
-                // Three nested groups preserve T→R→S order, matching the static render exactly.
-                // Outer: translate, Middle: rotate (animated), Inner: scale + fill
-                return `<g transform="translate(${ix.toFixed(2)},${iy.toFixed(2)})" ${blendStyle}><g transform="rotate(${fromRot})">${rotAnim}<g transform="scale(${rawScaleX.toFixed(3)},${rawScaleY.toFixed(3)})" ${fillPart} opacity="${rawOpacity.toFixed(3)}">${shapeEl}</g></g></g>`;
-            }
-            case 'scaleX': {
-                const outerTr = `translate(${ix.toFixed(2)},${iy.toFixed(2)}) rotate(${rot.toFixed(2)})`;
-                const scAnim = smilTransform('scale',
-                    `${anim.fromVal.toFixed(3)} ${rawScaleY.toFixed(3)}`,
-                    `${anim.toVal.toFixed(3)} ${rawScaleY.toFixed(3)}`, anim);
-                return `<g transform="${outerTr}" ${blendStyle}><g ${fillPart} opacity="${rawOpacity.toFixed(3)}">${scAnim}${shapeEl}</g></g>`;
-            }
-            case 'scaleY': {
-                const outerTr = `translate(${ix.toFixed(2)},${iy.toFixed(2)}) rotate(${rot.toFixed(2)})`;
-                const scAnim = smilTransform('scale',
-                    `${rawScaleX.toFixed(3)} ${anim.fromVal.toFixed(3)}`,
-                    `${rawScaleX.toFixed(3)} ${anim.toVal.toFixed(3)}`, anim);
-                return `<g transform="${outerTr}" ${blendStyle}><g ${fillPart} opacity="${rawOpacity.toFixed(3)}">${scAnim}${shapeEl}</g></g>`;
-            }
-            case 'fillAlpha': {
-                const tr = `translate(${ix.toFixed(2)},${iy.toFixed(2)}) rotate(${rot.toFixed(2)}) scale(${rawScaleX.toFixed(3)},${rawScaleY.toFixed(3)})`;
-                return `<g transform="${tr}" fill="${fillStr}" fill-opacity="${anim.fromVal.toFixed(3)}" stroke="${strokeColor}" stroke-width="${strokeWidth}"${dashAttr} opacity="${rawOpacity.toFixed(3)}" ${blendStyle}>${fillAlphaAnimEl}${shapeEl}</g>`;
-            }
-            default: {
-                // Shape param animation (r, rx, ry, w, h) — animate already in shapeEl
-                const tr = `translate(${ix.toFixed(2)},${iy.toFixed(2)}) rotate(${rot.toFixed(2)}) scale(${rawScaleX.toFixed(3)},${rawScaleY.toFixed(3)})`;
-                return `<g transform="${tr}" ${fillPart} opacity="${rawOpacity.toFixed(3)}" ${blendStyle}>${shapeEl}</g>`;
-            }
+        // General case: three-group structure (translate / rotate / scale+fill) so any
+        // combination of transform and non-transform animations can coexist on one layer.
+
+        // cx and/or cy → single animateTransform translate with combined delta
+        let transAnim = '';
+        if (cxAnim || cyAnim) {
+            transAnim = smilTransform('translate',
+                `${ix.toFixed(2)},${iy.toFixed(2)}`,
+                `${(ix + deltaX).toFixed(2)},${(iy + deltaY).toFixed(2)}`,
+                cxAnim || cyAnim);
         }
+
+        // rotate → animateTransform on middle group
+        const iExtraVal = iExtra || 0;
+        const fromRot = (rawRotate + iExtraVal).toFixed(2);
+        let rotAnim = '';
+        if (rotateAnim) {
+            rotAnim = smilTransform('rotate',
+                (rotateAnim.fromVal + iExtraVal).toFixed(2),
+                (rotateAnim.toVal   + iExtraVal).toFixed(2),
+                rotateAnim);
+        }
+
+        // scaleX and/or scaleY → single animateTransform scale
+        const fromSx = rawScaleX.toFixed(3), fromSy = rawScaleY.toFixed(3);
+        let scaleAnim = '';
+        if (scaleXAnim || scaleYAnim) {
+            const toSx = scaleXAnim ? scaleXAnim.toVal.toFixed(3) : fromSx;
+            const toSy = scaleYAnim ? scaleYAnim.toVal.toFixed(3) : fromSy;
+            scaleAnim = smilTransform('scale', `${fromSx} ${fromSy}`, `${toSx} ${toSy}`, scaleXAnim || scaleYAnim);
+        }
+
+        const opacityAnimEl = opacityAnim
+            ? smilAnimate('opacity', opacityAnim.fromVal.toFixed(3), opacityAnim.toVal.toFixed(3), opacityAnim)
+            : '';
+
+        const innerFillPart = fillAlphaAnim
+            ? `fill="${fillStr}" fill-opacity="${fillAlphaAnim.fromVal.toFixed(3)}" stroke="${strokeColor}" stroke-width="${strokeWidth}"${dashAttr}`
+            : fillPart;
+
+        const innerGroup  = `<g transform="scale(${fromSx},${fromSy})" ${innerFillPart} opacity="${rawOpacity.toFixed(3)}">${scaleAnim}${opacityAnimEl}${fillAlphaAnimEl}${fillAnimEl}${shapeEl}</g>`;
+        const middleGroup = `<g transform="rotate(${fromRot})">${rotAnim}${innerGroup}</g>`;
+        return `<g transform="translate(${ix.toFixed(2)},${iy.toFixed(2)})" ${blendStyle}>${transAnim}${middleGroup}</g>`;
     });
 
     const inner = parts.join('');
@@ -1408,10 +1413,8 @@ function genomeToSVGAnimated(genome, animSpecsInput, W=1280, H=720, prefix='anim
     for (let i = 0; i < genome.layers.length; i++) {
         const layer = genome.layers[i];
         if (layer.hidden) continue;
-        const anim = allSpecs.find(s => s.target === 'layer' && s.layerIdx === i)
-                  || allSpecs.find(s => s.target === 'palette')
-                  || null;
-        bodyParts.push(renderLayerAnim(layer, i, genome.palette, W, H, defs, makeGradientId, W, anim));
+        const layerAnims = allSpecs.filter(s => (s.target === 'layer' && s.layerIdx === i) || s.target === 'palette');
+        bodyParts.push(renderLayerAnim(layer, i, genome.palette, W, H, defs, makeGradientId, W, layerAnims));
     }
 
     const defsBlock = defs.length ? `<defs>${defs.join('')}</defs>` : '';
@@ -2364,6 +2367,7 @@ function applyAnimation() {
     currentAnimatedSVG = embedAllMeta(genomeToSVGAnimated(currentGenome, animSpecs, W, H, 'anim', opts), currentGenome, animSpecs);
     const wrap = document.getElementById('svgPreviewWrap');
     wrap.innerHTML = currentAnimatedSVG;
+    wrap.querySelectorAll('animate, animateTransform').forEach(a => { try { a.beginElement(); } catch(e) {} });
     wrap.style.display = 'flex';
     document.getElementById('previewEmpty').style.display = 'none';
     document.getElementById('animBadge').classList.add('visible');

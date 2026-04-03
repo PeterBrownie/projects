@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720">
+  <defs>
+    <linearGradient id="b" x1="54.54%" x2="45.46%" y1="99.79%" y2=".21%">
+      <stop offset="0%" stop-color="hsla(341.4,80.7%,16.4%,1.000)"/>
+      <stop offset="100%" stop-color="hsla(261.0,10.0%,15.1%,1.000)"/>
+    </linearGradient>
+    <linearGradient id="c" x1="2.44%" x2="97.56%" y1="34.56%" y2="65.44%">
+      <stop offset="0%" stop-color="hsla(341.4,80.7%,16.4%,0.597)"/>
+      <stop offset="100%" stop-color="hsla(261.0,10.0%,15.1%,0.597)"/>
+    </linearGradient>
+    <filter id="e" width="2048" height="1152" x="-384" y="-216" filterUnits="userSpaceOnUse">
+      <feTurbulence baseFrequency=".02" result="noise" type="fractalNoise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" result="disp" scale="97.6" xChannelSelector="R" yChannelSelector="G"/>
+      <feColorMatrix in="disp" result="hued" type="hueRotate" values="263.5"/>
+      <feColorMatrix in="hued" result="sat" type="saturate" values="1.11"/>
+    </filter>
+    <filter id="f" width="2048" height="1152" x="-384" y="-216" filterUnits="userSpaceOnUse">
+      <feTurbulence baseFrequency=".12" numOctaves="5" result="noise" type="fractalNoise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" result="disp" scale="31.1" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <radialGradient id="a" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="hsla(261.0,10.0%,15.1%,0.729)"/>
+      <stop offset="100%" stop-color="hsla(32.0,69.3%,29.1%,0.729)"/>
+    </radialGradient>
+    <pattern id="g" width="26.39" height="26.39" x="0" y="0" patternUnits="userSpaceOnUse">
+      <path fill="url(#a)" d="M0 0h13.19v13.19H0z"/>
+      <path fill="url(#a)" d="M13.19 13.19h13.19v13.19H13.19z"/>
+    </pattern>
+  </defs>
+  <path fill="url(#b)" d="M0 0h1280v720H0z"/>
+  <g fill="url(#c)" stroke="hsla(355.1,100.0%,95.0%,0.305)" stroke-width="16.43" filter="url(#e)">
+    <circle r="364.8" style="mix-blend-mode:hard-light" transform="rotate(-24)scale(2 1)">
+      <animate fill="freeze" attributeName="r" calcMode="spline" dur="10s" from="364.8" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="441.6"/>
+    </circle>
+    <circle r="364.8" style="mix-blend-mode:hard-light" transform="matrix(1.8 -.8 .4 1 426.67 0)">
+      <animate fill="freeze" attributeName="r" calcMode="spline" dur="10s" from="364.8" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="441.6"/>
+    </circle>
+    <circle r="364.8" style="mix-blend-mode:hard-light" transform="matrix(1.8 -.8 .4 1 853.33 0)">
+      <animate fill="freeze" attributeName="r" calcMode="spline" dur="10s" from="364.8" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="441.6"/>
+    </circle>
+    <circle r="364.8" style="mix-blend-mode:hard-light" transform="matrix(1.8 -.8 .4 1 1280 0)">
+      <animate fill="freeze" attributeName="r" calcMode="spline" dur="10s" from="364.8" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="441.6"/>
+    </circle>
+    <circle r="364.8" style="mix-blend-mode:hard-light" transform="matrix(1.8 -.8 .4 1 0 360)">
+      <animate fill="freeze" attributeName="r" calcMode="spline" dur="10s" from="364.8" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="441.6"/>
+    </circle>
+    <circle r="364.8" style="mix-blend-mode:hard-light" transform="matrix(1.8 -.8 .4 1 426.67 360)">
+      <animate fill="freeze" attributeName="r" calcMode="spline" dur="10s" from="364.8" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="441.6"/>
+    </circle>
+    <circle r="364.8" style="mix-blend-mode:hard-light" transform="matrix(1.8 -.8 .4 1 853.33 360)">
+      <animate fill="freeze" attributeName="r" calcMode="spline" dur="10s" from="364.8" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="441.6"/>
+    </circle>
+    <circle r="364.8" style="mix-blend-mode:hard-light" transform="matrix(1.8 -.8 .4 1 1280 360)">
+      <animate fill="freeze" attributeName="r" calcMode="spline" dur="10s" from="364.8" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="441.6"/>
+    </circle>
+    <circle r="364.8" style="mix-blend-mode:hard-light" transform="matrix(1.8 -.8 .4 1 0 720)">
+      <animate fill="freeze" attributeName="r" calcMode="spline" dur="10s" from="364.8" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="441.6"/>
+    </circle>
+    <circle r="364.8" style="mix-blend-mode:hard-light" transform="matrix(1.8 -.8 .4 1 426.67 720)">
+      <animate fill="freeze" attributeName="r" calcMode="spline" dur="10s" from="364.8" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="441.6"/>
+    </circle>
+    <circle r="364.8" style="mix-blend-mode:hard-light" transform="matrix(1.8 -.8 .4 1 853.33 720)">
+      <animate fill="freeze" attributeName="r" calcMode="spline" dur="10s" from="364.8" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="441.6"/>
+    </circle>
+    <circle r="364.8" style="mix-blend-mode:hard-light" transform="matrix(1.8 -.8 .4 1 1280 720)">
+      <animate fill="freeze" attributeName="r" calcMode="spline" dur="10s" from="364.8" keySplines="0.42 0 0.58 1" keyTimes="0;1" repeatCount="1" to="441.6"/>
+    </circle>
+  </g>
+  <g filter="url(#f)" opacity=".62" style="mix-blend-mode:hard-light">
+    <path fill="url(#g)" d="M-1280-720h3840v2160h-3840z"/>
+  </g>
+  <ellipse fill="hsla(355.1,100.0%,95.0%,0.645)" stroke="hsla(355.1,100.0%,95.0%,0.223)" stroke-width="10.05" opacity=".99" rx="399.87" ry="293.04" style="mix-blend-mode:color-dodge" transform="rotate(73)scale(1.3 .3)"/>
+  <ellipse fill="hsla(355.1,100.0%,95.0%,0.645)" stroke="hsla(355.1,100.0%,95.0%,0.223)" stroke-width="10.05" opacity=".99" rx="399.87" ry="293.04" style="mix-blend-mode:color-dodge" transform="matrix(.4 1.3 -.3 .1 640 0)"/>
+  <ellipse fill="hsla(355.1,100.0%,95.0%,0.645)" stroke="hsla(355.1,100.0%,95.0%,0.223)" stroke-width="10.05" opacity=".99" rx="399.87" ry="293.04" style="mix-blend-mode:color-dodge" transform="matrix(.4 1.3 -.3 .1 1280 0)"/>
+  <ellipse fill="hsla(355.1,100.0%,95.0%,0.645)" stroke="hsla(355.1,100.0%,95.0%,0.223)" stroke-width="10.05" opacity=".99" rx="399.87" ry="293.04" style="mix-blend-mode:color-dodge" transform="matrix(.4 1.3 -.3 .1 0 720)"/>
+  <ellipse fill="hsla(355.1,100.0%,95.0%,0.645)" stroke="hsla(355.1,100.0%,95.0%,0.223)" stroke-width="10.05" opacity=".99" rx="399.87" ry="293.04" style="mix-blend-mode:color-dodge" transform="matrix(.4 1.3 -.3 .1 640 720)"/>
+  <ellipse fill="hsla(355.1,100.0%,95.0%,0.645)" stroke="hsla(355.1,100.0%,95.0%,0.223)" stroke-width="10.05" opacity=".99" rx="399.87" ry="293.04" style="mix-blend-mode:color-dodge" transform="matrix(.4 1.3 -.3 .1 1280 720)"/>
+</svg>
