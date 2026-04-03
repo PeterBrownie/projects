@@ -1647,10 +1647,10 @@ function resetParamValue(el) {
     // will restart our transition mid-play. Setting _chainFromVal = original
     // here means _chainOnEnd sees zero delta and does nothing.
     _chainFromVal = original;
-    showTransitionPreview(el, fromVal, original);
+    showTransitionPreview(el, fromVal, original, 0.45);
 }
 
-function buildTransitionSpec(el, fromVal, toVal) {
+function buildTransitionSpec(el, fromVal, toVal, dur = 0.25) {
     return {
         target:         el.dataset.target,
         param:          el.dataset.param,
@@ -1658,7 +1658,7 @@ function buildTransitionSpec(el, fromVal, toVal) {
         paletteIdx:     el.dataset.paletteIdx !== undefined ? parseInt(el.dataset.paletteIdx) : undefined,
         fromVal,
         toVal,
-        dur:            0.25,
+        dur,
         repeatCount:    '1',
         direction:      'forward',
         easing:         'easeOut',
@@ -1669,13 +1669,13 @@ function buildTransitionSpec(el, fromVal, toVal) {
     };
 }
 
-function showTransitionPreview(el, fromVal, toVal) {
+function showTransitionPreview(el, fromVal, toVal, dur = 0.25) {
     if (!currentGenome) return;
     // Generate the SVG with the genome reset to fromVal so instance positions
     // are computed at the start of the animation, not the end.
     const baseGenome = JSON.parse(JSON.stringify(currentGenome));
     applyParamToGenome(baseGenome, el, fromVal);
-    const spec = buildTransitionSpec(el, fromVal, toVal);
+    const spec = buildTransitionSpec(el, fromVal, toVal, dur);
     const { W: _W, H: _H, outW: _oW, outH: _oH, viewBox: _vb } = getViewportConfig();
     const _vpOpts = { viewBox: _vb, outW: _oW, outH: _oH };
     const animSvg = genomeToSVGAnimated(baseGenome, [spec], _W, _H, 'anim', _vpOpts);
@@ -1698,7 +1698,7 @@ function showTransitionPreview(el, fromVal, toVal) {
     // Only swap in the static end-frame when not actively dragging.
     // During drag, SMIL fill="freeze" already holds the end state visually;
     // swapping here would cause a jump before the next interval chunk fires.
-    _previewTimer = setTimeout(() => { if (!_drag) wrap.innerHTML = endSvg; }, 280);
+    _previewTimer = setTimeout(() => { if (!_drag) wrap.innerHTML = endSvg; }, spec.dur * 1000 + 20);
 }
 
 // ─── Preview animation chain ──────────────────────────────────────────────
