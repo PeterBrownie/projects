@@ -696,6 +696,10 @@
                 <strong>Paste and load an SVG to begin.</strong><br>
                 Then pick a parameter on the left<br>
                 to configure your animation.
+                <div style="margin-top:18px">
+                    <button class="btn-secondary" id="randomTemplateBtn" style="display:none;pointer-events:auto" onclick="loadRandomTemplate()">Load Random Template</button>
+                    <div id="templateLoadStatus" style="font-size:11px;color:var(--text-faint);margin-top:8px;min-height:14px"></div>
+                </div>
             </div>
             <div id="svgPreviewWrap" style="display:none"></div>
             <div class="anim-badge" id="animBadge">ANIMATING</div>
@@ -2537,6 +2541,36 @@ async function exportWebM() {
     a.download = `evolvesvg-animated.webm`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+// ─── Templates ─────────────────────────────────────────────────────────────
+
+const _templateSVGs = [];
+let _templateQueue  = [];
+
+(async function initTemplates() {
+    try {
+        const manifest = await fetch('templates/manifest.json').then(r => r.ok ? r.json() : null);
+        if (!manifest || !manifest.length) return;
+        const results = await Promise.all(
+            manifest.map(f => fetch(`templates/${encodeURIComponent(f)}`).then(r => r.ok ? r.text() : null).catch(() => null))
+        );
+        for (const svgText of results) {
+            if (svgText && extractGenomeFromSVG(svgText)) _templateSVGs.push(svgText);
+        }
+        if (_templateSVGs.length) document.getElementById('randomTemplateBtn').style.display = '';
+    } catch {}
+})();
+
+function loadRandomTemplate() {
+    if (!_templateSVGs.length) return;
+    if (!_templateQueue.length) _templateQueue = [..._templateSVGs].sort(() => Math.random() - 0.5);
+    const svgText = _templateQueue.pop();
+    const statusEl = document.getElementById('templateLoadStatus');
+    statusEl.textContent = 'Loading…';
+    document.getElementById('svgInput').value = svgText;
+    loadSVG();
+    statusEl.textContent = '';
 }
 
 // ─── Browser warning ────────────────────────────────────────────────────────

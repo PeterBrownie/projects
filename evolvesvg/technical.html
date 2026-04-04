@@ -149,7 +149,7 @@
             list-style: none;
             display: grid;
             grid-template-columns: 1fr 1fr;
-            grid-template-rows: repeat(6, auto);
+            grid-template-rows: repeat(7, auto);
             grid-auto-flow: column;
             gap: 6px 32px;
         }
@@ -560,8 +560,9 @@
     <a href="#flow"     class="side-toc-item" data-section="flow">    <span class="side-toc-num">08</span><span class="side-toc-label">Evolution Flow</span></a>
     <a href="#controls" class="side-toc-item" data-section="controls"><span class="side-toc-num">09</span><span class="side-toc-label">Controls</span></a>
     <a href="#flags"    class="side-toc-item" data-section="flags">   <span class="side-toc-num">10</span><span class="side-toc-label">Feature Flags</span></a>
-    <a href="#lod"      class="side-toc-item" data-section="lod">     <span class="side-toc-num">11</span><span class="side-toc-label">LOD Rendering</span></a>
-    <a href="#export"   class="side-toc-item" data-section="export">  <span class="side-toc-num">12</span><span class="side-toc-label">PNG Export</span></a>
+    <a href="#lod"       class="side-toc-item" data-section="lod">      <span class="side-toc-num">11</span><span class="side-toc-label">LOD Rendering</span></a>
+    <a href="#export"    class="side-toc-item" data-section="export">   <span class="side-toc-num">12</span><span class="side-toc-label">PNG Export</span></a>
+    <a href="#animation" class="side-toc-item" data-section="animation"><span class="side-toc-num">13</span><span class="side-toc-label">Animation Page</span></a>
 </nav>
 
 <nav class="topnav">
@@ -577,8 +578,8 @@
     <!-- Hero -->
     <div class="hero">
         <div class="hero-label">Technical-ish Reference</div>
-        <h1 class="hero-wordmark">How <span>Mutations</span> Work</h1>
-        <p class="hero-tagline">A full breakdown of the generative evolution engine — genome structure, Gaussian randomization, the 4-tier mutation pipeline, and everything in between.</p>
+        <h1 class="hero-wordmark">How <span>evolveSVG</span> works</h1>
+        <p class="hero-tagline">A full breakdown of the generative evolution engine. Includes info on genome structures, mutation types, and how the SVG animation page works.</p>
     </div>
 
     <!-- TOC -->
@@ -597,6 +598,7 @@
             <li><a href="#flags"><span class="num">10</span> Feature Flag System</a></li>
             <li><a href="#lod"><span class="num">11</span> High-Resolution LOD Rendering</a></li>
             <li><a href="#export"><span class="num">12</span> Tiled PNG Export</a></li>
+            <li><a href="#animation"><span class="num">13</span> Animation Page</a></li>
         </ul>
     </div>
 
@@ -609,10 +611,10 @@
             <p>The interface is a <strong style="color:#fff">9-cell grid</strong>. Cell index <code>4</code> (center) always holds the current parent. The 8 surrounding cells hold independent mutations derived from that parent. Clicking any cell breeds 8 new mutations from it, placing it in the center.</p>
         </div>
 
-        <div class="callout gold">
+        <!-- <div class="callout gold">     commented out because this is dumb
             <div class="callout-label">Key principle</div>
-            The parent is never modified. All mutations operate on deep clones, so every evolution step is non-destructive and fully reversible by re-selecting the center.
-        </div>
+            The last-selected image (the "parent") is never modified. All mutations occur on eight additional clones, so every evolution step is non-destructive and fully reversible by re-selecting the center image.
+        </div> -->
     </section>
 
     <!-- 02 Genome -->
@@ -642,7 +644,7 @@
   <span class="key">type</span>:              <span class="str">'circle'</span> | <span class="str">'ellipse'</span> | <span class="str">'rect'</span> | <span class="str">'polygon'</span> | <span class="str">'path'</span>
                    | <span class="str">'dots_grid'</span> | <span class="str">'stripes'</span> | <span class="str">'crosshatch'</span>
                    | <span class="str">'checkerboard'</span> | <span class="str">'waves'</span> | <span class="str">'zigzag'</span> | <span class="str">'hexgrid'</span>
-  <span class="key">cx</span>, <span class="key">cy</span>:           <span class="num">0</span>–<span class="num">1</span>        <span class="cm">// normalized position</span>
+  <span class="key">cx</span>, <span class="key">cy</span>:           <span class="num">0</span>–<span class="num">1</span>         <span class="cm">// normalized position</span>
   <span class="key">params</span>:           {}          <span class="cm">// type-specific (radius, size, …)</span>
   <span class="key">fill</span>:             <span class="kw">Fill</span>        <span class="cm">// solid | linear | radial gradient</span>
   <span class="key">stroke</span>:           <span class="kw">Stroke</span>
@@ -660,7 +662,7 @@
   <span class="key">mask</span>?:             <span class="cm">// radial or linear gradient mask</span>
   <span class="key">morph</span>?:            <span class="cm">// feMorphology dilate/erode</span>
   <span class="key">shadow</span>?:           <span class="cm">// drop shadow</span>
-  <span class="key">componentTransfer</span>?: <span class="cm">// per-channel gamma curves</span>
+  <span class="key">componentTransfer</span>?:<span class="cm">// per-channel gamma curves</span>
   <span class="key">diffuseLight</span>?:     <span class="cm">// 3D diffuse lighting</span>
   <span class="key">convolve</span>?:         <span class="cm">// emboss / sharpen / edge kernel</span>
 }</code></pre>
@@ -672,7 +674,7 @@
         <div class="section-label">03 — Randomization</div>
         <h2 class="section-title">Randomization Foundation</h2>
         <div class="section-body">
-            <p>All mutations use <strong style="color:#fff">Gaussian (Box-Muller) noise</strong> rather than uniform random. This produces a bell-curve distribution around the parent value — small tweaks are common, moderate changes are frequent, and radical jumps are rare. The result is evolution that feels smooth and aesthetically coherent rather than chaotic.</p>
+            <p>All mutations use <strong style="color:#fff">Gaussian (Box-Muller) noise</strong> rather than uniform random. This produces a bell-curve distribution around the parent value. So, small tweaks are common and radical jumps are rare. The result feels smooth and aesthetically coherent.</p>
         </div>
 
         <pre><code><span class="kw">function</span> <span class="fn">gauss</span>() {
@@ -690,7 +692,7 @@
 
         <div class="callout">
             <div class="callout-label">Why Gaussian?</div>
-            Uniform randomization would make a large mutation equally likely as a tiny one. Gaussian noise concentrates changes near zero, so most mutations are small refinements — exactly what you want when steering a design toward something you like.
+            Uniform randomization would make a large mutation equally likely as a tiny one. Gaussian noise concentrates changes near zero, so most mutations are small refinements, which are exactly what you want when steering a design toward something you like.
         </div>
 
     </section>
@@ -698,7 +700,7 @@
     <!-- 04 Tier 1 -->
     <section class="section" id="tier1">
         <div class="section-label">04 — Tier 1</div>
-        <h2 class="section-title">Color Mutation — <code>mutateColor()</code></h2>
+        <h2 class="section-title">Color Mutation — mutateColor()</h2>
         <div class="section-body">
             <p>Mutates a single HSL color. Each channel is nudged independently with type-specific bounds that keep colors vivid and readable across generations.</p>
         </div>
@@ -726,7 +728,7 @@
     <!-- 05 Tier 2 -->
     <section class="section" id="tier2">
         <div class="section-label">05 — Tier 2</div>
-        <h2 class="section-title">Parameter Mutation — <code>mutateParams()</code></h2>
+        <h2 class="section-title">Parameter Mutation — mutateParams()</h2>
         <div class="section-body">
             <p>Mutates the type-specific <code>params</code> object of a layer. Each shape type has hand-tuned scale factors to prevent runaway drift — geometry types use small fractions of normalized coordinate space, while tiling types use larger pixel-space factors.</p>
         </div>
@@ -750,14 +752,14 @@
 
         <div class="callout orange">
             <div class="callout-label">Design Note</div>
-            Tiling types (<code>dots_grid</code>, <code>stripes</code>, etc.) use larger raw scale factors because their parameters live in pixel space, not the [0,1] normalized coordinate space used by geometry types.
+            Tiling types (<code>dots_grid</code>, <code>stripes</code>, etc.) use larger mutation step sizes because their parameters (like stripe spacing or dot size) are measured in pixels, which can range into the hundreds. Geometry types like circles and rectangles use a 0–1 scale, so the same small nudge would be way too subtle if applied to a pixel-space value.
         </div>
     </section>
 
     <!-- 06 Tier 3 -->
     <section class="section" id="tier3">
         <div class="section-label">06 — Tier 3</div>
-        <h2 class="section-title">Layer Mutation — <code>mutateLayer()</code></h2>
+        <h2 class="section-title">Layer Mutation — mutateLayer()</h2>
         <div class="section-body">
             <p>The most complex tier. Each layer is mutated across three distinct categories.</p>
         </div>
@@ -801,7 +803,7 @@
 
             <div class="callout green">
                 <div class="callout-label">Spawn vs. Remove</div>
-                At the default structRate of 0.3, each effect has a ~4.5% chance to spawn and a ~2.4% chance to be removed per mutation. Existing effects always mutate — only their parameters change, never their presence unless the remove roll hits.
+                At the default structRate of 0.3, each effect has a ~4.5% chance to spawn and a ~2.4% chance to be removed per mutation. Existing effects always mutate; Only their parameters change, never their presence unless the remove roll hits.
             </div>
         </div>
     </section>
@@ -809,7 +811,7 @@
     <!-- 07 Tier 4 -->
     <section class="section" id="tier4">
         <div class="section-label">07 — Tier 4</div>
-        <h2 class="section-title">Genome Mutation — <code>mutateGenome()</code></h2>
+        <h2 class="section-title">Genome Mutation — mutateGenome()</h2>
         <div class="section-body">
             <p>The top-level orchestrator. Always operates on a <code>deepClone()</code> of the parent so the original is never modified. Runs five sequential steps:</p>
         </div>
@@ -895,13 +897,19 @@ newGenomes[<span class="num">4</span>] = <span class="fn">deepClone</span>(paren
         <div class="section-label">09 — User Controls</div>
         <h2 class="section-title">Mutation Controls</h2>
         <div class="section-body">
-            <p>Three sliders govern the mutation engine. Settings are persisted to <code>localStorage</code> via <code>saveSliders()</code>/<code>loadSliders()</code>.</p>
+            <p>Four sliders govern the mutation engine. Settings are persisted to <code>localStorage</code> via <code>saveSliders()</code>/<code>loadSliders()</code>.</p>
         </div>
 
         <div class="table-wrap">
             <table>
                 <thead><tr><th>Slider</th><th>Range</th><th>Default</th><th>Effect</th></tr></thead>
                 <tbody>
+                    <tr>
+                        <td><strong style="color:#fff">Mutations</strong></td>
+                        <td><code>1 – 20</code></td>
+                        <td><code>4</code></td>
+                        <td>How many independent mutation passes are applied to produce each child — higher values produce more varied offspring per generation</td>
+                    </tr>
                     <tr>
                         <td><strong style="color:#fff">Param Range</strong></td>
                         <td><code>0.05 – 2.0</code></td>
@@ -926,7 +934,7 @@ newGenomes[<span class="num">4</span>] = <span class="fn">deepClone</span>(paren
 
         <div class="callout">
             <div class="callout-label">Tip</div>
-            Low Param Range + low Structure Rate → fine detail refinement. High Structure Rate → exploratory, wild divergence from the parent.
+            Low Param Range + low Structure Rate → fine detail refinement.<br>High Structure Rate → exploratory, wild divergence from the parent.
         </div>
     </section>
 
@@ -1002,17 +1010,19 @@ newGenomes[<span class="num">4</span>] = <span class="fn">deepClone</span>(paren
         <div class="section-label">11 — Expand View</div>
         <h2 class="section-title">High-Resolution LOD Rendering</h2>
         <div class="section-body">
-            <p>The Expand View re-rasterizes the current SVG pattern at progressively higher resolutions as you zoom in. This multi-tier <strong style="color:#fff">Level of Detail</strong> system is necessary because the SVG coordinate space is fixed at 1280×720 user units — scaling that space up to print-quality dimensions requires rendering the SVG at a higher pixel density, not stretching a smaller raster.</p>
-            <p>Three rendering modes are available. Standard mode is always on. Extreme and Death modes are opt-in via the Settings panel and unlock successively higher resolution tiers through a GPU tiling strategy.</p>
+            <p>The Expand View re-rasterizes the current SVG pattern at progressively higher resolutions as you zoom in. This multi-tier <strong style="color:#fff">Level of Detail</strong> system is necessary because the SVG coordinate space is fixed at 1280×720 user units. Scaling that space up to print-quality dimensions requires rendering the SVG at a higher pixel density, not stretching a smaller raster.</p>
+            <p>Three rendering modes are available. Standard mode is always on. Extreme and "Death" modes are opt-in via the Settings panel and unlock successively higher resolution tiers through a GPU tiling strategy.</p>
         </div>
 
         <div class="subsection">
             <div class="subsection-title">The Fixed SVG Coordinate Space</div>
-            <p style="color:var(--text);margin-bottom:12px">A critical constraint: the SVG's <code>viewBox</code> dimensions are always <code>1280×720</code> — they are never changed. The browser's <code>feTurbulence</code> filter samples noise in SVG user-unit space, so altering the viewBox would change the noise pattern itself, not just the display size. To get more pixels, the SVG <code>width</code> and <code>height</code> attributes are scaled up while the viewBox stays constant.</p>
-            <div class="callout orange">
+            <p style="color:var(--text);margin-bottom:12px">A critical constraint: the SVG's <code>viewBox</code> dimensions are always <code>1280×720</code>. They are never changed. The browser's <code>feTurbulence</code> filter samples noise in SVG user-unit space, so altering the viewBox would change the noise pattern itself, not just the display size. To get more pixels, the SVG <code>width</code> and <code>height</code> attributes are scaled up while the viewBox stays constant.</p>
+            <!-- <div class="callout orange"> 
+                Pointless callout only relevant to AI models that keep making the same mistake, breaking the app by forgetting this constraint.
+
                 <div class="callout-label">Hard constraint</div>
                 Never change the SVG's viewBox when scaling for LOD. Doing so changes the feTurbulence sampling domain and produces a completely different displacement pattern — not the same image at higher resolution.
-            </div>
+            </div> -->
         </div>
 
         <div class="subsection">
@@ -1065,7 +1075,7 @@ ctx.<span class="fn">drawImage</span>(tileCanvas, cropL, cropT, rawTileW, rawTil
 
             <div class="callout green">
                 <div class="callout-label">Why this works</div>
-                The browser clips SVG filter buffers to the tile's viewBox. By making the viewBox larger than the inner region, all filter sampling that would cross a tile boundary happens within the oversized buffer — producing pixel-identical results to a single full-resolution pass.
+                The browser clips SVG filter buffers to the tile's viewBox. By making the viewBox larger than the inner region, all filter sampling that would cross a tile boundary happens within the oversized buffer, producing pixel-identical results to a single full-resolution pass.
             </div>
         </div>
 
@@ -1091,8 +1101,8 @@ ctx.<span class="fn">drawImage</span>(tileCanvas, cropL, cropT, rawTileW, rawTil
         </div>
 
         <div class="subsection">
-            <div class="subsection-title">Issue Detection</div>
-            <p style="color:var(--text);margin-bottom:14px">At extreme zoom levels, some GPUs silently produce incorrect renders — missing displacement layers, flat luminance, or washed-out color. An automatic detection pass runs after an Extreme-tier render, comparing it against the tier below.</p>
+            <div class="subsection-title">Issue Detection (deprecated)</div>
+            <p style="color:var(--text);margin-bottom:14px">At extreme zoom levels, some GPUs silently produce incorrect renders, usually missing some layers. An automatic detection pass runs after an Extreme-tier render, comparing it against the tier below.</p>
             <p style="color:var(--text);margin-bottom:14px">The image is divided into a 16×9 analysis grid of 80×80-pixel tiles, with a 20px border cropped from each to avoid edge artifacts. The central 40×40 region of each tile is analyzed with four independent checks:</p>
             <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;font-size:14px;color:var(--text-dim);margin-bottom:14px">
                 <li><strong style="color:#ccc">1. Luminance variance drop</strong> — detects missing texture or displacement layers</li>
@@ -1118,7 +1128,7 @@ ctx.<span class="fn">drawImage</span>(tileCanvas, cropL, cropT, rawTileW, rawTil
 
         <div class="subsection">
             <div class="subsection-title">File System Access API</div>
-            <p style="color:var(--text);margin-bottom:14px">The exporter opens a save dialog via <code>window.showSaveFilePicker()</code> (File System Access API) and writes directly to the chosen file. This allows sequential writes and — critically — lets the encoder seek back to fill in the IDAT chunk length once compression is complete, without holding the whole file in memory.</p>
+            <p style="color:var(--text);margin-bottom:14px">The exporter opens a save dialog via <code>window.showSaveFilePicker()</code> (File System Access API) and writes directly to the chosen file. This allows sequential writes and lets the encoder seek back to fill in the IDAT chunk length once compression is complete, without holding the whole file in memory.</p>
             <div class="callout orange">
                 <div class="callout-label">Fallback</div>
                 If the File System Access API is unavailable (non-Chromium browsers, certain contexts), the exporter falls back to downloading all 16 tiles as separate PNG files named <code>*-death-r{row}c{col}.png</code>.
@@ -1205,6 +1215,162 @@ writer.<span class="fn">seek</span>(idatLenPos);
             </ul>
             <style>@keyframes death-cell-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }</style>
             <p style="color:var(--text);margin-top:12px">If tiles are already cached from a previous render in the same session, the rendering phase is skipped and export jumps straight to streaming.</p>
+        </div>
+    </section>
+
+    <!-- 13 Animation Page -->
+    <section class="section" id="animation">
+        <div class="section-label">13 — Animation Page</div>
+        <h2 class="section-title">SMIL Animation System</h2>
+        <div class="section-body">
+            <p>The Animation page (<code>animation.html</code>) is a parametric SVG animation tool. It reads the genome embedded in an exported evolveSVG SVG, then lets you attach SMIL <code>&lt;animate&gt;</code> and <code>&lt;animateTransform&gt;</code> elements to any numeric parameter. The result is a fully self-contained animated SVG that plays natively in any browser — no JavaScript, no CSS, no external dependencies.</p>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">SVG Loading</div>
+            <p style="color:var(--text);margin-bottom:14px">Two entry points:</p>
+            <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;font-size:14px;color:var(--text-dim);margin-bottom:14px">
+                <li>→ <strong style="color:#ccc">Paste mode</strong> — paste SVG code directly into the textarea and click Load SVG (or Cmd/Ctrl+Enter)</li>
+                <li>→ <strong style="color:#ccc">Auto-load</strong> — the main evolveSVG page writes the chosen SVG to <code>sessionStorage</code> under <code>'evolvesvg_animate'</code> and opens the animation page in a new tab; on load the key is read and cleared automatically</li>
+            </ul>
+            <p style="color:var(--text);margin-bottom:14px">The SVG must contain an <code>&lt;evolvesvg:genome&gt;</code> tag inside a <code>&lt;metadata&gt;</code> block — SVGs exported from evolveSVG always carry this. Plain SVGs without genome data are rejected with an error.</p>
+            <div class="callout">
+                <div class="callout-label">Roundtrip</div>
+                Pasting a previously exported <em>animated</em> SVG (one that also contains an <code>&lt;evolvesvg:animation&gt;</code> tag) automatically restores all keyframes. You can re-open, edit, and re-export an animation indefinitely without losing the configuration.
+            </div>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">Parameter Tree</div>
+            <p style="color:var(--text);margin-bottom:14px">Once an SVG is loaded, the left sidebar builds a scrollable tree of animatable parameters, organized into collapsible sections — one per palette color and one per layer. Palette color sections are collapsed by default; layer sections are expanded.</p>
+            <p style="color:var(--text);margin-bottom:14px">Each parameter row shows its current value and a fill bar proportional to its position in the valid range. <strong style="color:#fff">Drag left or right on any row</strong> to scrub the value. A 300ms-gated animation chain plays a smooth SMIL transition while you drag; after 2 seconds of inactivity the preview reverts to a static render.</p>
+            <p style="color:var(--text);margin-bottom:14px">A blue dot on a row indicates the parameter already has a keyframe configured.</p>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">Animatable Parameters</div>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Parameter</th><th>Target</th><th>Range</th><th>Notes</th></tr></thead>
+                    <tbody>
+                        <tr><td>Hue / Saturation / Lightness</td><td>Palette color</td><td>0–360° / 0–100% / 5–95%</td><td>Animates the <code>fill</code> attribute between two HSLA color strings</td></tr>
+                        <tr><td>Opacity</td><td>Layer (all types)</td><td>0–1</td><td></td></tr>
+                        <tr><td>Position X / Position Y</td><td>Layer</td><td>0–1 (normalized)</td><td>Single and radial arrangements only — grid and scatter omitted</td></tr>
+                        <tr><td>Rotation</td><td>Layer (non-tiling)</td><td>0–360°</td><td></td></tr>
+                        <tr><td>Scale X / Scale Y</td><td>Layer (non-tiling)</td><td>0.05–3×</td><td></td></tr>
+                        <tr><td>Radius</td><td>circle, polygon</td><td>0.01–0.5</td><td>Polygon animates the <code>points</code> attribute</td></tr>
+                        <tr><td>Radius X / Radius Y</td><td>ellipse</td><td>0.01–0.5</td><td></td></tr>
+                        <tr><td>Width / Height</td><td>rect</td><td>0.01–1</td><td></td></tr>
+                        <tr><td>Fill Opacity</td><td>Layer (non-tiling, solid fill)</td><td>0–1</td><td>Animates <code>fill-opacity</code> — avoids HSLA string interpolation issues</td></tr>
+                        <tr><td>Blur</td><td>Layer (if blur effect present)</td><td>0–50</td><td>Animates <code>stdDeviation</code> inside <code>feGaussianBlur</code></td></tr>
+                        <tr><td>Displacement</td><td>Layer (if displace effect present)</td><td>0–300</td><td>Animates <code>scale</code> inside <code>feDisplacementMap</code></td></tr>
+                        <tr><td>Hue Shift</td><td>Layer (if colorShift effect present)</td><td>−180–180°</td><td>Animates <code>values</code> inside <code>feColorMatrix type="hueRotate"</code></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p style="color:var(--text-dim);font-size:13.5px;margin-top:10px">Tiling layer types (<code>dots_grid</code>, <code>stripes</code>, <code>crosshatch</code>, <code>checkerboard</code>, <code>waves</code>, <code>zigzag</code>, <code>hexgrid</code>) only expose Opacity and any filter-based parameters — position, rotation, scale, and shape dimensions are not available for tiling layers.</p>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">Keyframe System</div>
+            <p style="color:var(--text);margin-bottom:14px">Each "keyframe" is a transition spec for one parameter: a from-value, a to-value, duration, repeat count, direction, and easing. Multiple parameters can be animated simultaneously — each gets its own independent keyframe entry. The keyframe list in the right panel shows all configured specs; clicking one re-opens it for editing.</p>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Control</th><th>Options</th><th>Notes</th></tr></thead>
+                    <tbody>
+                        <tr><td>From / To</td><td>Sliders bounded by the param's valid range</td><td>Set start and end values</td></tr>
+                        <tr><td>Duration</td><td>0.1 – 60 s</td><td></td></tr>
+                        <tr><td>Repeat</td><td>Loop (indefinite), 1×, 2×, 3×, 5×</td><td></td></tr>
+                        <tr><td>Direction</td><td>Forward, Alternate</td><td>Alternate plays forward then backward; SMIL encodes this as a 3-value <code>values="from;to;from"</code> with <code>keyTimes="0;0.5;1"</code></td></tr>
+                        <tr><td>Easing</td><td>Linear, Ease, Ease In, Ease Out, Ease In-Out, Custom</td><td>Custom accepts a cubic bezier string <code>x1 y1 x2 y2</code>; a live canvas preview draws the curve</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">SMIL Build Architecture</div>
+            <p style="color:var(--text);margin-bottom:14px">The <code>genomeToSVGAnimated()</code> function accepts the genome and an array of keyframe specs and compiles them directly into SMIL attributes on the SVG elements. Each spec type is mapped to the appropriate SMIL element:</p>
+
+            <pre><code><span class="cm">// Geometric attributes → &lt;animate attributeName="…"/&gt;</span>
+<span class="fn">smilAnimate</span>(<span class="str">'r'</span>, fromPx, toPx, spec)
+<span class="fn">smilAnimate</span>(<span class="str">'fill'</span>, fromHSLA, toHSLA, spec)
+<span class="fn">smilAnimate</span>(<span class="str">'opacity'</span>, <span class="num">0</span>, <span class="num">1</span>, spec)
+
+<span class="cm">// Transform attributes → &lt;animateTransform type="…"/&gt;</span>
+<span class="fn">smilTransform</span>(<span class="str">'translate'</span>, <span class="str">'x,y'</span>, <span class="str">'x2,y2'</span>, spec)
+<span class="fn">smilTransform</span>(<span class="str">'rotate'</span>, fromDeg, toDeg, spec)
+<span class="fn">smilTransform</span>(<span class="str">'scale'</span>, <span class="str">'sx sy'</span>, <span class="str">'sx2 sy2'</span>, spec)
+
+<span class="cm">// Filter params → &lt;animate&gt; embedded inside the filter primitive</span>
+<span class="fn">smilAnimate</span>(<span class="str">'stdDeviation'</span>, fromBlur, toBlur, spec)   <span class="cm">// feGaussianBlur</span>
+<span class="fn">smilAnimate</span>(<span class="str">'scale'</span>, fromScale, toScale, spec)         <span class="cm">// feDisplacementMap</span>
+<span class="fn">smilAnimate</span>(<span class="str">'values'</span>, fromHue, toHue, spec)            <span class="cm">// feColorMatrix hueRotate</span></code></pre>
+
+            <p style="color:var(--text);margin-bottom:14px">Easing is encoded as a SMIL cubic bezier spline via <code>calcMode="spline"</code> and <code>keySplines</code>. For alternate direction, the keySpline string is doubled (<code>"ks;ks"</code>) to cover both halves. Linear easing omits <code>calcMode</code> entirely (it is the SMIL default).</p>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">Three-Group Transform Structure</div>
+            <p style="color:var(--text);margin-bottom:14px">When a layer has any transform animation (position, rotation, or scale), its group is split into three nested levels so independent <code>animateTransform</code> elements can coexist on the same layer without conflicting:</p>
+            <pre><code><span class="cm">&lt;!-- Outer: position --&gt;</span>
+&lt;<span class="kw">g</span> <span class="key">transform</span>=<span class="str">"translate(cx, cy)"</span>&gt;
+    &lt;<span class="fn">animateTransform</span> <span class="key">type</span>=<span class="str">"translate"</span> .../&gt;
+    <span class="cm">&lt;!-- Middle: rotation --&gt;</span>
+    &lt;<span class="kw">g</span> <span class="key">transform</span>=<span class="str">"rotate(θ)"</span>&gt;
+        &lt;<span class="fn">animateTransform</span> <span class="key">type</span>=<span class="str">"rotate"</span> .../&gt;
+        <span class="cm">&lt;!-- Inner: scale + fill + opacity --&gt;</span>
+        &lt;<span class="kw">g</span> <span class="key">transform</span>=<span class="str">"scale(sx, sy)"</span> <span class="key">opacity</span>=<span class="str">"…"</span>&gt;
+            &lt;<span class="fn">animateTransform</span> <span class="key">type</span>=<span class="str">"scale"</span> .../&gt;
+            &lt;<span class="fn">animate</span> <span class="key">attributeName</span>=<span class="str">"opacity"</span> .../&gt;
+            &lt;<span class="kw">shape</span>/&gt;
+        &lt;/<span class="kw">g</span>&gt;
+    &lt;/<span class="kw">g</span>&gt;
+&lt;/<span class="kw">g</span>&gt;</code></pre>
+
+            <div class="callout orange">
+                <div class="callout-label">Firefox / beginElement()</div>
+                All SMIL elements use <code>begin="indefinite"</code>. After the animated SVG is injected into the DOM, every <code>&lt;animate&gt;</code> and <code>&lt;animateTransform&gt;</code> is triggered explicitly via <code>beginElement()</code>. Without this, Firefox resolves <code>begin="0s"</code> against the document's existing SMIL timeline (which is already in the future relative to when the SVG was inserted), causing animations to complete instantly.
+            </div>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">Metadata Persistence</div>
+            <p style="color:var(--text);margin-bottom:14px">When exporting, both the genome and the animation specs are embedded into the SVG's <code>&lt;metadata&gt;</code> block as custom namespace tags. HTML special characters in the JSON payload are escaped before embedding and unescaped on load:</p>
+            <pre><code>&lt;<span class="kw">metadata</span>&gt;
+  &lt;<span class="fn">evolvesvg:genome</span> <span class="key">xmlns:evolvesvg</span>=<span class="str">"https://evolvesvg"</span>&gt;
+    <span class="cm">{ …genome JSON… }</span>
+  &lt;/<span class="fn">evolvesvg:genome</span>&gt;
+  &lt;<span class="fn">evolvesvg:animation</span> <span class="key">xmlns:evolvesvg</span>=<span class="str">"https://evolvesvg"</span>&gt;
+    <span class="cm">[ …keyframe specs array… ]</span>
+  &lt;/<span class="fn">evolvesvg:animation</span>&gt;
+&lt;/<span class="kw">metadata</span>&gt;</code></pre>
+            <p style="color:var(--text-dim);font-size:13.5px;margin-top:8px">Both tags are optional when loading: a genome-only SVG is accepted for building a new animation from scratch; an SVG with both tags restores the full editing session.</p>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">Output Options</div>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Option</th><th>What it does</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong style="color:#fff">Aspect Ratio</strong></td><td>16:9, 4:3, 1:1, 9:16, or custom pixel dimensions (up to 4096×4096). The SVG <code>viewBox</code> is cropped from the 1280×720 base space to the chosen ratio — the render geometry does not change, only which region is visible.</td></tr>
+                        <tr><td><strong style="color:#fff">GPU</strong></td><td>Adds <code>will-change: transform, opacity</code> to all layer groups, hinting the browser to promote them to dedicated compositor layers for smoother playback.</td></tr>
+                        <tr><td><strong style="color:#fff">optimizeSpeed</strong></td><td>Adds <code>shape-rendering</code>, <code>color-rendering</code>, and <code>image-rendering=optimizeSpeed</code> attributes to the SVG root — trades visual quality for render speed on complex patterns.</td></tr>
+                        <tr><td><strong style="color:#fff">Save SVG</strong></td><td>Downloads the animated SVG with both genome and animation metadata embedded. The filename is derived from the first keyframe's label.</td></tr>
+                        <tr><td><strong style="color:#fff">Copy SVG</strong></td><td>Copies the full SVG string to the clipboard.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="subsection">
+            <div class="subsection-title">WebM Export</div>
+            <p style="color:var(--text);margin-bottom:14px">A hidden WebM export button is available when the animation is running. It renders the animation frame-by-frame to a <code>&lt;canvas&gt;</code> at 30 fps: for each frame it calls <code>buildFrameGenome(tSeconds)</code> to evaluate all keyframe specs at that time offset — applying easing via a binary-search cubic bezier solver — then rasterizes the resulting static genome SVG. A <code>MediaRecorder</code> stream captures the canvas at 8 Mbps. The output is saved as <code>evolvesvg-animated.webm</code>.</p>
+            <div class="callout orange">
+                <div class="callout-label">Browser Support</div>
+                SMIL playback and WebM export both work best in Chrome. Non-Chromium browsers show a warning banner on load. <code>MediaRecorder</code> with VP9 codec is auto-detected and falls back to generic WebM if VP9 is unavailable.
+            </div>
         </div>
     </section>
 
