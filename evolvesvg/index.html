@@ -1360,6 +1360,83 @@
         #expand-lod .lod-bar-death { display: none; }
         #expand-lod.death-enabled .lod-bar-death { display: block; }
 
+        /* Advanced Options collapsible section */
+        .download-advanced-toggle {
+            font-size: 11px;
+            color: rgba(255,255,255,0.35);
+            cursor: pointer;
+            padding: 6px 12px;
+            user-select: none;
+            transition: color 0.15s, background 0.1s;
+        }
+        .download-advanced-toggle:hover { color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.05); }
+        .download-advanced-toggle.open { color: rgba(255,255,255,0.55); }
+        .download-advanced-section {
+            display: none;
+            flex-direction: column;
+            gap: 2px;
+            padding: 2px 12px 6px;
+        }
+        .download-advanced-section.open { display: flex; }
+        .adv-size-row {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 0 4px;
+        }
+        .adv-size-label {
+            font-size: 11px;
+            color: rgba(255,255,255,0.4);
+            min-width: 12px;
+        }
+        .adv-size-input {
+            width: 58px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 4px;
+            color: #ddd;
+            font-size: 12px;
+            padding: 3px 5px;
+            outline: none;
+            font-family: inherit;
+            -moz-appearance: textfield;
+        }
+        .adv-size-input::-webkit-inner-spin-button,
+        .adv-size-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .adv-size-input:focus { border-color: rgba(255,255,255,0.35); }
+        .adv-lock-btn {
+            background: none;
+            border: 1px solid transparent;
+            cursor: pointer;
+            padding: 2px 4px;
+            line-height: 1;
+            border-radius: 4px;
+            transition: background 0.15s, border-color 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .adv-lock-btn svg rect { stroke: rgba(255,255,255,0.25); transition: stroke 0.15s; }
+        .adv-lock-btn:hover { border-color: rgba(255,255,255,0.15); }
+        .adv-lock-btn:hover svg rect { stroke: rgba(255,255,255,0.55); }
+        .adv-lock-btn.locked {
+            background: rgba(224,144,48,0.13);
+            border-color: rgba(224,144,48,0.35);
+        }
+        .adv-lock-btn.locked svg rect { stroke: #e09030; }
+        .adv-download-item {
+            font-size: 12px;
+            color: rgba(255,255,255,0.55);
+            cursor: pointer;
+            padding: 4px 0 2px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: color 0.12s;
+        }
+        .adv-download-item:hover { color: #fff; }
+        .adv-download-item .dim-label { font-size: 11px; color: #555; }
+
         /* ── Experimental effects hint banner ── */
         #exp-hint-banner {
             position: fixed;
@@ -1704,6 +1781,18 @@
                             <div class="download-menu-title">Save as PNG</div>
                             <div id="sidebar-save-png-items"></div>
                             <div class="download-menu-item" id="sidebar-expand-for-png">More options…<span class="dim-label">Expand view</span></div>
+                            <div class="download-menu-divider"></div>
+                            <div class="download-advanced-toggle" id="sidebar-adv-toggle">Advanced Options…</div>
+                            <div class="download-advanced-section" id="sidebar-adv-section">
+                                <div class="adv-size-row">
+                                    <span class="adv-size-label">W</span>
+                                    <input type="number" class="adv-size-input" id="adv-w" value="1280" min="1" max="32768" step="1">
+                                    <button class="adv-lock-btn locked" id="adv-lock" title="Lock aspect ratio"><svg width="14" height="10" viewBox="0 0 14 10" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;pointer-events:none"><rect x="0.7" y="1.7" width="6" height="6.6" rx="3.3" stroke="currentColor" stroke-width="1.4"/><rect x="7.3" y="1.7" width="6" height="6.6" rx="3.3" stroke="currentColor" stroke-width="1.4"/></svg></button>
+                                    <span class="adv-size-label">H</span>
+                                    <input type="number" class="adv-size-input" id="adv-h" value="720" min="1" max="32768" step="1">
+                                </div>
+                                <div class="adv-download-item" id="sidebar-adv-download">Download PNG<span class="dim-label" id="sidebar-adv-dims">1280×720</span></div>
+                            </div>
                         </div>
                     </div>
                     <div id="sidebar-load-wrap">
@@ -3968,6 +4057,83 @@ function buildExTiers() {
 }
 let EX_TIERS = buildExTiers();
 const TIER_LABELS = ['720p', '4K', '8K', '12K', '16K ★', 'Detail of Death ☠'];
+
+// ─── Advanced export options (shared between sidebar and expand menus) ────────
+const ADV_LOCK_SVG = '<svg width="14" height="10" viewBox="0 0 14 10" fill="none" xmlns="http:+/www.w3.org/2000/svg" style="display:block;pointer-events:none"><rect x="0.7" y="1.7" width="6" height="6.6" rx="3.3" stroke="currentColor" stroke-width="1.4"/><rect x="7.3" y="1.7" width="6" height="6.6" rx="3.3" stroke="currentColor" stroke-width="1.4"/></svg>';
+let advCustomW = EX_W, advCustomH = EX_H;
+let advArLocked = true;
+const ADV_BASE_AR = EX_W / EX_H; // 16:9
+
+function advSyncLinked(changedW) {
+    if (!advArLocked) return;
+    if (changedW) advCustomH = Math.max(1, Math.round(advCustomW / ADV_BASE_AR));
+    else          advCustomW = Math.max(1, Math.round(advCustomH * ADV_BASE_AR));
+}
+
+function advUpdateAll() {
+    const dimsText = `${advCustomW}×${advCustomH}`;
+    const sidebarDims = document.getElementById('sidebar-adv-dims');
+    if (sidebarDims) sidebarDims.textContent = dimsText;
+    const expandDims = document.getElementById('expand-adv-dims');
+    if (expandDims) expandDims.textContent = dimsText;
+    // Keep inputs in sync
+    ['adv-w', 'expand-adv-w'].forEach(id => { const el = document.getElementById(id); if (el) el.value = advCustomW; });
+    ['adv-h', 'expand-adv-h'].forEach(id => { const el = document.getElementById(id); if (el) el.value = advCustomH; });
+    // Keep lock buttons in sync
+    document.querySelectorAll('.adv-lock-btn').forEach(btn => btn.classList.toggle('locked', advArLocked));
+}
+
+function advHandleWInput(val) {
+    advCustomW = Math.max(1, Math.min(32768, parseInt(val, 10) || 1));
+    advSyncLinked(true);
+    advUpdateAll();
+}
+function advHandleHInput(val) {
+    advCustomH = Math.max(1, Math.min(32768, parseInt(val, 10) || 1));
+    advSyncLinked(false);
+    advUpdateAll();
+}
+function advToggleLock() {
+    advArLocked = !advArLocked;
+    advUpdateAll();
+}
+
+async function downloadAdvCustomPng(genomeIdx) {
+    if (genomeIdx < 0) return;
+    const genome = genomes[genomeIdx];
+    const w = advCustomW, h = advCustomH;
+    const filename = `${generatePatternName(genome)}.png`;
+    const svgStr = genomeToSVG(genome, CANONICAL_W, CANONICAL_H, 'save', false, w);
+    const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        triggerPngDownload(canvas, filename, () => {});
+    };
+    img.onerror = () => URL.revokeObjectURL(url);
+    img.src = url;
+}
+
+// Sidebar advanced section wiring
+document.getElementById('sidebar-adv-toggle').addEventListener('click', () => {
+    const toggle = document.getElementById('sidebar-adv-toggle');
+    const section = document.getElementById('sidebar-adv-section');
+    const isOpen = section.classList.toggle('open');
+    toggle.classList.toggle('open', isOpen);
+    toggle.textContent = isOpen ? 'Advanced Options ▲' : 'Advanced Options…';
+});
+document.getElementById('adv-w').addEventListener('input', e => advHandleWInput(e.target.value));
+document.getElementById('adv-h').addEventListener('input', e => advHandleHInput(e.target.value));
+document.getElementById('adv-lock').addEventListener('click', advToggleLock);
+document.getElementById('sidebar-adv-download').addEventListener('click', () => {
+    if (selectedIdx < 0) return;
+    closeSidebarSaveMenu();
+    downloadAdvCustomPng(selectedIdx);
+});
 function getExTierIdx() {
     return EX_TIERS.findIndex(t => exZoom < t.maxZoom);
 }
@@ -4684,6 +4850,46 @@ function buildDownloadMenu(animateHeight = true) {
         }
     });
 
+    // Advanced Options section — remove any prior instance before re-injecting
+    menu.querySelectorAll('.adv-injected').forEach(el => el.remove());
+
+    const advDivider = document.createElement('div');
+    advDivider.className = 'download-menu-divider adv-injected';
+    container.after(advDivider);
+
+    const advToggle = document.createElement('div');
+    advToggle.className = 'download-advanced-toggle adv-injected' + (expandAdvOpen ? ' open' : '');
+    advToggle.textContent = expandAdvOpen ? 'Advanced Options ▲' : 'Advanced Options…';
+    advDivider.after(advToggle);
+
+    const advSection = document.createElement('div');
+    advSection.className = 'download-advanced-section adv-injected' + (expandAdvOpen ? ' open' : '');
+    advSection.innerHTML = `
+        <div class="adv-size-row">
+            <span class="adv-size-label">W</span>
+            <input type="number" class="adv-size-input" id="expand-adv-w" value="${advCustomW}" min="1" max="32768" step="1">
+            <button class="adv-lock-btn${advArLocked ? ' locked' : ''}" id="expand-adv-lock" title="Lock aspect ratio">${ADV_LOCK_SVG}</button>
+            <span class="adv-size-label">H</span>
+            <input type="number" class="adv-size-input" id="expand-adv-h" value="${advCustomH}" min="1" max="32768" step="1">
+        </div>
+        <div class="adv-download-item" id="expand-adv-download">Download PNG<span class="dim-label" id="expand-adv-dims">${advCustomW}×${advCustomH}</span></div>
+    `;
+    advToggle.after(advSection);
+
+    advToggle.addEventListener('click', () => {
+        expandAdvOpen = !expandAdvOpen;
+        advSection.classList.toggle('open', expandAdvOpen);
+        advToggle.classList.toggle('open', expandAdvOpen);
+        advToggle.textContent = expandAdvOpen ? 'Advanced Options ▲' : 'Advanced Options…';
+    });
+    advSection.querySelector('#expand-adv-w').addEventListener('input', e => advHandleWInput(e.target.value));
+    advSection.querySelector('#expand-adv-h').addEventListener('input', e => advHandleHInput(e.target.value));
+    advSection.querySelector('#expand-adv-lock').addEventListener('click', advToggleLock);
+    advSection.querySelector('#expand-adv-download').addEventListener('click', () => {
+        closeDownloadMenu();
+        downloadAdvCustomPng(expandIdx);
+    });
+
     if (animateHeight) {
         requestAnimationFrame(() => {
             const newH = menu.scrollHeight;
@@ -4696,6 +4902,8 @@ function buildDownloadMenu(animateHeight = true) {
         });
     }
 }
+
+let expandAdvOpen = false;
 
 function toggleDownloadMenu() {
     const menu = document.getElementById('expand-download-menu');
