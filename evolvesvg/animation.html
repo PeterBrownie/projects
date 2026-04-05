@@ -977,9 +977,9 @@ function polygonPoints(sides, r, W) {
 
 // ─── Filter builder (with optional SMIL) ──────────────────────────────────
 
-function buildFilter(layer, layerIdx, palette, defs, makeGradientId, svgW, renderW, svgH, anim) {
-    const isAnimLayer = anim && anim.target === 'layer' && anim.layerIdx === layerIdx;
-    const param = isAnimLayer ? anim.param : null;
+function buildFilter(layer, layerIdx, palette, defs, makeGradientId, svgW, renderW, svgH, anims) {
+    const animArr = Array.isArray(anims) ? anims : (anims ? [anims] : []);
+    const getAnim = (p) => animArr.find(a => a.target === 'layer' && a.layerIdx === layerIdx && a.param === p) || null;
     const hidden = new Set(layer.hiddenEffects || []);
 
     const hasMorph    = layer.morph    != null && !hidden.has('morph');
@@ -1004,18 +1004,20 @@ function buildFilter(layer, layerIdx, palette, defs, makeGradientId, svgW, rende
     }
     if (hasDisplace) {
         const { scale, baseFreq, octaves } = layer.displace;
-        const fromScale = param === 'displaceScale' ? anim.fromVal : scale;
-        const scaleAnimEl = (param === 'displaceScale')
-            ? `<animate ${smilAttrs('scale', anim.fromVal.toFixed(1), anim.toVal.toFixed(1), anim)}/>`
+        const dispAnim = getAnim('displaceScale');
+        const fromScale = dispAnim ? dispAnim.fromVal : scale;
+        const scaleAnimEl = dispAnim
+            ? `<animate ${smilAttrs('scale', dispAnim.fromVal.toFixed(1), dispAnim.toVal.toFixed(1), dispAnim)}/>`
             : '';
         steps.push(`<feTurbulence type="fractalNoise" baseFrequency="${baseFreq.toFixed(4)}" numOctaves="${Math.round(octaves)}" result="noise"/>`);
         steps.push(`<feDisplacementMap in="${cur}" in2="noise" scale="${fromScale.toFixed(1)}" xChannelSelector="R" yChannelSelector="G" result="disp">${scaleAnimEl}</feDisplacementMap>`);
         cur = 'disp';
     }
     if (hasBlur) {
-        const fromBlur = param === 'blur' ? anim.fromVal : layer.blur;
-        const blurAnimEl = (param === 'blur')
-            ? `<animate ${smilAttrs('stdDeviation', anim.fromVal.toFixed(2), anim.toVal.toFixed(2), anim)}/>`
+        const blurAnim = getAnim('blur');
+        const fromBlur = blurAnim ? blurAnim.fromVal : layer.blur;
+        const blurAnimEl = blurAnim
+            ? `<animate ${smilAttrs('stdDeviation', blurAnim.fromVal.toFixed(2), blurAnim.toVal.toFixed(2), blurAnim)}/>`
             : '';
         steps.push(`<feGaussianBlur in="${cur}" stdDeviation="${fromBlur.toFixed(2)}" result="blr">${blurAnimEl}</feGaussianBlur>`);
         cur = 'blr';
@@ -1023,9 +1025,10 @@ function buildFilter(layer, layerIdx, palette, defs, makeGradientId, svgW, rende
     if (hasColor) {
         const { hueRotate, saturate } = layer.colorShift;
         if (hueRotate != null) {
-            const fromHue = param === 'hueRotate' ? anim.fromVal : hueRotate;
-            const hueAnimEl = (param === 'hueRotate')
-                ? `<animate ${smilAttrs('values', anim.fromVal.toFixed(1), anim.toVal.toFixed(1), anim)}/>`
+            const hueAnim = getAnim('hueRotate');
+            const fromHue = hueAnim ? hueAnim.fromVal : hueRotate;
+            const hueAnimEl = hueAnim
+                ? `<animate ${smilAttrs('values', hueAnim.fromVal.toFixed(1), hueAnim.toVal.toFixed(1), hueAnim)}/>`
                 : '';
             steps.push(`<feColorMatrix in="${cur}" type="hueRotate" values="${fromHue.toFixed(1)}" result="hued">${hueAnimEl}</feColorMatrix>`);
             cur = 'hued';
@@ -1165,8 +1168,8 @@ function renderTilingAnim(layer, layerIdx, palette, W, H, defs, makeGradientId, 
         default: return '';
     }
 
-    const filterAnim = myAnims.find(s => s.param === 'blur' || s.param === 'displaceScale' || s.param === 'hueRotate') || myAnims[0] || null;
-    const filterAttr = buildFilter(layer, layerIdx, palette, defs, makeGradientId, W, renderW, H, filterAnim);
+    const filterAnims = myAnims.filter(s => s.param === 'blur' || s.param === 'displaceScale' || s.param === 'hueRotate');
+    const filterAttr = buildFilter(layer, layerIdx, palette, defs, makeGradientId, W, renderW, H, filterAnims);
     const maskAttr   = buildLayerMask(layer, W, H, defs, makeGradientId);
     return `<g opacity="${fromOpacity.toFixed(3)}" style="mix-blend-mode:${blend}" ${filterAttr} ${maskAttr}>${opacityAnimEl}${result}</g>`;
 }
@@ -1319,9 +1322,9 @@ function renderLayerAnim(layer, layerIdx, palette, W, H, defs, makeGradientId, r
     const shapeEl = buildShape(layer.type, shapeP, W, shapeAnims);
     if (!shapeEl) return '';
 
-    // Pass the most relevant anim spec to buildFilter for filter-param animation
-    const filterAnim = getAnim('blur') || getAnim('displaceScale') || getAnim('hueRotate') || myAnims[0] || null;
-    const filterAttr = buildFilter(layer, layerIdx, palette, defs, makeGradientId, W, renderW, H, filterAnim);
+    // Pass all filter-param animations to buildFilter
+    const filterAnims = myAnims.filter(s => s.param === 'blur' || s.param === 'displaceScale' || s.param === 'hueRotate');
+    const filterAttr = buildFilter(layer, layerIdx, palette, defs, makeGradientId, W, renderW, H, filterAnims);
     const maskAttr   = buildLayerMask(layer, W, H, defs, makeGradientId);
 
     const instances = getInstances(layer, cx, cy, W, H);
