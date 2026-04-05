@@ -123,7 +123,7 @@
 		.card-btn-primary {
 			background: #2e2e4e;
 			color: #bbb;
-			border: 1px solid #3a3a5e;
+			border: 1px solid #67597a;
 		}
 		.card-btn-primary:hover {
 			background: #3a3a6e;
@@ -157,7 +157,34 @@
 			"backgrounds/bg.svg",
 			"backgrounds/bg2.svg",
 		];
-		document.getElementById("bg-img").src = bgs[Math.floor(Math.random() * bgs.length)] + '?v=' + Date.now();
+
+		function shuffle(arr) {
+			const a = arr.slice();
+			for (let i = a.length - 1; i > 0; i--) {
+				const j = Math.floor(Math.random() * (i + 1));
+				[a[i], a[j]] = [a[j], a[i]];
+			}
+			return a;
+		}
+
+		let queue = JSON.parse(localStorage.getItem("bg_queue") || "[]");
+		const lastShown = localStorage.getItem("bg_last");
+
+		// Rebuild queue if empty or it contains entries not in bgs
+		if (queue.length === 0 || !queue.every(b => bgs.includes(b))) {
+			queue = shuffle(bgs);
+			// Prevent the first item matching the last shown
+			if (queue.length > 1 && queue[0] === lastShown) {
+				const swap = Math.floor(Math.random() * (queue.length - 1)) + 1;
+				[queue[0], queue[swap]] = [queue[swap], queue[0]];
+			}
+		}
+
+		const chosen = queue.shift();
+		localStorage.setItem("bg_queue", JSON.stringify(queue));
+		localStorage.setItem("bg_last", chosen);
+
+		document.getElementById("bg-img").src = chosen + '?v=' + Date.now();
 	</script>
 	<div aria-hidden="true" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:-1;pointer-events:none;"></div>
 	<div class="page-wrapper">
