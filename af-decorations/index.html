@@ -30,7 +30,7 @@
       --danger:      #e5534b;
     }
 
-    html { scroll-padding-top: 130px; }
+    html { scroll-padding-top: calc(var(--bar-h, 64px) + 16px); }
 
     body {
       background: var(--bg);
@@ -67,12 +67,6 @@
       letter-spacing: -0.03em; line-height: 1.2;
     }
     .subtitle { color: var(--muted); font-size: 0.9rem; margin-top: 0.4rem; max-width: 760px; }
-    .proto {
-      display: inline-block; font-size: 0.66rem; font-weight: 600;
-      text-transform: uppercase; letter-spacing: 0.08em;
-      color: var(--bronze); border: 1px solid rgba(198,144,38,0.4);
-      border-radius: 4px; padding: 1px 6px; margin-left: 8px; vertical-align: middle;
-    }
 
     /* ── Toolbar ──────────────────────────────── */
     .toolbar-wrap {
@@ -228,9 +222,9 @@
 
     /* ── My list panel ────────────────────────── */
     .panel {
-      position: sticky; top: 76px;
+      position: sticky; top: calc(var(--bar-h, 64px) + 16px);
       background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
-      max-height: calc(100vh - 92px); display: flex; flex-direction: column;
+      max-height: calc(100vh - var(--bar-h, 64px) - 32px); display: flex; flex-direction: column;
     }
     .panel-head {
       display: flex; align-items: center; justify-content: space-between;
@@ -380,7 +374,6 @@
 
     /* ── Narrow screens ───────────────────────── */
     @media (max-width: 900px) {
-      html { scroll-padding-top: 170px; }
       .layout { grid-template-columns: minmax(0, 1fr); padding: 1rem; }
       .top { padding: 1.25rem 1rem 0.75rem; }
       .toolbar { padding: 0.6rem 1rem; }
@@ -419,7 +412,7 @@
 
   <div class="top">
     <a href="/" class="home"><svg class="ic"><use href="#i-left"/></svg>peterbrown.space</a>
-    <h1>Air Force Decorations and Ribbons <span class="proto">Prototype</span></h1>
+    <h1>Air Force Decorations and Ribbons</h1>
     <p class="subtitle">Every decoration and ribbon on the AFPC listing, with practical criteria for knowing whether it belongs on your record. Check what applies to add an award to your list and build your ribbon rack.</p>
   </div>
 
@@ -557,7 +550,7 @@
     }
     // Returns a reason string when the answers rule the award out, or null.
     function excludedBy(a, ans) {
-      if (!ans || ans.skipped) return null;
+      if (!ans || ans.skipped || ans.off) return null;
       const span = serviceSpan(ans);
       if (span && a.when) {
         const hit = a.when.some(([s, e]) => span[0] <= (e == null ? THIS_YEAR : e) && span[1] >= s);
@@ -580,7 +573,9 @@
     }
 
     // ── Intake UI ──
-    let draft = answers && !answers.skipped ? JSON.parse(JSON.stringify(answers)) : { comp: [], where: [], roles: [], combat: [] };
+    const DRAFT = 'afdec_draft_v1';
+    let draft = load(DRAFT) || (answers && !answers.skipped ? clone(answers) : { comp: [], where: [], roles: [], combat: [] });
+    function clone(o) { const c = JSON.parse(JSON.stringify(o)); delete c.off; return c; }
 
     function renderQuestions() {
       $('questions').innerHTML = QUESTIONS.map((q, i) => {
@@ -608,6 +603,7 @@
     }
 
     function updateLive() {
+      store(DRAFT, draft);
       const n = AWARDS.filter((a) => !excludedBy(a, draft)).length;
       $('live').innerHTML = `<b>${n}</b> of ${AWARDS.length} may apply`;
     }
@@ -642,13 +638,13 @@
     });
 
     function showIntake() {
-      draft = answers && !answers.skipped ? JSON.parse(JSON.stringify(answers)) : draft;
+      draft = load(DRAFT) || (answers && !answers.skipped ? clone(answers) : draft);
       document.body.classList.add('intake-mode');
       renderQuestions();
       window.scrollTo(0, 0);
     }
     function finishIntake(skip) {
-      answers = skip ? { skipped: true } : draft;
+      answers = skip ? { skipped: true } : clone(draft);
       store(ANSWERS, answers);
       document.body.classList.remove('intake-mode');
       filter = 'all';
@@ -756,9 +752,12 @@
       });
 
       let html = '';
-      if (answers && !answers.skipped) {
+      if (answers && !answers.skipped && !answers.off) {
         html += `<div class="banner"><span>Showing <b>${AWARDS.filter((a) => isEarned(a.id) || !excludedBy(a, answers)).length}</b> of ${AWARDS.length} awards that may apply to your service.</span>
           <span class="banner-actions"><button class="btn" data-act="edit">Edit answers</button><button class="btn subtle" data-act="all">Show all</button></span></div>`;
+      } else if (answers && answers.off) {
+        html += `<div class="banner"><span>Showing all ${AWARDS.length} awards. Your answers are saved.</span>
+          <span class="banner-actions"><button class="btn" data-act="on">Filter by my answers</button><button class="btn subtle" data-act="edit">Edit answers</button></span></div>`;
       } else {
         html += `<div class="banner"><span>Showing all ${AWARDS.length} awards. Answer six quick questions to hide the ones that can't apply to you.</span>
           <span class="banner-actions"><button class="btn" data-act="edit">Filter by my service</button></span></div>`;
@@ -789,7 +788,8 @@
       const act = e.target.closest('[data-act]');
       if (act) {
         if (act.dataset.act === 'edit') showIntake();
-        if (act.dataset.act === 'all') { answers = { skipped: true }; store(ANSWERS, answers); renderChips(); renderList(); }
+        if (act.dataset.act === 'all') { answers = Object.assign({}, answers, { off: true }); store(ANSWERS, answers); renderChips(); renderList(); }
+        if (act.dataset.act === 'on') { delete answers.off; store(ANSWERS, answers); renderChips(); renderList(); }
         return;
       }
       const head = e.target.closest('.award-head');
@@ -913,9 +913,16 @@
       t = setTimeout(() => { query = e.target.value.trim().toLowerCase(); renderList(); }, 120);
     });
 
+    // Keep the sticky panel and scroll targets clear of the sticky toolbar, whose height changes as chips wrap.
+    const bar = document.querySelector('.toolbar-wrap');
+    const setBar = () => document.documentElement.style.setProperty('--bar-h', bar.offsetHeight + 'px');
+    if (window.ResizeObserver) new ResizeObserver(setBar).observe(bar);
+    window.addEventListener('resize', setBar);
+
     renderChips();
     renderList();
     renderPanel();
+    setBar();
 
     // Deep link: #a-<id> opens that award and skips the intake
     const target = location.hash && document.getElementById(location.hash.slice(1));
