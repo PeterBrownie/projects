@@ -106,7 +106,7 @@
     document.addEventListener('click', function (e) {
       var b = e.target.closest('[data-feedback]'); if (!b) return;
       var addr = Array.prototype.map.call(atob('enh0OXt+dnpwVyVyfnlgeGV1ZXJjcmc='), function (c) { return String.fromCharCode(c.charCodeAt(0) ^ 23); }).reverse().join('');
-      location.href = 'mailto:' + addr + '?subject=' + encodeURIComponent(b.getAttribute('data-feedback') + ' (Air Force Decorations tool)');
+      window.open('mailto:' + addr + '?subject=' + encodeURIComponent(b.getAttribute('data-feedback') + ' (Air Force Decorations tool)'), '_blank', 'noopener');
     });
   </script>
 </body>

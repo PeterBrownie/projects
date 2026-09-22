@@ -1291,7 +1291,7 @@
       const b = e.target.closest('[data-feedback]');
       if (!b) return;
       const addr = [...atob(FEEDBACK)].map((c) => String.fromCharCode(c.charCodeAt(0) ^ 23)).reverse().join('');
-      location.href = 'mailto:' + addr + '?subject=' + encodeURIComponent(b.dataset.feedback + ' (Air Force Decorations tool)');
+      window.open('mailto:' + addr + '?subject=' + encodeURIComponent(b.dataset.feedback + ' (Air Force Decorations tool)'), '_blank', 'noopener');
     });
 
     $('openPanel').addEventListener('click', () => $('panel').classList.add('show'));
