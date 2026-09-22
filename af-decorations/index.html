@@ -249,7 +249,7 @@
     .rack-rib img { width: 100%; height: 100%; display: block; border-radius: 1px; }
     .rack-dev {
       position: absolute; top: 50%; transform: translateY(-50%);
-      left: 0; right: 0; display: flex; justify-content: center; gap: 3px;
+      left: 0; right: 0; display: flex; justify-content: center; align-items: center; gap: 3px;
       pointer-events: none;
     }
     .rack-dev span {
@@ -377,7 +377,9 @@
     body:not(.intake-mode) .intake { display: none; }
 
     /* ── Devices on the rack and list ────────── */
-    .rack-dev .leaf { width: 15px; height: 8px; color: #b87333; filter: drop-shadow(0 0 1px #2a1703); }
+    .rack-dev .leaf { width: 16px; height: 9px; color: #b87333; filter: drop-shadow(0 0 1px #2a1703); }
+    /* Multiple oak leaf clusters overlap on a real ribbon */
+    .rack-dev .leaf + .leaf { margin-left: -9px; }
     .rack-dev .star { width: 9px; height: 9px; color: #b87333; filter: drop-shadow(0 0 1px #2a1703); }
     .stepper-row { display: flex; flex-wrap: wrap; gap: 0.5rem 1.2rem; margin-top: 0.6rem; font-size: 0.84rem; color: var(--text); }
     .stepper { display: inline-flex; align-items: center; gap: 0.4rem; }
@@ -642,7 +644,23 @@
       if (st.s) bits.push(plural(st.s, 'service star', 'service stars'));
       return bits;
     }
-    const earnedList = () => AWARDS.filter((a) => isEarned(a.id));
+    // Awards on the list, in rack order. Ribbons imported from a rack image keep the image's order
+    // (the wearer's own rack is the best guide to precedence); awards added by hand are slotted in by
+    // AFPC order just before the first imported ribbon that AFPC ranks lower.
+    const AFPC_ORDER = Object.fromEntries(AWARDS.map((a, i) => [a.id, i]));
+    function earnedList() {
+      const all = AWARDS.filter((a) => isEarned(a.id));
+      const imported = all.filter((a) => state[a.id].pos != null).sort((a, b) => state[a.id].pos - state[b.id].pos);
+      const out = imported.slice();
+      all.filter((a) => state[a.id].pos == null).forEach((a) => {
+        let at = out.findIndex((b) => state[b.id].pos != null && AFPC_ORDER[b.id] > AFPC_ORDER[a.id]);
+        if (at < 0) at = out.length;
+        // keep hand-added awards in AFPC order among themselves
+        while (at > 0 && state[out[at - 1].id].pos == null && AFPC_ORDER[out[at - 1].id] > AFPC_ORDER[a.id]) at--;
+        out.splice(at, 0, a);
+      });
+      return out;
+    }
 
     // ── Eligibility filter ──
     function tagsHeld(ans) {
@@ -1189,9 +1207,11 @@
     });
 
     $('importApply').addEventListener('click', () => {
-      results.filter((r) => r.include).forEach((r) => {
+      Object.values(state).forEach((st) => { delete st.pos; });
+      results.filter((r) => r.include).forEach((r, i) => {
         const st = state[r.id] || (state[r.id] = { c: [], d: [] });
         st.img = 1;
+        st.pos = i;
         st.o = Math.max(st.o || 0, r.o || 0);
         st.s = Math.max(st.s || 0, r.s || 0);
       });

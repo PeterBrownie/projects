@@ -4,7 +4,11 @@
 //
 // Works on ImageData-like objects: { width, height, data: RGBA bytes }.
 (function (root) {
-  const BINS = 48;
+  // Tunable settings (tested against sample racks; see comments at each use).
+  // Tuned on sample racks: 64 bins, references blurred one bin to match screenshot softness,
+  // white balance on, and stripe-boundary matching weighted in (robust to color casts).
+  const CFG = { bins: 64, band: 4, smooth: 0, vblur: 0, refSmooth: 1, wb: 1, gradW: 40 };
+  let BINS = CFG.bins;
   const ASPECT = 3.5; // ribbon width / height (1 3/8" x 3/8" is 3.67; racks with seams run a little lower)
 
   // ── Color helpers ──────────────────────────────────
@@ -37,7 +41,21 @@
 
   // ── Stripe profile ─────────────────────────────────
   // Median Lab color of each vertical slice of a region. Medians ignore small devices and texture.
+  // Vertical blur: averages each column over a window, which smooths out the weave texture of
+  // real ribbons and the ribbing in rendered ribbon images without touching the stripes.
+  function vblur(img, x0, y0, w, h, r) {
+    const out = { width: img.width, height: img.height, data: new Uint8ClampedArray(img.data) };
+    for (let x = x0; x < x0 + w; x++) for (let c = 0; c < 3; c++) {
+      for (let y = y0; y < y0 + h; y++) {
+        let s = 0, n = 0;
+        for (let k = -r; k <= r; k++) { const yy = y + k; if (yy < y0 || yy >= y0 + h) continue; s += img.data[(yy * img.width + x) * 4 + c]; n++; }
+        out.data[(y * img.width + x) * 4 + c] = s / n;
+      }
+    }
+    return out;
+  }
   function profile(img, x0, y0, w, h, margin, skip) {
+    if (CFG.vblur) img = vblur(img, x0, y0, w, h, Math.max(1, Math.round(h * CFG.vblur)));
     const mx = Math.round(w * (margin ? 0.04 : 0)), my = Math.round(h * (margin ? 0.18 : 0.1));
     const xs = x0 + mx, xe = x0 + w - mx, ys = y0 + my, ye = y0 + h - my;
     const out = [];
@@ -51,14 +69,55 @@
       }
       out.push(R.length ? toLab(median(R), median(G), median(B)) : [50, 0, 0]);
     }
-    return out;
+    if (!CFG.smooth) return out;
+    return out.map((v, i) => {
+      const acc = [0, 0, 0]; let n = 0;
+      for (let k = -CFG.smooth; k <= CFG.smooth; k++) { const u = out[i + k]; if (!u) continue; acc[0] += u[0]; acc[1] += u[1]; acc[2] += u[2]; n++; }
+      return acc.map((x) => x / n);
+    });
+  }
+
+  function smoothProf(p, k) {
+    if (!k) return p;
+    return p.map((v, i) => {
+      const acc = [0, 0, 0]; let n = 0;
+      for (let d = -k; d <= k; d++) { const u = p[i + d]; if (!u) continue; acc[0] += u[0]; acc[1] += u[1]; acc[2] += u[2]; n++; }
+      return acc.map((x) => x / n);
+    });
+  }
+  // White balance: the lightest stripes on a ribbon are white, so shift the color so they read neutral.
+  // Removes the tint of a screenshot or photo (a greenish or yellowish cast).
+  function whiteBalance(p) {
+    const light = p.slice().sort((a, b) => b[0] - a[0]).slice(0, Math.max(2, Math.round(p.length * 0.1)));
+    if (light[light.length - 1][0] < 60) return p; // no white stripes to calibrate from
+    const da = light.reduce((s, v) => s + v[1], 0) / light.length, db = light.reduce((s, v) => s + v[2], 0) / light.length;
+    if (Math.hypot(da, db) > 25) return p; // lightest stripe is a real color, not tinted white
+    return p.map(([L, a, b]) => [L, a - da, b - db]);
+  }
+  // Where the stripe boundaries are: color change between neighboring bins, scaled to the ribbon's own
+  // strongest boundary. Unaffected by an overall color cast.
+  function edges(p) {
+    const g = p.slice(1).map((v, i) => dE(v, p[i]));
+    const m = Math.max(1, ...g);
+    return g.map((x) => x / m);
+  }
+  function dtw1(a, b) {
+    const n = a.length, band = CFG.band, INF = 1e9;
+    let prev = new Float64Array(n + 1).fill(INF), cur = new Float64Array(n + 1);
+    prev[0] = 0;
+    for (let i = 1; i <= n; i++) {
+      cur.fill(INF);
+      for (let j = Math.max(1, i - band); j <= Math.min(n, i + band); j++) cur[j] = Math.abs(a[i - 1] - b[j - 1]) + Math.min(prev[j], prev[j - 1], cur[j - 1]);
+      [prev, cur] = [cur, prev];
+    }
+    return prev[n] / n;
   }
 
   // Distance between an observed profile and a reference: dynamic time warping within a small band,
   // so stripes that are a little wider or narrower in one image source still line up. Ribbons are
   // symmetric, so the reversed profile is tried too (covers flipped or partly covered ribbons).
   function dtw(p, ref) {
-    const n = p.length, band = 3, INF = 1e9;
+    const n = p.length, band = CFG.band, INF = 1e9;
     let prev = new Float64Array(n + 1).fill(INF), cur = new Float64Array(n + 1);
     prev[0] = 0;
     for (let i = 1; i <= n; i++) {
@@ -72,11 +131,16 @@
   }
   // Screenshots and photos are often washed out, so the observed colors are also tried with boosted saturation.
   const BOOSTS = [1, 1.4, 1.8];
-  function distance(p, ref) {
+  function distance(p, ref, refEdges) {
     let best = Infinity;
+    if (CFG.wb) p = whiteBalance(p);
     for (const k of BOOSTS) {
       const q = k === 1 ? p : p.map(([L, a, b]) => [L, a * k, b * k]);
       best = Math.min(best, dtw(q, ref), dtw(q.slice().reverse(), ref));
+    }
+    if (CFG.gradW) {
+      const e = edges(p), er = refEdges || edges(ref);
+      best += CFG.gradW * Math.min(dtw1(e, er), dtw1(e.slice().reverse(), er));
     }
     return best;
   }
@@ -327,25 +391,50 @@
   // ── Public API ─────────────────────────────────────
   // refs: [{ id, img }] of reference ribbon images. Returns reference profiles to reuse across scans.
   function buildRefs(refs) {
-    return refs.map((r) => ({ id: r.id, allows: r.allows, prof: profile(r.img, 0, 0, r.img.width, r.img.height, false) }));
-  }
-
-  // refProfiles may carry allows: { olc, star } per award.
-  function scan(img, refProfiles) {
-    return findRibbons(img).map((rb) => {
-      const p = profile(img, rb.x, rb.y, rb.w, rb.h, true, deviceMask(img, rb));
-      const ranked = refProfiles.map((r) => ({ id: r.id, d: distance(p, r.prof) })).sort((a, b) => a.d - b.d);
-      const top = ranked[0];
-      const match = refProfiles.find((r) => r.id === top.id);
-      const dev = devices(img, rb, match.prof, match.allows);
-      // Confidence: how clearly the best match beats the runner-up. On test racks, wrong picks had a
-      // runner-up within 10% of the best; right picks led by 28% or more.
-      const ratio = ranked[1] ? ranked[1].d / Math.max(0.1, top.d) : 9;
-      const confidence = ratio >= 1.4 ? 'high' : ratio >= 1.2 ? 'medium' : 'low';
-      return Object.assign({}, rb, { id: top.id, d: top.d, confidence, candidates: ranked.slice(0, 6), all: ranked, olc: dev.olc, stars: dev.stars });
+    return refs.map((r) => {
+      let prof = profile(r.img, 0, 0, r.img.width, r.img.height, false);
+      const raw = prof; // unprocessed colors, used to tell devices apart from the ribbon's own stripes
+      // Reference images are crisp renderings; screenshots are softer, so blur the reference to match.
+      prof = smoothProf(prof, CFG.refSmooth);
+      if (CFG.wb) prof = whiteBalance(prof);
+      return { id: r.id, allows: r.allows, prof, raw, edges: edges(prof) };
     });
   }
 
-  const api = { scan, buildRefs, findRibbons, profile, distance, foregroundMask, devices };
+  // refProfiles may carry allows: { olc, star } per award.
+  // refProfiles must be listed in order of precedence (the AFPC order); racks are worn in that order,
+  // so a ribbon's neighbors break near-ties between look-alike ribbons.
+  function scan(img, refProfiles) {
+    const order = {}; refProfiles.forEach((r, i) => order[r.id] = i);
+    const found = findRibbons(img).map((rb) => {
+      const p = profile(img, rb.x, rb.y, rb.w, rb.h, true, deviceMask(img, rb));
+      const ranked = refProfiles.map((r) => ({ id: r.id, d: distance(p, r.prof, r.edges) })).sort((a, b) => a.d - b.d);
+      // Confidence: how clearly the best match beats the runner-up.
+      const ratio = ranked[1] ? ranked[1].d / Math.max(0.1, ranked[0].d) : 9;
+      return Object.assign({}, rb, { ranked, ratio, pick: ranked[0] });
+    });
+    // Precedence tie-break: for a near-tie, prefer a close candidate that fits between the nearest
+    // confident ribbons before and after it.
+    found.forEach((f, i) => {
+      if (f.ratio >= 1.2) return;
+      let lo = -1, hi = Infinity;
+      for (let j = i - 1; j >= 0; j--) if (found[j].ratio >= 1.4) { lo = order[found[j].pick.id]; break; }
+      for (let j = i + 1; j < found.length; j++) if (found[j].ratio >= 1.4) { hi = order[found[j].pick.id]; break; }
+      const close = f.ranked.filter((c) => c.d <= f.ranked[0].d * 1.15);
+      const fits = close.filter((c) => order[c.id] > lo && order[c.id] < hi);
+      if (fits.length === 1 || (fits.length && fits[0] !== f.ranked[0])) { f.pick = fits[0]; f.byOrder = fits.length === 1; }
+    });
+    return found.map((f) => {
+      const match = refProfiles.find((r) => r.id === f.pick.id);
+      const dev = devices(img, f, match.raw, match.allows);
+      const confidence = f.byOrder ? 'medium' : f.ratio >= 1.4 ? 'high' : f.ratio >= 1.2 ? 'medium' : 'low';
+      const candidates = [f.pick].concat(f.ranked.filter((c) => c !== f.pick)).slice(0, 6);
+      const out = Object.assign({}, f, { id: f.pick.id, d: f.pick.d, confidence, candidates, all: f.ranked, olc: dev.olc, stars: dev.stars });
+      delete out.ranked; delete out.pick;
+      return out;
+    });
+  }
+
+  const api = { CFG, setBins: (n) => { CFG.bins = BINS = n; }, scan, buildRefs, findRibbons, profile, distance, foregroundMask, devices };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.RackScan = api;
 })(typeof window !== 'undefined' ? window : this);
