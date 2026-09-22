@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Browse every Air Force decoration and ribbon listed by AFPC, read the eligibility criteria in plain language, and check off the ones you earned to build your ribbon rack.">
+  <meta property="og:title" content="Air Force Decorations — List and Eligibility Check">
+  <meta property="og:description" content="Every Air Force decoration and ribbon listed by AFPC, with eligibility criteria and a ribbon rack builder.">
+  <meta property="og:url" content="https://peterbrown.space/af-decorations">
+  <meta property="og:type" content="website">
+  <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "03a89f35132a4e8aa86bf1ed1b60541a"}'></script><!-- End Cloudflare Web Analytics -->
+  <link rel="icon" type="image/png" href="../evolveIcon.png">
+  <title>Air Force Decorations — List and Eligibility Check</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0e1117;
+      --surface:     #161b22;
+      --surface2:    #1e2530;
+      --border:      #2d333b;
+      --text:        #cdd9e5;
+      --muted:       #768390;
+      --bright:      #e6edf3;
+      --accent:      #4d9de0;
+      --accent-dim:  rgba(77,157,224,0.15);
+      --earned:      #57ab5a;
+      --earned-dim:  rgba(87,171,90,0.14);
+      --bronze:      #c69026;
+      --danger:      #e5534b;
+    }
+
+    html { scroll-padding-top: 130px; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    a { color: var(--accent); }
+
+    .ic {
+      width: 16px; height: 16px;
+      fill: none; stroke: currentColor; stroke-width: 2;
+      stroke-linecap: round; stroke-linejoin: round;
+      flex-shrink: 0;
+    }
+
+    /* ── Header ───────────────────────────────── */
+    .top {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 1rem;
+    }
+    .home {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: var(--muted); text-decoration: none; font-size: 0.8rem;
+      margin-bottom: 1rem;
+    }
+    .home:hover { color: var(--text); }
+    h1 {
+      font-size: 1.6rem; font-weight: 700; color: var(--bright);
+      letter-spacing: -0.03em; line-height: 1.2;
+    }
+    .subtitle { color: var(--muted); font-size: 0.9rem; margin-top: 0.4rem; max-width: 760px; }
+    .proto {
+      display: inline-block; font-size: 0.66rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--bronze); border: 1px solid rgba(198,144,38,0.4);
+      border-radius: 4px; padding: 1px 6px; margin-left: 8px; vertical-align: middle;
+    }
+
+    /* ── Toolbar ──────────────────────────────── */
+    .toolbar-wrap {
+      position: sticky; top: 0; z-index: 10;
+      background: rgba(14,17,23,0.92);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+    }
+    .toolbar {
+      max-width: 1240px; margin: 0 auto;
+      padding: 0.75rem 1.25rem;
+      display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center;
+    }
+    .search {
+      position: relative; flex: 1 1 240px; max-width: 360px;
+    }
+    .search .ic { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+    .search input {
+      width: 100%; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); font-size: 0.88rem;
+      padding: 0.5rem 0.7rem 0.5rem 2rem; outline: none;
+    }
+    .search input:focus { border-color: var(--accent); }
+    .search input::placeholder { color: var(--muted); }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .chip {
+      background: transparent; color: var(--muted);
+      border: 1px solid var(--border); border-radius: 999px;
+      font: inherit; font-size: 0.78rem; padding: 0.28rem 0.7rem; cursor: pointer;
+    }
+    .chip:hover { color: var(--text); border-color: #444c56; }
+    .chip[aria-pressed="true"] { color: var(--bright); background: var(--accent-dim); border-color: var(--accent); }
+    .chip .n { color: var(--muted); margin-left: 4px; font-variant-numeric: tabular-nums; }
+
+    .btn.mobile-list-btn { display: none; }
+
+    /* ── Layout ───────────────────────────────── */
+    .layout {
+      max-width: 1240px; margin: 0 auto;
+      padding: 1.25rem;
+      display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 1.5rem;
+      align-items: start;
+    }
+
+    /* ── Award list ───────────────────────────── */
+    .cat-title {
+      font-size: 0.72rem; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.09em;
+      margin: 1.6rem 0 0.6rem;
+    }
+    .cat-title:first-child { margin-top: 0; }
+    .empty { color: var(--muted); padding: 2rem 0; text-align: center; }
+
+    .award {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; margin-bottom: 0.6rem;
+      transition: border-color 0.15s;
+    }
+    .award.earned { border-color: rgba(87,171,90,0.55); }
+
+    .award-head {
+      display: flex; gap: 0.9rem; align-items: center;
+      padding: 0.85rem 1rem; cursor: pointer; user-select: none;
+    }
+    .award-head:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 10px; }
+    .ribbon {
+      width: 72px; height: 20px; flex-shrink: 0; display: block;
+      border-radius: 1px; box-shadow: 0 1px 3px rgba(0,0,0,0.6);
+      object-fit: fill; background: var(--surface2);
+    }
+    .award-name { flex: 1; min-width: 0; }
+    .award-name h3 { font-size: 0.97rem; font-weight: 600; color: var(--bright); line-height: 1.3; }
+    .award-name p { font-size: 0.8rem; color: var(--muted); margin-top: 2px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .award.open .award-name p { white-space: normal; }
+
+    .status {
+      display: none; align-items: center; gap: 4px;
+      font-size: 0.72rem; font-weight: 600; color: var(--earned);
+      background: var(--earned-dim); border-radius: 999px; padding: 2px 8px 2px 6px;
+      white-space: nowrap;
+    }
+    .award.earned .status { display: inline-flex; }
+    .status .ic { width: 13px; height: 13px; stroke-width: 2.6; }
+
+    .chev { color: var(--muted); transition: transform 0.15s; }
+    .award.open .chev { transform: rotate(180deg); }
+
+    .award-body { display: none; padding: 0 1rem 1rem; border-top: 1px solid var(--border); }
+    .award.open .award-body { display: block; }
+
+    .group-label {
+      font-size: 0.72rem; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.07em;
+      margin: 0.9rem 0 0.4rem;
+    }
+    .group-label span { text-transform: none; letter-spacing: 0; font-weight: 400; }
+
+    .crit {
+      position: relative; display: flex; gap: 0.65rem; align-items: flex-start;
+      padding: 0.55rem 0.7rem; border-radius: 7px; cursor: pointer;
+      border: 1px solid transparent; font-size: 0.88rem;
+    }
+    .crit:hover { background: var(--surface2); }
+    .crit.checked { background: var(--earned-dim); border-color: rgba(87,171,90,0.3); }
+    .crit input { position: absolute; opacity: 0; pointer-events: none; }
+    .box {
+      width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px;
+      border: 1.5px solid #545d68; border-radius: 4px;
+      display: grid; place-items: center; color: transparent; background: var(--bg);
+    }
+    .box .ic { width: 13px; height: 13px; stroke-width: 3; }
+    .crit.checked .box { background: var(--earned); border-color: var(--earned); color: #0e1117; }
+    .crit input:focus-visible + .box { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .device-tag {
+      display: inline-grid; place-items: center;
+      width: 18px; height: 18px; border-radius: 3px; margin-right: 6px;
+      font-size: 0.7rem; font-weight: 800; color: #1a1206; background: var(--bronze);
+      vertical-align: -3px;
+    }
+
+    .meta-row {
+      display: flex; flex-wrap: wrap; gap: 0.4rem 1.2rem;
+      font-size: 0.8rem; color: var(--muted); margin-top: 0.9rem;
+    }
+    .meta-row b { color: var(--text); font-weight: 500; }
+
+    details.official { margin-top: 0.9rem; border: 1px solid var(--border); border-radius: 7px; }
+    details.official summary {
+      cursor: pointer; padding: 0.55rem 0.75rem; font-size: 0.82rem; color: var(--text);
+      list-style: none; display: flex; align-items: center; gap: 6px;
+    }
+    details.official summary::-webkit-details-marker { display: none; }
+    details.official summary .ic { color: var(--muted); transition: transform 0.15s; }
+    details.official[open] summary .ic { transform: rotate(90deg); }
+    .official-body { padding: 0 0.9rem 0.8rem; font-size: 0.84rem; color: #adbac7; }
+    .official-body h4 {
+      font-size: 0.7rem; color: var(--muted); letter-spacing: 0.07em;
+      margin: 0.8rem 0 0.25rem; font-weight: 600;
+    }
+    .official-body p { margin-bottom: 0.4rem; }
+    .official-body ul { margin: 0 0 0.4rem 1.1rem; }
+
+    .ext {
+      display: inline-flex; align-items: center; gap: 5px;
+      margin-top: 0.8rem; font-size: 0.84rem; text-decoration: none;
+    }
+    .ext:hover { text-decoration: underline; }
+    .ext .ic { width: 14px; height: 14px; }
+
+    /* ── My list panel ────────────────────────── */
+    .panel {
+      position: sticky; top: 76px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      max-height: calc(100vh - 92px); display: flex; flex-direction: column;
+    }
+    .panel-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.85rem 1rem; border-bottom: 1px solid var(--border);
+    }
+    .panel-head h2 { font-size: 0.95rem; color: var(--bright); font-weight: 600; }
+    .panel-head .count { color: var(--muted); font-weight: 400; margin-left: 4px; }
+    .icon-btn.panel-close { display: none; }
+    .panel-scroll { overflow-y: auto; padding: 1rem; }
+
+    .rack {
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      padding: 1rem 0.5rem; background: #0a0d12; border-radius: 8px;
+      margin-bottom: 1rem; min-height: 64px; justify-content: center;
+    }
+    .rack-row { display: flex; gap: 2px; }
+    .rack-rib { position: relative; width: 70px; height: 19px; }
+    .rack-rib img { width: 100%; height: 100%; display: block; border-radius: 1px; }
+    .rack-dev {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      left: 0; right: 0; display: flex; justify-content: center; gap: 3px;
+      pointer-events: none;
+    }
+    .rack-dev span {
+      font-size: 11px; font-weight: 900; line-height: 1; color: #d9a53c;
+      text-shadow: 0 0 2px #3a2806, 0 0 1px #3a2806, 0 0 1px #3a2806;
+      font-family: Georgia, 'Times New Roman', serif;
+    }
+    .rack-empty { color: var(--muted); font-size: 0.82rem; text-align: center; padding: 0 1rem; }
+
+    .mine { list-style: none; }
+    .mine li {
+      display: flex; gap: 0.6rem; align-items: center;
+      padding: 0.45rem 0; border-bottom: 1px solid var(--border); font-size: 0.84rem;
+    }
+    .mine li:last-child { border-bottom: 0; }
+    .mine img { width: 40px; height: 11px; flex-shrink: 0; }
+    .mine a { color: var(--text); text-decoration: none; flex: 1; min-width: 0; }
+    .mine a:hover { color: var(--bright); text-decoration: underline; }
+    .mine .dv { color: var(--bronze); font-size: 0.72rem; font-weight: 700; margin-left: 4px; }
+    .icon-btn {
+      background: none; border: 0; color: var(--muted); cursor: pointer;
+      display: grid; place-items: center; width: 26px; height: 26px; border-radius: 5px;
+    }
+    .icon-btn:hover { color: var(--text); background: var(--surface2); }
+
+    .panel-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px; justify-content: center;
+      background: var(--surface2); color: var(--text); border: 1px solid var(--border);
+      border-radius: 6px; font: inherit; font-size: 0.8rem; padding: 0.4rem 0.7rem; cursor: pointer;
+    }
+    .btn:hover { border-color: #444c56; color: var(--bright); }
+    .btn.subtle { background: transparent; color: var(--muted); }
+    .btn .ic { width: 14px; height: 14px; }
+
+    .note { font-size: 0.74rem; color: var(--muted); margin-top: 1rem; line-height: 1.5; }
+
+    footer {
+      max-width: 1240px; margin: 1rem auto 0; padding: 1.5rem 1.25rem 3rem;
+      color: var(--muted); font-size: 0.78rem; border-top: 1px solid var(--border);
+    }
+    footer p + p { margin-top: 0.5rem; }
+
+    /* ── Award card additions ─────────────────── */
+    .kind {
+      display: inline-block; font-size: 0.64rem; font-weight: 600; letter-spacing: 0.06em;
+      text-transform: uppercase; color: var(--muted); border: 1px solid var(--border);
+      border-radius: 4px; padding: 0 5px; margin-left: 8px; vertical-align: 2px; white-space: nowrap;
+    }
+    .how {
+      margin-top: 0.9rem; font-size: 0.84rem; color: #adbac7;
+      background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: 0.6rem 0.75rem;
+    }
+    .how b { color: var(--text); font-weight: 600; }
+    .how .approval { display: block; margin-top: 0.35rem; }
+    .awarded-for { margin: 0 0 0 1.1rem; font-size: 0.85rem; color: #adbac7; }
+    .awarded-for li { margin-bottom: 0.25rem; }
+    .reason {
+      display: inline-flex; align-items: center; gap: 4px; font-size: 0.72rem; color: var(--muted);
+      margin-top: 3px;
+    }
+
+    /* ── Filter banner and hidden section ─────── */
+    .banner {
+      display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; align-items: center; justify-content: space-between;
+      background: var(--accent-dim); border: 1px solid rgba(77,157,224,0.35); border-radius: 8px;
+      padding: 0.6rem 0.85rem; margin-bottom: 1.2rem; font-size: 0.86rem; color: var(--text);
+    }
+    .banner b { color: var(--bright); }
+    .banner-actions { display: flex; gap: 0.4rem; }
+    details.hidden-group { margin-top: 1.8rem; border-top: 1px solid var(--border); padding-top: 1rem; }
+    details.hidden-group > summary {
+      cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px;
+      font-size: 0.82rem; color: var(--muted); margin-bottom: 0.8rem;
+    }
+    details.hidden-group > summary::-webkit-details-marker { display: none; }
+    details.hidden-group > summary .ic { transition: transform 0.15s; }
+    details.hidden-group[open] > summary .ic { transform: rotate(90deg); }
+    details.hidden-group .award { opacity: 0.72; }
+    details.hidden-group .award:hover, details.hidden-group .award.open { opacity: 1; }
+
+    /* ── Intake ───────────────────────────────── */
+    .intake { max-width: 1240px; margin: 0 auto; padding: 0.5rem 1.25rem 3rem; }
+    .intake > * { max-width: 760px; }
+    .intake-lead { color: var(--muted); font-size: 0.9rem; margin-bottom: 1.25rem; }
+    .q {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 1rem 1.1rem; margin-bottom: 0.75rem;
+    }
+    .q-title { display: flex; gap: 0.6rem; align-items: baseline; color: var(--bright); font-weight: 600; font-size: 0.95rem; }
+    .q-num {
+      flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%; display: inline-grid; place-items: center;
+      font-size: 0.72rem; font-weight: 700; background: var(--surface2); color: var(--muted);
+    }
+    .q.answered .q-num { background: var(--accent); color: #0e1117; }
+    .q-hint { color: var(--muted); font-size: 0.8rem; margin: 0.2rem 0 0.7rem 1.85rem; }
+    .opts { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-left: 1.85rem; }
+    .opt {
+      background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 999px;
+      font: inherit; font-size: 0.82rem; padding: 0.35rem 0.8rem; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 5px;
+    }
+    .opt:hover { border-color: #545d68; }
+    .opt[aria-pressed="true"] { background: var(--accent-dim); border-color: var(--accent); color: var(--bright); }
+    .opt .ic { width: 13px; height: 13px; stroke-width: 3; display: none; }
+    .opt[aria-pressed="true"] .ic { display: block; }
+    .opt-sub { width: 100%; font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin: 0.4rem 0 0; }
+    .years { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; align-items: center; margin-left: 1.85rem; font-size: 0.85rem; color: var(--muted); }
+    .years input[type=number] {
+      width: 92px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text); font: inherit; font-size: 0.9rem; padding: 0.4rem 0.55rem; outline: none;
+    }
+    .years input[type=number]:focus { border-color: var(--accent); }
+    .years input:disabled { opacity: 0.4; }
+    .intake-foot {
+      position: sticky; bottom: 0; margin-top: 1rem; padding: 0.9rem 0;
+      background: linear-gradient(to top, var(--bg) 70%, transparent);
+      display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center;
+    }
+    .btn.primary { background: var(--accent); color: #0e1117; border-color: var(--accent); font-weight: 600; font-size: 0.88rem; padding: 0.55rem 1rem; }
+    .btn.primary:hover { background: #6cb0ea; color: #0e1117; }
+    .live { font-size: 0.84rem; color: var(--muted); margin-left: auto; }
+    .live b { color: var(--bright); }
+    .intake-mode .toolbar-wrap, .intake-mode .layout { display: none; }
+    body:not(.intake-mode) .intake { display: none; }
+
+    /* ── Narrow screens ───────────────────────── */
+    @media (max-width: 900px) {
+      html { scroll-padding-top: 170px; }
+      .layout { grid-template-columns: minmax(0, 1fr); padding: 1rem; }
+      .top { padding: 1.25rem 1rem 0.75rem; }
+      .toolbar { padding: 0.6rem 1rem; }
+      .search { max-width: none; }
+      .chips { flex-wrap: nowrap; overflow-x: auto; width: 100%; scrollbar-width: none; }
+      .chips::-webkit-scrollbar { display: none; }
+      .chip { white-space: nowrap; }
+      .btn.mobile-list-btn { display: inline-flex; }
+      .panel {
+        position: fixed; inset: auto 0 0 0; top: auto; z-index: 20;
+        border-radius: 14px 14px 0 0; max-height: 80vh;
+        transform: translateY(100%); transition: transform 0.2s ease;
+        box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+      }
+      .panel.show { transform: none; }
+      .icon-btn.panel-close { display: grid; }
+      .ribbon { width: 58px; height: 16px; }
+      .award-head { padding: 0.75rem 0.8rem; gap: 0.7rem; }
+      .award-body { padding: 0 0.8rem 0.9rem; }
+    }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-chev-r" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"/></symbol>
+    <symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 0 1 1-1h10"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3"/></symbol>
+    <symbol id="i-rack" viewBox="0 0 24 24"><rect x="3" y="6" width="8" height="4" rx="0.5"/><rect x="13" y="6" width="8" height="4" rx="0.5"/><rect x="8" y="13" width="8" height="4" rx="0.5"/></symbol>
+  </svg>
+
+  <div class="top">
+    <a href="/" class="home"><svg class="ic"><use href="#i-left"/></svg>peterbrown.space</a>
+    <h1>Air Force Decorations and Ribbons <span class="proto">Prototype</span></h1>
+    <p class="subtitle">Every decoration and ribbon on the AFPC listing, with practical criteria for knowing whether it belongs on your record. Check what applies to add an award to your list and build your ribbon rack.</p>
+  </div>
+
+  <section class="intake" id="intake" aria-label="Quick questions">
+    <p class="intake-lead">Answer six quick questions to hide the awards that can't apply to your service, such as campaigns from before or after your time, or deployments you didn't make. Skip any question you're unsure about. Nothing is hidden for a skipped question.</p>
+    <div id="questions"></div>
+    <div class="intake-foot">
+      <button class="btn primary" id="intakeDone">Show my decorations</button>
+      <button class="btn subtle" id="intakeSkip">Skip and show all</button>
+      <span class="live" id="live"></span>
+    </div>
+  </section>
+
+  <div class="toolbar-wrap">
+    <div class="toolbar">
+      <label class="search">
+        <svg class="ic"><use href="#i-search"/></svg>
+        <input id="q" type="search" placeholder="Search, e.g. Bronze Star or NATO" autocomplete="off" aria-label="Search decorations">
+      </label>
+      <div class="chips" id="chips" role="toolbar" aria-label="Filter by category"></div>
+      <button class="btn mobile-list-btn" id="openPanel"><svg class="ic"><use href="#i-rack"/></svg>My list <span id="mobCount">0</span></button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <main id="list"></main>
+
+    <aside class="panel" id="panel" aria-label="My decorations">
+      <div class="panel-head">
+        <h2>My decorations<span class="count" id="count"></span></h2>
+        <button class="icon-btn panel-close" id="closePanel" aria-label="Close"><svg class="ic"><use href="#i-x"/></svg></button>
+      </div>
+      <div class="panel-scroll">
+        <div class="rack" id="rack"></div>
+        <ul class="mine" id="mine"></ul>
+        <div class="panel-actions" id="actions">
+          <button class="btn" id="copyBtn"><svg class="ic"><use href="#i-copy"/></svg><span>Copy list</span></button>
+          <button class="btn subtle" id="clearBtn"><svg class="ic"><use href="#i-trash"/></svg>Clear</button>
+        </div>
+        <!-- Planned (not built yet): upload a vMPF awards screenshot to fill this list automatically. -->
+        <p class="note">Rack order follows the AFPC listing, which is arranged by order of precedence. Oak leaf clusters and other multiple-award devices aren't shown yet. Your selections stay in this browser only.</p>
+      </div>
+    </aside>
+  </div>
+
+  <footer>
+    <p>Criteria are summarized from the Air Force's Personnel Center <a href="https://www.afpc.af.mil/Career-Management/Decorations-and-Ribbons/" target="_blank" rel="noopener noreferrer">Decorations and Ribbons</a> fact sheets. The full AFPC text is included under each award. This is an unofficial tool: it doesn't verify entitlement. Your DD-214, personnel records, and AFPC make the final call.</p>
+    <p>For questions, contact the AFPC Awards team at AFPC.DP1SP.RecognitionProcess@us.af.mil. To request replacement or missing awards, see <a href="https://www.afpc.af.mil/Career-Management/Awards/" target="_blank" rel="noopener noreferrer">AFPC Awards</a>.</p>
+  </footer>
+
+  <script src="awards.js"></script>
+  <script>
+  (function () {
+    const STORE = 'afdec_v1';
+    const ANSWERS = 'afdec_answers_v1';
+    const CATS = [
+      ['personal', 'Personal decorations'],
+      ['unit', 'Unit awards'],
+      ['achievement', 'Achievement and conduct'],
+      ['campaign', 'Campaign and service'],
+      ['ribbons', 'Service and training ribbons'],
+      ['foreign', 'Foreign and international'],
+    ];
+    const DEVICE_NAMES = { V: 'Valor', C: 'Combat', R: 'Remote' };
+    const KIND = { decoration: 'Decoration', unit: 'Unit award', service: 'Service award' };
+    const THIS_YEAR = new Date().getFullYear();
+
+    // ── Intake questions ──
+    // Each option maps to a tag used by the award rules in awards.js (when / needs / minYears).
+    const QUESTIONS = [
+      { id: 'years', title: 'When did you serve?', hint: 'Year you entered service and year you separated or retired. Campaign and service medals depend on the dates.' },
+      { id: 'comp', title: 'Which components or branches did you serve in?', hint: 'Select all that apply.', options: [
+        ['active', 'Active duty Air Force'], ['reserve', 'Air Force Reserve'], ['guard', 'Air National Guard'],
+        ['ussf', 'Space Force'], ['army', 'Army or Army Air Forces'] ] },
+      { id: 'rank', title: 'Were you enlisted, an officer, or both?', hint: 'Good conduct medals and PME ribbons are enlisted-only. Some joint decorations are officer-only.', single: true, options: [
+        ['enlisted', 'Enlisted'], ['officer', 'Officer'], ['both', 'Both'] ] },
+      { id: 'where', title: 'Where did you serve outside the U.S.?', hint: 'Select every place you were assigned, deployed, or on TDY. Choose "None of these" if you never left the U.S.', none: true, options: [
+        ['overseas', 'Overseas assignment (PCS)'], ['deployed', 'Deployment or contingency TDY'],
+        { sub: 'Specific areas' },
+        ['korea', 'Korea'], ['vietnam', 'Vietnam or Southeast Asia'], ['swa', 'Persian Gulf, 1990 to 1995'],
+        ['iraqsyria', 'Iraq or Syria'], ['afghanistan', 'Afghanistan'], ['balkans', 'Balkans or Kosovo'], ['antarctica', 'Antarctica'] ] },
+      { id: 'roles', title: 'Did any of these apply to your career?', hint: 'These unlock aviation, joint, NATO, special duty, nuclear, and remote-combat awards.', none: true, options: [
+        ['aircrew', 'Flying duties or aircrew'], ['joint', 'Joint assignment (OSD, Joint Staff, combatant command, defense agency)'],
+        ['natoun', 'NATO or UN assignment'], ['specialduty', 'Special duty (MTI, recruiter, first sergeant, PME instructor, honor guard)'],
+        ['nuclear', 'Nuclear mission support'], ['remote', 'RPA, cyber, space, or ISR career field'] ] },
+      { id: 'combat', title: 'Were you ever in combat, wounded, or captured?', hint: 'Only used to show or hide combat heroism, Purple Heart, and POW awards.', none: true, options: [
+        ['combat', 'Came under hostile fire or engaged the enemy'], ['wounded', 'Wounded or injured by hostile action'], ['pow', 'Held as a prisoner of war'] ] },
+    ];
+    const TAG_Q = {};
+    QUESTIONS.forEach((q) => (q.options || []).forEach((o) => { if (Array.isArray(o)) TAG_Q[o[0]] = q.id; }));
+    const TAG_LABEL = {
+      active: 'active duty', reserve: 'Reserve service', guard: 'Guard service', ussf: 'Space Force service', army: 'Army service',
+      enlisted: 'enlisted service', officer: 'officer service',
+      overseas: 'an overseas assignment', deployed: 'a deployment', korea: 'service in Korea', vietnam: 'service in Southeast Asia',
+      swa: 'Persian Gulf service (1990 to 1995)', iraqsyria: 'service in Iraq or Syria', afghanistan: 'service in Afghanistan',
+      balkans: 'service in the Balkans or Kosovo', antarctica: 'service in Antarctica',
+      aircrew: 'flying duties', joint: 'a joint assignment', natoun: 'a NATO or UN assignment', specialduty: 'a special duty assignment',
+      nuclear: 'nuclear mission support', remote: 'an RPA, cyber, space, or ISR career field',
+      combat: 'combat or hostile fire', wounded: 'a wound from hostile action', pow: 'captivity as a POW',
+    };
+
+    // state: { [awardId]: { c: [criterionIndex...], d: [deviceLetter...] } }
+    let state = load(STORE) || {};
+    // answers: null (never answered) | { skipped: true } | { from, to, serving, comp: [], rank, where: [], roles: [], combat: [] }
+    let answers = load(ANSWERS);
+    function load(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
+    function store(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+    const save = () => store(STORE, state);
+
+    let filter = 'all';
+    let query = '';
+    const byId = Object.fromEntries(AWARDS.map((a) => [a.id, a]));
+
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const icon = (name) => `<svg class="ic"><use href="#i-${name}"/></svg>`;
+    const isEarned = (id) => state[id] && state[id].c.length > 0;
+    const earnedList = () => AWARDS.filter((a) => isEarned(a.id));
+
+    // ── Eligibility filter ──
+    function tagsHeld(ans) {
+      const held = new Set([...(ans.comp || []), ...(ans.where || []), ...(ans.roles || []), ...(ans.combat || [])]);
+      if (ans.rank === 'both') { held.add('enlisted'); held.add('officer'); } else if (ans.rank) held.add(ans.rank);
+      return held;
+    }
+    function answered(ans, qid) {
+      if (qid === 'rank') return !!ans.rank;
+      return Array.isArray(ans[qid]) && (ans[qid].length > 0 || ans[qid + 'None']);
+    }
+    function serviceSpan(ans) {
+      const from = parseInt(ans.from, 10);
+      const to = ans.serving ? THIS_YEAR : parseInt(ans.to, 10);
+      if (!(from > 1900 && from <= THIS_YEAR)) return null;
+      return [from, to >= from ? to : THIS_YEAR];
+    }
+    // Returns a reason string when the answers rule the award out, or null.
+    function excludedBy(a, ans) {
+      if (!ans || ans.skipped) return null;
+      const span = serviceSpan(ans);
+      if (span && a.when) {
+        const hit = a.when.some(([s, e]) => span[0] <= (e == null ? THIS_YEAR : e) && span[1] >= s);
+        if (!hit) {
+          const w = a.when.map(([s, e]) => e == null ? `${s} onward` : (s === e ? `${s}` : `${s} to ${e}`)).join(', ');
+          return `Covers ${w}. You served ${span[0]} to ${ans.serving ? 'present' : span[1]}.`;
+        }
+      }
+      if (span && a.minYears && span[1] - span[0] + 1 < a.minYears) return `Requires ${a.minYears} years of service`;
+      const held = tagsHeld(ans);
+      for (const group of a.needs || []) {
+        const qs = [...new Set(group.map((t) => TAG_Q[t]))];
+        if (!qs.every((q) => answered(ans, q))) continue;
+        if (!group.some((t) => held.has(t))) {
+          const labels = [...new Set(group.map((t) => TAG_LABEL[t]))];
+          return 'Requires ' + (labels.length > 2 ? 'a deployment or combat service' : labels.join(' or '));
+        }
+      }
+      return null;
+    }
+
+    // ── Intake UI ──
+    let draft = answers && !answers.skipped ? JSON.parse(JSON.stringify(answers)) : { comp: [], where: [], roles: [], combat: [] };
+
+    function renderQuestions() {
+      $('questions').innerHTML = QUESTIONS.map((q, i) => {
+        let body;
+        if (q.id === 'years') {
+          body = `<div class="years">
+            <label>Entered <input type="number" id="yFrom" min="1917" max="${THIS_YEAR}" placeholder="1998" value="${esc(draft.from || '')}"></label>
+            <label>Separated <input type="number" id="yTo" min="1917" max="${THIS_YEAR}" placeholder="2019" value="${esc(draft.to || '')}"${draft.serving ? ' disabled' : ''}></label>
+            <button class="opt" data-serving aria-pressed="${!!draft.serving}">${icon('check')}Still serving</button>
+          </div>`;
+        } else {
+          const opts = q.options.map((o) => {
+            if (!Array.isArray(o)) return `<div class="opt-sub">${esc(o.sub)}</div>`;
+            const on = q.single ? draft[q.id] === o[0] : (draft[q.id] || []).includes(o[0]);
+            return `<button class="opt" data-q="${q.id}" data-v="${o[0]}" aria-pressed="${on}">${icon('check')}${esc(o[1])}</button>`;
+          }).join('');
+          const none = q.none ? `<button class="opt" data-q="${q.id}" data-none aria-pressed="${!!draft[q.id + 'None']}">${icon('check')}None of these</button>` : '';
+          body = `<div class="opts">${opts}${none}</div>`;
+        }
+        const done = q.id === 'years' ? !!serviceSpan(draft) : answered(draft, q.id);
+        return `<div class="q${done ? ' answered' : ''}"><div class="q-title"><span class="q-num">${i + 1}</span>${esc(q.title)}</div>
+          <p class="q-hint">${esc(q.hint)}</p>${body}</div>`;
+      }).join('');
+      updateLive();
+    }
+
+    function updateLive() {
+      const n = AWARDS.filter((a) => !excludedBy(a, draft)).length;
+      $('live').innerHTML = `<b>${n}</b> of ${AWARDS.length} may apply`;
+    }
+
+    $('questions').addEventListener('click', (e) => {
+      const b = e.target.closest('.opt');
+      if (!b) return;
+      if (b.hasAttribute('data-serving')) {
+        draft.serving = !draft.serving;
+      } else {
+        const q = QUESTIONS.find((x) => x.id === b.dataset.q);
+        if (b.hasAttribute('data-none')) {
+          draft[q.id + 'None'] = !draft[q.id + 'None'];
+          if (draft[q.id + 'None']) draft[q.id] = [];
+        } else if (q.single) {
+          draft[q.id] = draft[q.id] === b.dataset.v ? null : b.dataset.v;
+        } else {
+          const arr = draft[q.id] || (draft[q.id] = []);
+          const i = arr.indexOf(b.dataset.v);
+          if (i >= 0) arr.splice(i, 1); else arr.push(b.dataset.v);
+          draft[q.id + 'None'] = false;
+        }
+      }
+      renderQuestions();
+    });
+    $('questions').addEventListener('input', (e) => {
+      if (e.target.id === 'yFrom') draft.from = e.target.value;
+      if (e.target.id === 'yTo') draft.to = e.target.value;
+      const q = e.target.closest('.q');
+      if (q) q.classList.toggle('answered', !!serviceSpan(draft));
+      updateLive();
+    });
+
+    function showIntake() {
+      draft = answers && !answers.skipped ? JSON.parse(JSON.stringify(answers)) : draft;
+      document.body.classList.add('intake-mode');
+      renderQuestions();
+      window.scrollTo(0, 0);
+    }
+    function finishIntake(skip) {
+      answers = skip ? { skipped: true } : draft;
+      store(ANSWERS, answers);
+      document.body.classList.remove('intake-mode');
+      filter = 'all';
+      renderChips(); renderList();
+      window.scrollTo(0, 0);
+    }
+    $('intakeDone').addEventListener('click', () => finishIntake(false));
+    $('intakeSkip').addEventListener('click', () => finishIntake(true));
+
+    // ── Chips ──
+    function renderChips() {
+      const vis = AWARDS.filter((a) => isEarned(a.id) || !excludedBy(a, answers));
+      const counts = { all: vis.length, mine: earnedList().length };
+      CATS.forEach(([k]) => counts[k] = vis.filter((a) => a.cat === k).length);
+      const items = [['all', 'All'], ['mine', 'On my list'], ...CATS];
+      $('chips').innerHTML = items.map(([k, v]) =>
+        `<button class="chip" data-f="${k}" aria-pressed="${filter === k}">${esc(v)}<span class="n">${counts[k]}</span></button>`
+      ).join('');
+    }
+    $('chips').addEventListener('click', (e) => {
+      const b = e.target.closest('.chip');
+      if (!b) return;
+      filter = b.dataset.f;
+      renderChips();
+      renderList();
+    });
+
+    // ── Award cards ──
+    function officialHtml(a) {
+      return a.official.map((s) => {
+        let body = '', inList = false;
+        s.p.forEach((p) => {
+          if (p.startsWith('• ')) {
+            if (!inList) { body += '<ul>'; inList = true; }
+            body += `<li>${esc(p.slice(2))}</li>`;
+          } else {
+            if (inList) { body += '</ul>'; inList = false; }
+            body += `<p>${esc(p)}</p>`;
+          }
+        });
+        if (inList) body += '</ul>';
+        return (s.h ? `<h4>${esc(s.h)}</h4>` : '') + body;
+      }).join('');
+    }
+
+    function critHtml(a, kind, key, i, text) {
+      const st = state[a.id] || { c: [], d: [] };
+      const on = kind === 'c' ? st.c.includes(i) : st.d.includes(key);
+      const label = kind === 'd' ? `<span class="device-tag">${key}</span>${esc(text)}` : esc(text);
+      return `<label class="crit${on ? ' checked' : ''}">
+        <input type="checkbox" data-id="${a.id}" data-kind="${kind}" data-key="${kind === 'c' ? i : key}"${on ? ' checked' : ''}>
+        <span class="box">${icon('check')}</span><span>${label}</span></label>`;
+    }
+
+    function cardHtml(a, reason) {
+      const earned = isEarned(a.id);
+      let body = `<div class="how"><b>How you get it.</b> ${esc(a.how)}` +
+        (a.approval ? `<span class="approval"><b>Approval:</b> ${esc(a.approval)}.</span>` : '') + `</div>`;
+      body += `<div class="group-label">${a.basis === 'decoration' ? 'Counts if' : 'You qualify if'} <span>(check any that apply)</span></div>`;
+      body += a.criteria.map((t, i) => critHtml(a, 'c', null, i, t)).join('');
+      const devs = Object.keys(a.devices || {});
+      if (devs.length) {
+        body += `<div class="group-label">Devices <span>(check if yours included one)</span></div>`;
+        body += devs.map((k) => critHtml(a, 'd', k, null, `${DEVICE_NAMES[k]}: ${a.devices[k]}`)).join('');
+      }
+      if (a.awardedFor && a.awardedFor.length) {
+        body += `<div class="group-label">Awarded for</div><ul class="awarded-for">${a.awardedFor.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>`;
+      }
+      const meta = [];
+      if (a.authorizedDevices) meta.push(`<span><b>Authorized devices:</b> ${esc(a.authorizedDevices)}</span>`);
+      if (a.waps != null) meta.push(`<span><b>WAPS points:</b> ${a.waps}</span>`);
+      if (meta.length) body += `<div class="meta-row">${meta.join('')}</div>`;
+      if (a.official && a.official.length) {
+        body += `<details class="official"><summary>${icon('chev-r')}Full AFPC fact sheet text</summary><div class="official-body">${officialHtml(a)}</div></details>`;
+      }
+      body += `<a class="ext" href="${esc(a.url)}" target="_blank" rel="noopener noreferrer">View the ${esc(a.name)} fact sheet on AFPC${icon('ext')}</a>`;
+
+      return `<article class="award${earned ? ' earned' : ''}" id="a-${a.id}" data-id="${a.id}">
+        <div class="award-head" tabindex="0" role="button" aria-expanded="false">
+          <img class="ribbon" src="${esc(a.img)}" alt="" loading="lazy" width="72" height="20">
+          <div class="award-name"><h3>${esc(a.name)}<span class="kind">${KIND[a.basis]}</span></h3><p>${esc(a.summary)}</p>
+            ${reason ? `<span class="reason">${esc(reason)}</span>` : ''}</div>
+          <span class="status">${icon('check')}On list</span>
+          <span class="chev">${icon('chev')}</span>
+        </div>
+        <div class="award-body">${body}</div>
+      </article>`;
+    }
+
+    function matches(a) {
+      if (filter === 'mine' && !isEarned(a.id)) return false;
+      if (filter !== 'all' && filter !== 'mine' && a.cat !== filter) return false;
+      if (!query) return true;
+      const hay = (a.name + ' ' + (a.aka || '') + ' ' + a.summary + ' ' + a.criteria.join(' ') + ' ' + (a.awardedFor || []).join(' ')).toLowerCase();
+      return query.split(/\s+/).every((w) => hay.includes(w));
+    }
+
+    function renderList() {
+      const openIds = new Set([...document.querySelectorAll('.award.open')].map((el) => el.dataset.id));
+      const hiddenOpen = document.querySelector('details.hidden-group')?.open;
+      const shown = [], hidden = [];
+      AWARDS.filter(matches).forEach((a) => {
+        const r = isEarned(a.id) ? null : excludedBy(a, answers);
+        (r ? hidden : shown).push([a, r]);
+      });
+
+      let html = '';
+      if (answers && !answers.skipped) {
+        html += `<div class="banner"><span>Showing <b>${AWARDS.filter((a) => isEarned(a.id) || !excludedBy(a, answers)).length}</b> of ${AWARDS.length} awards that may apply to your service.</span>
+          <span class="banner-actions"><button class="btn" data-act="edit">Edit answers</button><button class="btn subtle" data-act="all">Show all</button></span></div>`;
+      } else {
+        html += `<div class="banner"><span>Showing all ${AWARDS.length} awards. Answer six quick questions to hide the ones that can't apply to you.</span>
+          <span class="banner-actions"><button class="btn" data-act="edit">Filter by my service</button></span></div>`;
+      }
+      const grouped = (items) => CATS.map(([k, label]) => {
+        const list = items.filter(([a]) => a.cat === k);
+        return list.length ? `<h2 class="cat-title">${esc(label)}</h2>` + list.map(([a, r]) => cardHtml(a, r)).join('') : '';
+      }).join('');
+      html += grouped(shown) || `<p class="empty">${filter === 'mine' ? 'Nothing on your list yet. Open an award and check an item that applies to you.' : 'No decorations match.'}</p>`;
+      if (hidden.length) {
+        html += `<details class="hidden-group"${hiddenOpen ? ' open' : ''}><summary>${icon('chev-r')}Hidden by your answers (${hidden.length})</summary>${grouped(hidden)}</details>`;
+      }
+      $('list').innerHTML = html;
+      openIds.forEach((id) => setOpen($('a-' + id), true));
+      if (query) {
+        const vis = document.querySelectorAll('.award');
+        if (vis.length <= 3) vis.forEach((el) => setOpen(el, true));
+      }
+    }
+
+    function setOpen(el, open) {
+      if (!el) return;
+      el.classList.toggle('open', open);
+      el.querySelector('.award-head').setAttribute('aria-expanded', open);
+    }
+
+    $('list').addEventListener('click', (e) => {
+      const act = e.target.closest('[data-act]');
+      if (act) {
+        if (act.dataset.act === 'edit') showIntake();
+        if (act.dataset.act === 'all') { answers = { skipped: true }; store(ANSWERS, answers); renderChips(); renderList(); }
+        return;
+      }
+      const head = e.target.closest('.award-head');
+      if (head) setOpen(head.parentElement, !head.parentElement.classList.contains('open'));
+    });
+    $('list').addEventListener('keydown', (e) => {
+      const head = e.target.closest('.award-head');
+      if (head && (e.key === 'Enter' || e.key === ' ')) {
+        e.preventDefault();
+        setOpen(head.parentElement, !head.parentElement.classList.contains('open'));
+      }
+    });
+
+    $('list').addEventListener('change', (e) => {
+      const cb = e.target;
+      if (!cb.matches('input[type=checkbox]')) return;
+      const id = cb.dataset.id;
+      const st = state[id] || (state[id] = { c: [], d: [] });
+      const arr = cb.dataset.kind === 'c' ? st.c : st.d;
+      const key = cb.dataset.kind === 'c' ? Number(cb.dataset.key) : cb.dataset.key;
+      const idx = arr.indexOf(key);
+      if (cb.checked && idx < 0) arr.push(key);
+      if (!cb.checked && idx >= 0) arr.splice(idx, 1);
+      // A device implies the award itself; keep it on the list by checking the first item.
+      if (cb.dataset.kind === 'd' && cb.checked && !st.c.length) st.c.push(0);
+      if (!st.c.length && !st.d.length) delete state[id];
+      save();
+      refreshCard(id);
+      renderPanel();
+      renderChips();
+    });
+
+    function refreshCard(id) {
+      const el = $('a-' + id);
+      if (!el) return;
+      const wasOpen = el.classList.contains('open');
+      const tmp = document.createElement('div');
+      tmp.innerHTML = cardHtml(byId[id], isEarned(id) ? null : excludedBy(byId[id], answers));
+      const fresh = tmp.firstElementChild;
+      const det = el.querySelector('details.official');
+      if (det && det.open) fresh.querySelector('details.official').open = true;
+      el.replaceWith(fresh);
+      setOpen(fresh, wasOpen);
+    }
+
+    // ── Panel ──
+    function renderPanel() {
+      const mine = earnedList();
+      $('count').textContent = mine.length ? ` (${mine.length})` : '';
+      $('mobCount').textContent = mine.length;
+      $('actions').style.display = mine.length ? '' : 'none';
+
+      if (!mine.length) {
+        $('rack').innerHTML = `<p class="rack-empty">Your ribbon rack appears here as you add awards.</p>`;
+        $('mine').innerHTML = '';
+        return;
+      }
+
+      // Rows of three; the odd remainder sits centered on top, as worn.
+      const perRow = 3;
+      const rows = [];
+      const rem = mine.length % perRow;
+      let i = 0;
+      if (rem) { rows.push(mine.slice(0, rem)); i = rem; }
+      for (; i < mine.length; i += perRow) rows.push(mine.slice(i, i + perRow));
+      $('rack').innerHTML = rows.map((r) => `<div class="rack-row">${r.map((a) => {
+        const d = (state[a.id].d || []).slice().sort();
+        return `<div class="rack-rib" title="${esc(a.name)}"><img src="${esc(a.img)}" alt="${esc(a.name)}">` +
+          (d.length ? `<div class="rack-dev">${d.map((x) => `<span>${x}</span>`).join('')}</div>` : '') + `</div>`;
+      }).join('')}</div>`).join('');
+
+      $('mine').innerHTML = mine.map((a) => {
+        const d = (state[a.id].d || []).slice().sort();
+        return `<li><img src="${esc(a.img)}" alt="">
+          <a href="#a-${a.id}" data-jump="${a.id}">${esc(a.name)}${d.length ? `<span class="dv">${d.map((x) => 'with ' + x).join(', ')}</span>` : ''}</a>
+          <button class="icon-btn" data-remove="${a.id}" aria-label="Remove ${esc(a.name)}">${icon('x')}</button></li>`;
+      }).join('');
+    }
+
+    $('mine').addEventListener('click', (e) => {
+      const rm = e.target.closest('[data-remove]');
+      if (rm) {
+        delete state[rm.dataset.remove];
+        save(); renderList(); renderPanel(); renderChips();
+        return;
+      }
+      const jump = e.target.closest('[data-jump]');
+      if (jump) {
+        e.preventDefault();
+        let el = $('a-' + jump.dataset.jump);
+        if (!el) { filter = 'all'; query = ''; $('q').value = ''; renderChips(); renderList(); el = $('a-' + jump.dataset.jump); }
+        setOpen(el, true);
+        $('panel').classList.remove('show');
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+
+    $('clearBtn').addEventListener('click', () => {
+      if (!earnedList().length) return;
+      state = {};
+      save(); renderList(); renderPanel(); renderChips();
+    });
+
+    $('copyBtn').addEventListener('click', async () => {
+      const text = earnedList().map((a) => {
+        const d = (state[a.id].d || []).slice().sort();
+        return a.name + (d.length ? ` (${d.map((x) => x + ' device').join(', ')})` : '');
+      }).join('\n');
+      const label = $('copyBtn').querySelector('span');
+      try { await navigator.clipboard.writeText(text); label.textContent = 'Copied'; }
+      catch (e) { label.textContent = 'Copy failed'; }
+      setTimeout(() => label.textContent = 'Copy list', 1600);
+    });
+
+    $('openPanel').addEventListener('click', () => $('panel').classList.add('show'));
+    $('closePanel').addEventListener('click', () => $('panel').classList.remove('show'));
+
+    let t;
+    $('q').addEventListener('input', (e) => {
+      clearTimeout(t);
+      t = setTimeout(() => { query = e.target.value.trim().toLowerCase(); renderList(); }, 120);
+    });
+
+    renderChips();
+    renderList();
+    renderPanel();
+
+    // Deep link: #a-<id> opens that award and skips the intake
+    const target = location.hash && document.getElementById(location.hash.slice(1));
+    if (target && target.classList.contains('award')) {
+      setOpen(target, true);
+      target.scrollIntoView({ block: 'start' });
+    } else if (!answers) {
+      showIntake();
+    }
+  })();
+  </script>
+</body>
+</html>
