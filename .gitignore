@@ -14,3 +14,5 @@ dist/
 .env
 
 description.txt
+# Local test image for the decorations rack scanner
+af-decorations/example_decs.png

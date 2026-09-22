@@ -56,16 +56,20 @@
       margin: 0 auto;
       padding: 2rem 1.25rem 1rem;
     }
-    .home {
-      display: inline-flex; align-items: center; gap: 6px;
-      color: var(--muted); text-decoration: none; font-size: 0.8rem;
-      margin-bottom: 1rem;
-    }
-    .home:hover { color: var(--text); }
     h1 {
       font-size: 1.6rem; font-weight: 700; color: var(--bright);
       letter-spacing: -0.03em; line-height: 1.2;
     }
+    .title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+    .feedback {
+      background: none; border: 0; padding: 2px 0; cursor: pointer; font: inherit; font-size: 0.78rem;
+      color: var(--muted); display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0;
+    }
+    .feedback:hover { color: var(--text); text-decoration: underline; }
+    .feedback .ic { width: 13px; height: 13px; }
+    .title-row .feedback { margin-top: 6px; }
+    .card-links { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.4rem 1rem; margin-top: 0.8rem; }
+    .card-links .ext { margin-top: 0; }
     .subtitle { color: var(--muted); font-size: 0.9rem; margin-top: 0.4rem; max-width: 760px; }
 
     /* ── Toolbar ──────────────────────────────── */
@@ -372,6 +376,64 @@
     .intake-mode .toolbar-wrap, .intake-mode .layout { display: none; }
     body:not(.intake-mode) .intake { display: none; }
 
+    /* ── Devices on the rack and list ────────── */
+    .rack-dev .leaf { width: 15px; height: 8px; color: #b87333; filter: drop-shadow(0 0 1px #2a1703); }
+    .rack-dev .star { width: 9px; height: 9px; color: #b87333; filter: drop-shadow(0 0 1px #2a1703); }
+    .stepper-row { display: flex; flex-wrap: wrap; gap: 0.5rem 1.2rem; margin-top: 0.6rem; font-size: 0.84rem; color: var(--text); }
+    .stepper { display: inline-flex; align-items: center; gap: 0.4rem; }
+    .stepper .icon-btn { width: 24px; height: 24px; border: 1px solid var(--border); }
+    .stepper .n { min-width: 1.2em; text-align: center; font-variant-numeric: tabular-nums; color: var(--bright); }
+    .import-btn { width: 100%; margin-bottom: 0.8rem; }
+
+    /* ── Import dialog ───────────────────────── */
+    .modal { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.6); display: grid; place-items: center; padding: 16px; }
+    .modal[hidden] { display: none; }
+    .drop[hidden], #scanArea[hidden], .modal-foot[hidden] { display: none; }
+    .modal-box {
+      width: min(860px, 100%); max-height: calc(100vh - 32px); display: flex; flex-direction: column;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 0.9rem 1.1rem; border-bottom: 1px solid var(--border); }
+    .modal-head h2 { font-size: 1rem; color: var(--bright); font-weight: 600; }
+    .modal-body { overflow-y: auto; padding: 1rem 1.1rem; }
+    .modal-foot { display: flex; justify-content: flex-end; gap: 0.5rem; padding: 0.8rem 1.1rem; border-top: 1px solid var(--border); }
+    .drop {
+      display: flex; flex-direction: column; align-items: center; gap: 0.5rem; text-align: center; cursor: pointer;
+      border: 1.5px dashed #444c56; border-radius: 10px; padding: 2.2rem 1rem; color: var(--text); font-size: 0.9rem;
+    }
+    .drop .ic { width: 28px; height: 28px; color: var(--muted); }
+    .drop b { color: var(--accent); font-weight: 600; }
+    .drop.over, .drop:hover { border-color: var(--accent); background: var(--accent-dim); }
+    .drop-hint { color: var(--muted); font-size: 0.78rem; }
+    .scan-stage { background: #0a0d12; border-radius: 8px; padding: 8px; text-align: center; }
+    .scan-stage canvas { max-width: 100%; max-height: 300px; cursor: crosshair; touch-action: none; }
+    .scan-help { color: var(--muted); font-size: 0.8rem; margin: 0.6rem 0 0.8rem; }
+    .scan-row {
+      display: grid; grid-template-columns: 22px 26px 96px minmax(0, 1fr) auto; gap: 0.6rem; align-items: center;
+      padding: 0.5rem 0; border-bottom: 1px solid var(--border); font-size: 0.84rem;
+    }
+    .scan-row:last-child { border-bottom: 0; }
+    .scan-row .num { color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+    .scan-row canvas { width: 96px; height: 26px; border-radius: 2px; display: block; }
+    .scan-row select {
+      width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px;
+      font: inherit; font-size: 0.84rem; padding: 0.35rem 0.4rem;
+    }
+    .scan-row.low select { border-color: var(--bronze); }
+    .scan-row .flag { display: block; color: var(--bronze); font-size: 0.72rem; margin-top: 2px; }
+    .scan-row.off { opacity: 0.45; }
+    .scan-row .devs { display: flex; gap: 0.8rem; }
+    .scan-row .stepper { font-size: 0.78rem; color: var(--muted); }
+    .scan-row .include { position: relative; }
+    .scan-row .include input { position: absolute; opacity: 0; }
+    .scan-row .include .box { cursor: pointer; }
+    .scan-row .include input:checked + .box { background: var(--earned); border-color: var(--earned); color: #0e1117; }
+    @media (max-width: 640px) {
+      .scan-row { grid-template-columns: 22px 26px minmax(0, 1fr); }
+      .scan-row canvas.thumb { grid-column: 3; }
+      .scan-row .pick, .scan-row .devs { grid-column: 2 / -1; }
+    }
+
     /* ── Narrow screens ───────────────────────── */
     @media (max-width: 900px) {
       .layout { grid-template-columns: minmax(0, 1fr); padding: 1rem; }
@@ -398,6 +460,7 @@
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></symbol>
     <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
     <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
@@ -406,13 +469,20 @@
     <symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></symbol>
     <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
     <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 0 1 1-1h10"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></symbol>
+    <symbol id="i-leaf" viewBox="0 0 24 12"><path d="M2 6c3-4 7-5 10-3 1-2 4-3 6-2-1 2-1 3-3 4 2 1 4 1 7 1-3 1-5 2-7 1 1 2 1 3 0 5-2-1-3-2-3-4-3 2-7 1-10-2z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 2 2.9 6.6 7.1.6-5.4 4.7 1.6 7.1L12 17.3 5.8 21l1.6-7.1L2 9.2l7.1-.6z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M6 12h12"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"/></symbol>
     <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V4h6v3"/></symbol>
     <symbol id="i-rack" viewBox="0 0 24 24"><rect x="3" y="6" width="8" height="4" rx="0.5"/><rect x="13" y="6" width="8" height="4" rx="0.5"/><rect x="8" y="13" width="8" height="4" rx="0.5"/></symbol>
   </svg>
 
   <div class="top">
-    <a href="/" class="home"><svg class="ic"><use href="#i-left"/></svg>peterbrown.space</a>
-    <h1>Air Force Decorations and Ribbons</h1>
+    <div class="title-row">
+      <h1>Air Force Decorations and Ribbons</h1>
+      <button class="feedback" data-feedback="General feedback"><svg class="ic"><use href="#i-mail"/></svg>Send feedback</button>
+    </div>
     <p class="subtitle">Every decoration and ribbon on the AFPC listing, with practical criteria for knowing whether it belongs on your record. Check what applies to add an award to your list and build your ribbon rack.</p>
   </div>
 
@@ -446,6 +516,7 @@
         <button class="icon-btn panel-close" id="closePanel" aria-label="Close"><svg class="ic"><use href="#i-x"/></svg></button>
       </div>
       <div class="panel-scroll">
+        <button class="btn import-btn" id="importBtn"><svg class="ic"><use href="#i-image"/></svg>Import from a rack image</button>
         <div class="rack" id="rack"></div>
         <ul class="mine" id="mine"></ul>
         <div class="panel-actions" id="actions">
@@ -453,9 +524,35 @@
           <button class="btn subtle" id="clearBtn"><svg class="ic"><use href="#i-trash"/></svg>Clear</button>
         </div>
         <!-- Planned (not built yet): upload a vMPF awards screenshot to fill this list automatically. -->
-        <p class="note">Rack order follows the AFPC listing, which is arranged by order of precedence. Oak leaf clusters and other multiple-award devices aren't shown yet. Your selections stay in this browser only.</p>
+        <p class="note">Rack order follows the AFPC listing, which is arranged by order of precedence. You can paste a rack screenshot anywhere on this page. Images are read in your browser and never uploaded. Your selections stay in this browser only.</p>
       </div>
     </aside>
+  </div>
+
+  <div class="modal" id="importModal" role="dialog" aria-modal="true" aria-labelledby="importTitle" hidden>
+    <div class="modal-box">
+      <div class="modal-head">
+        <h2 id="importTitle">Import from a ribbon rack image</h2>
+        <button class="icon-btn" id="importClose" aria-label="Close"><svg class="ic"><use href="#i-x"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <label class="drop" id="drop">
+          <input type="file" id="importFile" accept="image/*" hidden>
+          <svg class="ic"><use href="#i-image"/></svg>
+          <span><b>Choose an image</b>, drop one here, or paste a screenshot (Ctrl+V or Cmd+V).</span>
+          <span class="drop-hint">A photo or screenshot of your ribbon rack works. The image is read in your browser and never uploaded.</span>
+        </label>
+        <div id="scanArea" hidden>
+          <div class="scan-stage"><canvas id="scanCanvas"></canvas></div>
+          <p class="scan-help" id="scanHelp"></p>
+          <div id="scanResults"></div>
+        </div>
+      </div>
+      <div class="modal-foot" id="importFoot" hidden>
+        <button class="btn subtle" id="importAnother">Use a different image</button>
+        <button class="btn primary" id="importApply">Add to my list</button>
+      </div>
+    </div>
   </div>
 
   <footer>
@@ -464,6 +561,7 @@
   </footer>
 
   <script src="awards.js"></script>
+  <script src="rackscan.js"></script>
   <script>
   (function () {
     const STORE = 'afdec_v1';
@@ -529,7 +627,21 @@
     const $ = (id) => document.getElementById(id);
     const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     const icon = (name) => `<svg class="ic"><use href="#i-${name}"/></svg>`;
-    const isEarned = (id) => state[id] && state[id].c.length > 0;
+    // state[id].img: found on an imported rack image; .o / .s: oak leaf cluster and service star counts.
+    const isEarned = (id) => !!state[id] && (state[id].c.length > 0 || !!state[id].img);
+    // Which multiple-award devices an award can carry, from its AFPC "authorized devices" text.
+    const allows = (a) => {
+      const t = (a.authorizedDevices || '') + ' ' + a.official.filter((s) => /AUTHORIZED/.test(s.h)).map((s) => s.p.join(' ')).join(' ');
+      return { olc: /oak leaf/i.test(t), star: /star/i.test(t) };
+    };
+    const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
+    function deviceText(a) {
+      const st = state[a.id] || {}, bits = [];
+      (st.d || []).slice().sort().forEach((x) => bits.push(x));
+      if (st.o) bits.push(plural(st.o, 'oak leaf cluster', 'oak leaf clusters'));
+      if (st.s) bits.push(plural(st.s, 'service star', 'service stars'));
+      return bits;
+    }
     const earnedList = () => AWARDS.filter((a) => isEarned(a.id));
 
     // ── Eligibility filter ──
@@ -692,7 +804,7 @@
 
     function critHtml(a, kind, key, i, text) {
       const st = state[a.id] || { c: [], d: [] };
-      const on = kind === 'c' ? st.c.includes(i) : st.d.includes(key);
+      const on = kind === 'c' ? st.c.includes(i) : kind === 'img' ? !!st.img : st.d.includes(key);
       const label = kind === 'd' ? `<span class="device-tag">${key}</span>${esc(text)}` : esc(text);
       return `<label class="crit${on ? ' checked' : ''}">
         <input type="checkbox" data-id="${a.id}" data-kind="${kind}" data-key="${kind === 'c' ? i : key}"${on ? ' checked' : ''}>
@@ -705,6 +817,12 @@
         (a.approval ? `<span class="approval"><b>Approval:</b> ${esc(a.approval)}.</span>` : '') + `</div>`;
       body += `<div class="group-label">${a.basis === 'decoration' ? 'Counts if' : 'You qualify if'} <span>(check any that apply)</span></div>`;
       body += a.criteria.map((t, i) => critHtml(a, 'c', null, i, t)).join('');
+      if (state[a.id] && state[a.id].img) body += critHtml(a, 'img', 'img', null, 'Found on your ribbon rack image');
+      const al = allows(a), st = state[a.id] || {};
+      if (isEarned(a.id) && (al.olc || al.star)) {
+        const step = (k, label) => `<span class="stepper">${label}<button class="icon-btn" data-step="${k}" data-dir="-1" data-id="${a.id}" aria-label="Fewer">${icon('minus')}</button><span class="n">${st[k] || 0}</span><button class="icon-btn" data-step="${k}" data-dir="1" data-id="${a.id}" aria-label="More">${icon('plus')}</button></span>`;
+        body += `<div class="stepper-row">${al.olc ? step('o', 'Oak leaf clusters') : ''}${al.star ? step('s', 'Service stars') : ''}</div>`;
+      }
       const devs = Object.keys(a.devices || {});
       if (devs.length) {
         body += `<div class="group-label">Devices <span>(check if yours included one)</span></div>`;
@@ -720,7 +838,8 @@
       if (a.official && a.official.length) {
         body += `<details class="official"><summary>${icon('chev-r')}Full AFPC fact sheet text</summary><div class="official-body">${officialHtml(a)}</div></details>`;
       }
-      body += `<a class="ext" href="${esc(a.url)}" target="_blank" rel="noopener noreferrer">View the ${esc(a.name)} fact sheet on AFPC${icon('ext')}</a>`;
+      body += `<div class="card-links"><a class="ext" href="${esc(a.url)}" target="_blank" rel="noopener noreferrer">View the ${esc(a.name)} fact sheet on AFPC${icon('ext')}</a>` +
+        `<button class="feedback" data-feedback="Error report: ${esc(a.name)}">${icon('mail')}Report an error</button></div>`;
 
       return `<article class="award${earned ? ' earned' : ''}" id="a-${a.id}" data-id="${a.id}">
         <div class="award-head" tabindex="0" role="button" aria-expanded="false">
@@ -795,6 +914,14 @@
       const head = e.target.closest('.award-head');
       if (head) setOpen(head.parentElement, !head.parentElement.classList.contains('open'));
     });
+    $('list').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-step]');
+      if (!b) return;
+      const st = state[b.dataset.id];
+      if (!st) return;
+      st[b.dataset.step] = Math.max(0, Math.min(20, (st[b.dataset.step] || 0) + Number(b.dataset.dir)));
+      save(); refreshCard(b.dataset.id); renderPanel();
+    });
     $('list').addEventListener('keydown', (e) => {
       const head = e.target.closest('.award-head');
       if (head && (e.key === 'Enter' || e.key === ' ')) {
@@ -808,6 +935,12 @@
       if (!cb.matches('input[type=checkbox]')) return;
       const id = cb.dataset.id;
       const st = state[id] || (state[id] = { c: [], d: [] });
+      if (cb.dataset.kind === 'img') {
+        if (!cb.checked) delete st.img;
+        if (!isEarned(id) && !st.d.length) delete state[id];
+        save(); refreshCard(id); renderPanel(); renderChips();
+        return;
+      }
       const arr = cb.dataset.kind === 'c' ? st.c : st.d;
       const key = cb.dataset.kind === 'c' ? Number(cb.dataset.key) : cb.dataset.key;
       const idx = arr.indexOf(key);
@@ -815,7 +948,7 @@
       if (!cb.checked && idx >= 0) arr.splice(idx, 1);
       // A device implies the award itself; keep it on the list by checking the first item.
       if (cb.dataset.kind === 'd' && cb.checked && !st.c.length) st.c.push(0);
-      if (!st.c.length && !st.d.length) delete state[id];
+      if (!st.c.length && !st.d.length && !st.img) delete state[id];
       save();
       refreshCard(id);
       renderPanel();
@@ -856,15 +989,18 @@
       if (rem) { rows.push(mine.slice(0, rem)); i = rem; }
       for (; i < mine.length; i += perRow) rows.push(mine.slice(i, i + perRow));
       $('rack').innerHTML = rows.map((r) => `<div class="rack-row">${r.map((a) => {
-        const d = (state[a.id].d || []).slice().sort();
+        const st = state[a.id], d = (st.d || []).slice().sort();
+        const marks = d.map((x) => `<span>${x}</span>`).join('') +
+          `<svg class="leaf"><use href="#i-leaf"/></svg>`.repeat(Math.min(st.o || 0, 4)) +
+          `<svg class="star"><use href="#i-star"/></svg>`.repeat(Math.min(st.s || 0, 4));
         return `<div class="rack-rib" title="${esc(a.name)}"><img src="${esc(a.img)}" alt="${esc(a.name)}">` +
-          (d.length ? `<div class="rack-dev">${d.map((x) => `<span>${x}</span>`).join('')}</div>` : '') + `</div>`;
+          (marks ? `<div class="rack-dev">${marks}</div>` : '') + `</div>`;
       }).join('')}</div>`).join('');
 
       $('mine').innerHTML = mine.map((a) => {
-        const d = (state[a.id].d || []).slice().sort();
+        const d = deviceText(a);
         return `<li><img src="${esc(a.img)}" alt="">
-          <a href="#a-${a.id}" data-jump="${a.id}">${esc(a.name)}${d.length ? `<span class="dv">${d.map((x) => 'with ' + x).join(', ')}</span>` : ''}</a>
+          <a href="#a-${a.id}" data-jump="${a.id}">${esc(a.name)}${d.length ? `<span class="dv">with ${esc(d.join(', '))}</span>` : ''}</a>
           <button class="icon-btn" data-remove="${a.id}" aria-label="Remove ${esc(a.name)}">${icon('x')}</button></li>`;
       }).join('');
     }
@@ -895,13 +1031,198 @@
 
     $('copyBtn').addEventListener('click', async () => {
       const text = earnedList().map((a) => {
-        const d = (state[a.id].d || []).slice().sort();
-        return a.name + (d.length ? ` (${d.map((x) => x + ' device').join(', ')})` : '');
+        const d = deviceText(a).map((x) => x.length === 1 ? x + ' device' : x);
+        return a.name + (d.length ? ` (${d.join(', ')})` : '');
       }).join('\n');
       const label = $('copyBtn').querySelector('span');
       try { await navigator.clipboard.writeText(text); label.textContent = 'Copied'; }
       catch (e) { label.textContent = 'Copy failed'; }
       setTimeout(() => label.textContent = 'Copy list', 1600);
+    });
+
+    // ── Import from a rack image ──
+    // Everything runs in the browser (rackscan.js). The user reviews every match before it's added.
+    const byName = AWARDS.slice().sort((a, b) => a.name.localeCompare(b.name));
+    let refsPromise = null, refById = {};
+    const toData = (img, w, h) => {
+      const c = document.createElement('canvas'); c.width = w || img.naturalWidth; c.height = h || img.naturalHeight;
+      const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(img, 0, 0, c.width, c.height);
+      return { canvas: c, data: x.getImageData(0, 0, c.width, c.height) };
+    };
+    const loadImg = (src) => new Promise((ok, fail) => { const i = new Image(); i.onload = () => ok(i); i.onerror = fail; i.src = src; });
+    function ensureRefs() {
+      if (!refsPromise) refsPromise = Promise.all(AWARDS.map(async (a) => ({ id: a.id, allows: allows(a), img: toData(await loadImg(a.img)).data })))
+        .then((list) => { const refs = RackScan.buildRefs(list); refs.forEach((r) => refById[r.id] = r); return refs; });
+      return refsPromise;
+    }
+
+    let scanImg = null;   // { canvas, data } of the uploaded image, downscaled to at most 1600px wide
+    let region = null;    // user-drawn crop in image pixels, or null for the whole image
+    let results = [];     // detected ribbons with the user's current choices
+
+    function openImport() {
+      $('importModal').hidden = false;
+      $('panel').classList.remove('show');
+      ensureRefs();
+      if (!scanImg) resetImport();
+    }
+    function closeImport() { $('importModal').hidden = true; }
+    function resetImport() {
+      scanImg = null; region = null; results = [];
+      $('drop').hidden = false; $('scanArea').hidden = true; $('importFoot').hidden = true;
+      $('importFile').value = '';
+    }
+
+    async function takeFile(file) {
+      if (!file || !/^image\//.test(file.type)) return;
+      openImport();
+      const url = URL.createObjectURL(file);
+      try {
+        const img = await loadImg(url);
+        const k = Math.min(1, 1600 / img.naturalWidth);
+        scanImg = toData(img, Math.round(img.naturalWidth * k), Math.round(img.naturalHeight * k));
+      } catch (e) { $('scanHelp').textContent = "That image couldn't be read."; return; }
+      finally { URL.revokeObjectURL(url); }
+      region = null;
+      $('drop').hidden = true; $('scanArea').hidden = false; $('importFoot').hidden = false;
+      $('scanHelp').textContent = 'Reading ribbons…';
+      await runScan();
+    }
+
+    async function runScan() {
+      const refs = await ensureRefs();
+      const R = region || { x: 0, y: 0, w: scanImg.data.width, h: scanImg.data.height };
+      const sub = scanImg.canvas.getContext('2d').getImageData(R.x, R.y, R.w, R.h);
+      const found = RackScan.scan(sub, refs);
+      results = found.map((f, i) => ({
+        n: i + 1, x: f.x + R.x, y: f.y + R.y, w: f.w, h: f.h, local: f, sub,
+        id: f.id, candidates: f.candidates.map((c) => c.id), confidence: f.confidence,
+        o: f.olc, s: f.stars, include: true,
+      }));
+      drawStage();
+      renderResults();
+      $('scanHelp').textContent = results.length
+        ? `Found ${plural(results.length, 'ribbon', 'ribbons')}. Check each match below. If the boxes are wrong, drag a box around just the ribbons to scan that area again.`
+        : 'No ribbons found. Drag a box around the ribbons in the image to scan just that area.';
+      $('importApply').textContent = `Add ${results.filter((r) => r.include).length} to my list`;
+    }
+
+    function drawStage(drag) {
+      const c = $('scanCanvas'), src = scanImg.canvas;
+      c.width = src.width; c.height = src.height;
+      const x = c.getContext('2d');
+      x.drawImage(src, 0, 0);
+      const lw = Math.max(2, Math.round(src.width / 400));
+      x.lineWidth = lw; x.font = `600 ${Math.max(12, lw * 7)}px system-ui, sans-serif`;
+      results.forEach((r) => {
+        x.strokeStyle = r.include ? (r.confidence === 'low' ? '#c69026' : '#4d9de0') : 'rgba(118,131,144,0.6)';
+        x.strokeRect(r.x + lw / 2, r.y + lw / 2, r.w - lw, r.h - lw);
+        const label = String(r.n), tw = x.measureText(label).width + lw * 4;
+        x.fillStyle = 'rgba(14,17,23,0.85)'; x.fillRect(r.x + lw, r.y + lw, tw, lw * 9);
+        x.fillStyle = '#e6edf3'; x.fillText(label, r.x + lw * 3, r.y + lw * 8);
+      });
+      const box = drag || region;
+      if (box) { x.setLineDash([lw * 3, lw * 2]); x.strokeStyle = '#e6edf3'; x.strokeRect(box.x, box.y, box.w, box.h); x.setLineDash([]); }
+    }
+
+    function optionsFor(r) {
+      const top = r.candidates.slice(0, 5).map((id) => byId[id]);
+      const opt = (a) => `<option value="${a.id}"${a.id === r.id ? ' selected' : ''}>${esc(a.name)}</option>`;
+      return `<optgroup label="Best matches">${top.map(opt).join('')}</optgroup>` +
+        `<optgroup label="All awards">${byName.filter((a) => !r.candidates.slice(0, 5).includes(a.id)).map(opt).join('')}</optgroup>`;
+    }
+    function rowHtml(r) {
+      const a = byId[r.id], al = allows(a);
+      const step = (k, label) => `<span class="stepper">${label}<button class="icon-btn" data-scan-step="${k}" data-dir="-1" data-n="${r.n}" aria-label="Fewer">${icon('minus')}</button><span class="n">${r[k]}</span><button class="icon-btn" data-scan-step="${k}" data-dir="1" data-n="${r.n}" aria-label="More">${icon('plus')}</button></span>`;
+      return `<div class="scan-row${r.include ? '' : ' off'}${r.confidence === 'low' ? ' low' : ''}" data-n="${r.n}">
+        <label class="include"><input type="checkbox" data-scan-include="${r.n}"${r.include ? ' checked' : ''} aria-label="Include ribbon ${r.n}"><span class="box">${icon('check')}</span></label>
+        <span class="num">${r.n}</span>
+        <canvas class="thumb" width="192" height="52"></canvas>
+        <div class="pick"><select data-scan-pick="${r.n}" aria-label="Ribbon ${r.n}">${optionsFor(r)}</select>
+          ${r.confidence === 'low' ? '<span class="flag">Unsure. Please check this one.</span>' : ''}</div>
+        <div class="devs">${al.olc ? step('o', 'Oak leaf') : ''}${al.star ? step('s', 'Stars') : ''}</div>
+      </div>`;
+    }
+    function renderResults() {
+      $('scanResults').innerHTML = results.map(rowHtml).join('');
+      results.forEach((r) => {
+        const c = $('scanResults').querySelector(`.scan-row[data-n="${r.n}"] canvas`);
+        c.getContext('2d').drawImage(scanImg.canvas, r.x, r.y, r.w, r.h, 0, 0, c.width, c.height);
+      });
+      $('importApply').textContent = `Add ${results.filter((r) => r.include).length} to my list`;
+    }
+
+    $('scanResults').addEventListener('change', (e) => {
+      const t = e.target;
+      if (t.dataset.scanPick) {
+        const r = results[t.dataset.scanPick - 1];
+        r.id = t.value; r.confidence = 'user';
+        // Recount devices against the corrected ribbon
+        const dev = RackScan.devices(r.sub, r.local, refById[r.id].prof, refById[r.id].allows);
+        r.o = dev.olc; r.s = dev.stars;
+        renderResults(); drawStage();
+      }
+      if (t.dataset.scanInclude) { results[t.dataset.scanInclude - 1].include = t.checked; renderResults(); drawStage(); }
+    });
+    $('scanResults').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-scan-step]');
+      if (!b) return;
+      const r = results[b.dataset.n - 1], k = b.dataset.scanStep;
+      r[k] = Math.max(0, Math.min(20, r[k] + Number(b.dataset.dir)));
+      renderResults();
+    });
+
+    // Drag a box on the image to scan only that area
+    let dragStart = null;
+    const toImg = (e) => {
+      const c = $('scanCanvas'), b = c.getBoundingClientRect();
+      return { x: Math.round((e.clientX - b.left) * c.width / b.width), y: Math.round((e.clientY - b.top) * c.height / b.height) };
+    };
+    const boxFrom = (a, b) => ({ x: Math.max(0, Math.min(a.x, b.x)), y: Math.max(0, Math.min(a.y, b.y)), w: Math.abs(a.x - b.x), h: Math.abs(a.y - b.y) });
+    $('scanCanvas').addEventListener('pointerdown', (e) => { if (!scanImg) return; dragStart = toImg(e); e.target.setPointerCapture(e.pointerId); });
+    $('scanCanvas').addEventListener('pointermove', (e) => { if (dragStart) drawStage(boxFrom(dragStart, toImg(e))); });
+    $('scanCanvas').addEventListener('pointerup', (e) => {
+      if (!dragStart) return;
+      const box = boxFrom(dragStart, toImg(e)); dragStart = null;
+      box.w = Math.min(box.w, scanImg.data.width - box.x); box.h = Math.min(box.h, scanImg.data.height - box.y);
+      if (box.w > 20 && box.h > 8) { region = box; runScan(); } else drawStage();
+    });
+
+    $('importApply').addEventListener('click', () => {
+      results.filter((r) => r.include).forEach((r) => {
+        const st = state[r.id] || (state[r.id] = { c: [], d: [] });
+        st.img = 1;
+        st.o = Math.max(st.o || 0, r.o || 0);
+        st.s = Math.max(st.s || 0, r.s || 0);
+      });
+      save(); renderList(); renderPanel(); renderChips();
+      closeImport(); resetImport();
+    });
+    $('importBtn').addEventListener('click', openImport);
+    $('importClose').addEventListener('click', closeImport);
+    $('importAnother').addEventListener('click', resetImport);
+    $('importModal').addEventListener('click', (e) => { if (e.target === $('importModal')) closeImport(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('importModal').hidden) closeImport(); });
+    $('importFile').addEventListener('change', (e) => takeFile(e.target.files[0]));
+    const drop = $('drop');
+    ['dragenter', 'dragover'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+    ['dragleave', 'drop'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
+    drop.addEventListener('drop', (e) => takeFile(e.dataTransfer.files[0]));
+    // Paste a screenshot anywhere on the page
+    document.addEventListener('paste', (e) => {
+      const item = [...(e.clipboardData ? e.clipboardData.items : [])].find((i) => i.type.startsWith('image/'));
+      if (!item) return;
+      e.preventDefault();
+      takeFile(item.getAsFile());
+    });
+
+    // Feedback: the address is stored reversed, XOR-ed, and base64-encoded so scrapers don't find it; decoded only on click.
+    const FEEDBACK = 'enh0OXt+dnpwVyVyfnlgeGV1ZXJjcmc=';
+    document.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-feedback]');
+      if (!b) return;
+      const addr = [...atob(FEEDBACK)].map((c) => String.fromCharCode(c.charCodeAt(0) ^ 23)).reverse().join('');
+      location.href = 'mailto:' + addr + '?subject=' + encodeURIComponent(b.dataset.feedback + ' (Air Force Decorations tool)');
     });
 
     $('openPanel').addEventListener('click', () => $('panel').classList.add('show'));
