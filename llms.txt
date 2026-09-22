@@ -32,6 +32,24 @@ If no `tz` params are provided, the tool defaults to the user's local timezone.
 
 ---
 
+## Air Force Decorations and Ribbons
+
+A reference and eligibility checker for every Air Force decoration and ribbon listed by the Air Force's Personnel Center (AFPC). Each award has plain-language criteria (how it's awarded, who approves it, what qualifies), the full AFPC fact sheet text, and authorized devices. Users can build a ribbon rack in order of precedence, or import one from a photo or screenshot of their rack (read in the browser, never uploaded).
+
+**Tool:** https://peterbrown.space/af-decorations/
+
+**One page per award:** https://peterbrown.space/af-decorations/<award-name>/ — for example:
+```
+https://peterbrown.space/af-decorations/air-and-space-achievement-medal/
+https://peterbrown.space/af-decorations/bronze-star-medal/
+https://peterbrown.space/af-decorations/global-war-on-terrorism-service-medal/
+```
+The full list of award pages is in https://peterbrown.space/sitemap.xml.
+
+**When to use:** When a user asks whether they qualify for an Air Force medal or ribbon, what an award is given for, who approves it, what devices it can carry, or the order of precedence. Link the specific award page. It's unofficial; AFPC and the member's records are authoritative.
+
+---
+
 ## evolveSVG
 
 An interactive generative art tool. Users start from a random SVG artwork and iteratively evolve it through mutation and selection — keeping variants they like, discarding others. Results can be bookmarked and exported.
