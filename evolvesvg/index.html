@@ -447,14 +447,14 @@
             position: absolute;
             top: 10px;
             left: 10px;
-            width: 26px;
+            width: 58px;
             height: 26px;
             background: rgba(0,0,0,0.45);
             border: 1px solid rgba(255,255,255,0.12);
             color: rgba(255,255,255,0.35);
             border-radius: 5px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -469,14 +469,14 @@
         #float-undo, #float-redo {
             position: absolute;
             top: 10px;
-            width: 26px;
+            width: 46px;
             height: 26px;
             background: rgba(0,0,0,0.45);
             border: 1px solid rgba(255,255,255,0.12);
             color: rgba(255,255,255,0.35);
             border-radius: 5px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -485,8 +485,8 @@
             transition: opacity 0.2s, color 0.15s, background 0.15s;
             z-index: 50;
         }
-        #float-undo { left: 42px; }
-        #float-redo { left: 74px; }
+        #float-undo { left: 74px; }
+        #float-redo { left: 126px; }
         #float-undo.visible, #float-redo.visible { opacity: 1; pointer-events: auto; }
         #float-undo:hover, #float-redo:hover { background: rgba(0,0,0,0.75); color: rgba(255,255,255,0.75); border-color: rgba(255,255,255,0.35); }
 
@@ -1922,9 +1922,9 @@
 
 <div id="grid-container">
     <div id="grid"></div>
-    <button id="float-restart" title="Restart (New Random)">↺</button>
-    <button id="float-undo" title="Undo last evolution">⬅</button>
-    <button id="float-redo" title="Redo evolution">➡</button>
+    <button id="float-restart" title="Restart (New Random)">restart</button>
+    <button id="float-undo" title="Undo last evolution">undo</button>
+    <button id="float-redo" title="Redo evolution">redo</button>
     <button id="reset-view" title="Reset view">Reset view</button>
 </div>
 
