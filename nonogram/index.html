@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Nonogram</title>
+  <meta name="description" content="Nonogram picture logic puzzle with randomly generated, uniquely solvable boards. Three difficulties, three lives, light and dark mode, and color themes.">
+  <link rel="icon" type="image/png" href="../evolveIcon.png">
+  <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "03a89f35132a4e8aa86bf1ed1b60541a"}'></script><!-- End Cloudflare Web Analytics -->
+  <script>
+    // Apply saved theme before first paint to avoid a flash.
+    (function () {
+      var s = {};
+      try { s = JSON.parse(localStorage.getItem('nonogram.settings') || '{}'); } catch (e) {}
+      var dark = s.scheme ? s.scheme === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      document.documentElement.dataset.accent = s.accent || 'indigo';
+    })();
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    /* ── Tokens ── */
+    :root {
+      --bg: #f3f2ee;
+      --surface: #ffffff;
+      --surface-2: #ebe9e3;
+      --text: #1c1c22;
+      --muted: #6d6c76;
+      --faint: #a9a8b0;
+      --line: #d9d7d0;
+      --line-strong: #7f7e88;
+      --cell: #ffffff;
+      --cross: #9a99a3;
+      --danger: #d92d20;
+      --shadow: 0 10px 40px rgba(20, 20, 30, 0.16);
+      --accent: var(--a-light);
+      --accent-ink: #ffffff;
+      --hl: color-mix(in srgb, var(--accent) 9%, var(--cell));
+      --hl-strong: color-mix(in srgb, var(--accent) 18%, var(--cell));
+      --size: 32px;
+      color-scheme: light;
+    }
+    :root[data-theme="dark"] {
+      --bg: #14141b;
+      --surface: #1d1d27;
+      --surface-2: #262633;
+      --text: #e8e8f0;
+      --muted: #9696a8;
+      --faint: #5c5c70;
+      --line: #30303f;
+      --line-strong: #6c6c85;
+      --cell: #1f1f2b;
+      --cross: #6e6e85;
+      --danger: #ff5d52;
+      --shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+      --accent: var(--a-dark);
+      --accent-ink: #14141b;
+      color-scheme: dark;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #14141b; --surface: #1d1d27; --surface-2: #262633; --text: #e8e8f0;
+        --muted: #9696a8; --faint: #5c5c70; --line: #30303f; --line-strong: #6c6c85;
+        --cell: #1f1f2b; --cross: #6e6e85; --danger: #ff5d52; --accent: var(--a-dark);
+        --accent-ink: #14141b; color-scheme: dark;
+      }
+    }
+
+    /* Color themes: one light and one dark tone each */
+    :root, :root[data-accent="indigo"] { --a-light: #4f46e5; --a-dark: #8f8cff; }
+    :root[data-accent="teal"]     { --a-light: #0d8a7f; --a-dark: #34d1bf; }
+    :root[data-accent="rose"]     { --a-light: #d6336c; --a-dark: #ff7aa2; }
+    :root[data-accent="amber"]    { --a-light: #c26a06; --a-dark: #fbbf3c; }
+    :root[data-accent="forest"]   { --a-light: #2f8a3e; --a-dark: #6edb7f; }
+    :root[data-accent="ocean"]    { --a-light: #1f6fd1; --a-dark: #63a8ff; }
+    :root[data-accent="graphite"] { --a-light: #33333d; --a-dark: #d6d6e0; }
+
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.2s, color 0.2s;
+    }
+    button { font: inherit; color: inherit; }
+    .ic {
+      width: 18px; height: 18px;
+      fill: none; stroke: currentColor; stroke-width: 2;
+      stroke-linecap: round; stroke-linejoin: round;
+      flex-shrink: 0;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+      flex-shrink: 0;
+      flex-wrap: wrap;
+      row-gap: 8px;
+    }
+    .title-group { display: flex; align-items: center; gap: 6px; }
+    .title { font-weight: 700; font-size: 1rem; letter-spacing: 0.04em; margin-right: 6px; }
+    .icon-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      height: 34px; min-width: 34px; padding: 0 8px;
+      border: 1px solid var(--line); border-radius: 8px;
+      background: var(--surface); color: var(--muted);
+      cursor: pointer; text-decoration: none;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .icon-btn:hover { color: var(--text); background: var(--surface-2); }
+    .icon-btn:focus-visible, .seg button:focus-visible, .btn:focus-visible, .swatch:focus-visible {
+      outline: 2px solid var(--accent); outline-offset: 2px;
+    }
+    .icon-btn.text { padding: 0 12px; font-size: 0.88rem; font-weight: 600; color: var(--text); }
+    .spacer { flex: 1; }
+
+    .seg {
+      display: inline-flex;
+      background: var(--surface-2);
+      border-radius: 9px;
+      padding: 3px;
+      gap: 2px;
+    }
+    .seg button {
+      border: 0; background: transparent; color: var(--muted);
+      padding: 6px 12px; border-radius: 7px;
+      font-size: 0.85rem; font-weight: 600; cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .seg button:hover { color: var(--text); }
+    .seg button[aria-pressed="true"] {
+      background: var(--surface); color: var(--text);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    }
+    .seg small { font-weight: 500; color: var(--faint); margin-left: 4px; }
+
+    .stats { display: flex; align-items: center; gap: 14px; }
+    .timer {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-variant-numeric: tabular-nums; color: var(--muted); font-size: 0.92rem; min-width: 62px;
+    }
+    .lives { display: inline-flex; gap: 4px; }
+    .heart {
+      width: 20px; height: 20px; color: var(--danger);
+      fill: currentColor; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round;
+      transition: color 0.2s, transform 0.2s;
+    }
+    .heart.lost { color: var(--faint); fill: none; }
+    .heart.pop { animation: heartLoss 0.5s ease; }
+    @keyframes heartLoss {
+      0% { transform: scale(1); } 30% { transform: scale(1.35); } 100% { transform: scale(1); }
+    }
+
+    /* Palette popover */
+    .pop-wrap { position: relative; }
+    .popover {
+      position: absolute; right: 0; top: calc(100% + 8px);
+      background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+      box-shadow: var(--shadow); padding: 12px; z-index: 30;
+      display: none; width: 212px;
+    }
+    .popover.open { display: block; }
+    .popover h3 { margin: 0 0 10px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+    .swatches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .swatch {
+      display: flex; flex-direction: column; align-items: center; gap: 5px;
+      border: 0; background: none; padding: 0; cursor: pointer; font-size: 0.7rem; color: var(--muted);
+    }
+    .swatch span.dot {
+      width: 34px; height: 34px; border-radius: 9px; background: var(--sw);
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
+      display: flex; align-items: center; justify-content: center; color: #fff;
+    }
+    .swatch[aria-checked="true"] span.dot { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--sw); }
+    .swatch[aria-checked="true"] { color: var(--text); }
+
+    /* ── Board ── */
+    main {
+      flex: 1; min-height: 0; min-width: 0; overflow: auto;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; justify-content: safe center;
+      padding: 16px; gap: 18px;
+    }
+    .board {
+      display: grid;
+      grid-template-columns: auto auto;
+      grid-template-rows: auto auto;
+      user-select: none; -webkit-user-select: none;
+      touch-action: none;
+      font-variant-numeric: tabular-nums;
+    }
+    .colclues { display: flex; padding-left: 2px; align-items: flex-end; }
+    .rowclues { display: flex; flex-direction: column; padding-top: 2px; align-items: stretch; }
+    .colclue {
+      width: var(--size);
+      display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+      padding: 4px 0 6px;
+      border-radius: 6px 6px 0 0;
+      font-size: calc(var(--size) * 0.44); font-weight: 650; line-height: 1.22;
+      transition: background 0.1s, opacity 0.2s;
+    }
+    .rowclue {
+      height: var(--size);
+      display: flex; justify-content: flex-end; align-items: center; gap: calc(var(--size) * 0.2);
+      padding: 0 8px 0 6px;
+      border-radius: 6px 0 0 6px;
+      font-size: calc(var(--size) * 0.44); font-weight: 650;
+      transition: background 0.1s, opacity 0.2s;
+    }
+    .rowclue span { min-width: calc(var(--size) * 0.3); text-align: center; }
+    .colclue.hl, .rowclue.hl { background: var(--hl-strong); color: var(--text); }
+    .colclue.done, .rowclue.done { opacity: 0.32; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(var(--n), var(--size));
+      grid-auto-rows: var(--size);
+      border: 2px solid var(--line-strong);
+      border-radius: 4px;
+      background: var(--cell);
+      overflow: hidden;
+    }
+    .cell {
+      position: relative;
+      background: var(--cell);
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      cursor: pointer;
+      transition: background 0.08s;
+    }
+    .cell.br { border-right: 2px solid var(--line-strong); }
+    .cell.bb { border-bottom: 2px solid var(--line-strong); }
+    .cell.er { border-right: 0; }
+    .cell.eb { border-bottom: 0; }
+    .cell.hl { background: var(--hl); }
+    .cell.cursor { box-shadow: inset 0 0 0 2px var(--accent); z-index: 1; }
+
+    .cell.f::before {
+      content: ""; position: absolute; inset: 0;
+      background: var(--accent);
+      animation: pop 0.14s ease-out;
+    }
+    @keyframes pop { from { transform: scale(0.55); opacity: 0.4; } to { transform: scale(1); opacity: 1; } }
+
+    .cell.x::before, .cell.x::after {
+      content: ""; position: absolute; left: 50%; top: 50%;
+      width: 56%; height: 2px; border-radius: 2px;
+      background: var(--cross);
+      transform: translate(-50%, -50%) rotate(45deg);
+      animation: fadeIn 0.14s ease-out;
+    }
+    .cell.x::after { transform: translate(-50%, -50%) rotate(-45deg); }
+    .cell.x.auto::before, .cell.x.auto::after { opacity: 0.55; }
+    @keyframes fadeIn { from { opacity: 0; } }
+
+    /* Mistake highlight: shown briefly, then fades back to a normal mark. */
+    .cell.x { transition: background 0.5s; }
+    .cell.x::before, .cell.x::after { transition: background 0.5s; }
+    .cell.m.x { background: color-mix(in srgb, var(--danger) 14%, var(--cell)); }
+    .cell.m.x::before, .cell.m.x::after { background: var(--danger); opacity: 1; }
+    .cell.f::after {
+      content: ""; position: absolute; inset: 0;
+      box-shadow: inset 0 0 0 2px var(--danger), inset 0 0 0 4px var(--cell);
+      opacity: 0; transition: opacity 0.5s;
+    }
+    .cell.m.f::after { opacity: 1; }
+    .cell.m { animation: shake 0.32s ease; }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); }
+    }
+
+    /* Revealed after a loss: cells the player had not found */
+    .cell.rev::before {
+      content: ""; position: absolute; inset: 0;
+      background: color-mix(in srgb, var(--accent) 35%, transparent);
+    }
+    .board.over .cell { cursor: default; }
+    .board.won .cell.x::before, .board.won .cell.x::after { opacity: 0; transition: opacity 0.6s; }
+    .board.won .cell { border-color: transparent; transition: border-color 0.6s; }
+    .board.won .grid { border-color: transparent; transition: border-color 0.6s; }
+    .board.won .cell.f::before { animation: none; }
+
+    /* ── Mode toggle ── */
+    .controls { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .mode {
+      position: relative; display: inline-flex; align-items: stretch;
+      width: 124px; height: 50px; padding: 4px; border: 0; border-radius: 25px;
+      background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line);
+      cursor: pointer;
+    }
+    .mode:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .mode .knob {
+      position: absolute; top: 4px; left: 4px; bottom: 4px; width: calc(50% - 4px);
+      border-radius: 21px; background: var(--accent);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.22);
+      transition: transform 0.22s cubic-bezier(.3,.7,.4,1);
+    }
+    .mode[aria-checked="true"] .knob { transform: translateX(100%); }
+    .mode .side {
+      position: relative; z-index: 1; flex: 1;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--muted); transition: color 0.2s;
+    }
+    .mode .side .ic { width: 22px; height: 22px; }
+    .mode[aria-checked="false"] .side.fill,
+    .mode[aria-checked="true"] .side.cross { color: var(--accent-ink); }
+    .hint { font-size: 0.78rem; color: var(--faint); text-align: center; }
+    .hint kbd {
+      font-family: inherit; font-size: 0.72rem; padding: 1px 5px; border-radius: 4px;
+      border: 1px solid var(--line); background: var(--surface); color: var(--muted);
+    }
+    @media (hover: none) { .hint.kb { display: none; } }
+
+    /* ── Result dialog ── */
+    .overlay {
+      position: fixed; inset: 0; z-index: 50;
+      display: flex; align-items: center; justify-content: center; padding: 16px;
+      background: color-mix(in srgb, var(--bg) 55%, transparent);
+      backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+      opacity: 0; pointer-events: none; transition: opacity 0.25s;
+    }
+    .overlay.open { opacity: 1; pointer-events: auto; }
+    .card {
+      background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+      box-shadow: var(--shadow); padding: 24px; width: min(380px, 100%); text-align: center;
+      transform: translateY(8px) scale(0.98); transition: transform 0.25s;
+    }
+    .overlay.open .card { transform: none; }
+    .card .badge {
+      width: 52px; height: 52px; border-radius: 14px; margin: 0 auto 12px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--hl-strong); color: var(--accent);
+    }
+    .card .badge .ic { width: 28px; height: 28px; }
+    .card.lose .badge { background: color-mix(in srgb, var(--danger) 14%, var(--surface)); color: var(--danger); }
+    .card h2 { margin: 0 0 6px; font-size: 1.3rem; }
+    .card p { margin: 0 0 18px; color: var(--muted); font-size: 0.92rem; }
+    .result-stats { display: flex; justify-content: center; gap: 28px; margin-bottom: 20px; }
+    .result-stats div { display: flex; flex-direction: column; gap: 2px; }
+    .result-stats b { font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+    .result-stats span { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+    .card .actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      padding: 10px 16px; border-radius: 10px; border: 1px solid var(--line);
+      background: var(--surface); font-weight: 600; font-size: 0.9rem; cursor: pointer;
+      transition: background 0.15s, filter 0.15s;
+    }
+    .btn:hover { background: var(--surface-2); }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+    .btn.primary:hover { filter: brightness(1.08); background: var(--accent); }
+
+    .banner {
+      display: none; align-items: center; gap: 10px;
+      font-size: 0.88rem; color: var(--muted);
+    }
+    .banner.show { display: flex; }
+
+    @media (max-width: 640px) {
+      header { padding: 8px 12px; }
+      .seg small { display: none; }
+      .seg button { padding: 6px 10px; }
+      .icon-btn.text .lbl { display: none; }
+      .icon-btn.text { padding: 0 8px; }
+      main { padding: 12px 16px; gap: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></symbol>
+      <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></symbol>
+      <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.8 1.8-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"/><circle cx="7.5" cy="11.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="10.5" cy="7.5" r="1.2" fill="currentColor" stroke="none"/><circle cx="15.5" cy="7.8" r="1.2" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+      <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.6 7.6 3.8 4 7.4 4c2 0 3.5 1.1 4.6 2.6C13.1 5.1 14.6 4 16.6 4c3.6 0 5.8 3.6 4.6 7.1-1.7 4.8-9.2 9.4-9.2 9.4z"/></symbol>
+      <symbol id="i-square" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke-width="2.6"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" stroke-width="2.4"/></symbol>
+      <symbol id="i-broken" viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.6 7.6 3.8 4 7.4 4c2 0 3.5 1.1 4.6 2.6l-1.5 3.4 3 2-2 3.5 3-3.5-3-2 1.5-3.4C14.1 5.1 15.6 4 16.6 4c3.6 0 5.8 3.6 4.6 7.1-1.7 4.8-9.2 9.4-9.2 9.4z"/></symbol>
+      <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+    </defs>
+  </svg>
+
+  <header>
+    <div class="title-group">
+      <a href="/" class="icon-btn" title="Home" aria-label="Home"><svg class="ic"><use href="#i-back"/></svg></a>
+      <span class="title">Nonogram</span>
+    </div>
+    <div class="seg" id="difficulty" role="group" aria-label="Difficulty">
+      <button data-diff="easy">Easy<small>5×5</small></button>
+      <button data-diff="medium">Medium<small>10×10</small></button>
+      <button data-diff="hard">Hard<small>15×15</small></button>
+    </div>
+    <div class="spacer"></div>
+    <div class="stats">
+      <span class="timer" title="Time"><svg class="ic"><use href="#i-clock"/></svg><span id="time">0:00</span></span>
+      <span class="lives" id="lives" aria-label="Lives remaining"></span>
+    </div>
+    <div class="pop-wrap">
+      <button class="icon-btn" id="paletteBtn" title="Color theme" aria-label="Color theme" aria-haspopup="true" aria-expanded="false"><svg class="ic"><use href="#i-palette"/></svg></button>
+      <div class="popover" id="palette" role="radiogroup" aria-label="Color theme">
+        <h3>Color theme</h3>
+        <div class="swatches" id="swatches"></div>
+      </div>
+    </div>
+    <button class="icon-btn" id="schemeBtn" title="Toggle light / dark" aria-label="Toggle light or dark mode"><svg class="ic"><use id="schemeIcon" href="#i-moon"/></svg></button>
+    <button class="icon-btn text" id="newBtn" title="New puzzle"><svg class="ic"><use href="#i-refresh"/></svg><span class="lbl">New</span></button>
+  </header>
+
+  <main id="main">
+    <div class="board" id="board">
+      <div class="corner"></div>
+      <div class="colclues" id="colclues"></div>
+      <div class="rowclues" id="rowclues"></div>
+      <div class="grid" id="grid"></div>
+    </div>
+
+    <div class="controls" id="controls">
+      <div class="banner" id="banner">
+        <span id="bannerText"></span>
+        <button class="btn primary" id="bannerNew">New puzzle</button>
+      </div>
+      <button class="mode" id="modeWrap" role="switch" aria-checked="false" aria-label="Cross mode" title="Fill or cross mode (M)">
+        <span class="knob"></span>
+        <span class="side fill"><svg class="ic"><use href="#i-square"/></svg></span>
+        <span class="side cross"><svg class="ic"><use href="#i-x"/></svg></span>
+      </button>
+      <div class="hint kb">Drag to mark a line. Right-click uses the other mode. Keys: arrows, <kbd>Space</kbd> mark, <kbd>M</kbd> switch mode</div>
+    </div>
+  </main>
+
+  <div class="overlay" id="overlay" aria-hidden="true">
+    <div class="card" id="card" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
+      <div class="badge"><svg class="ic"><use id="resultIcon" href="#i-check"/></svg></div>
+      <h2 id="resultTitle">Solved</h2>
+      <p id="resultText"></p>
+      <div class="result-stats">
+        <div><b id="statTime">0:00</b><span>Time</span></div>
+        <div><b id="statMistakes">0</b><span>Mistakes</span></div>
+        <div><b id="statSize">5×5</b><span>Board</span></div>
+      </div>
+      <div class="actions" id="resultActions"></div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    'use strict';
+
+    // ── Puzzle generation ─────────────────────────────────────────
+    // Boards are random noise, kept only if a pure line-by-line solver can
+    // finish them. That guarantees a unique solution reachable without guessing,
+    // which matters because every mark is checked against that solution.
+
+    const DIFFS = {
+      easy:   { n: 5,  density: 0.62, label: 'Easy' },
+      medium: { n: 10, density: 0.57, label: 'Medium' },
+      hard:   { n: 15, density: 0.53, label: 'Hard' },
+    };
+    const MAX_LIVES = 3;
+    const ACCENTS = [
+      ['indigo', 'Indigo'], ['ocean', 'Ocean'], ['teal', 'Teal'], ['forest', 'Forest'],
+      ['amber', 'Amber'], ['rose', 'Rose'], ['graphite', 'Graphite'],
+    ];
+
+    function clueOf(line) {
+      const out = []; let run = 0;
+      for (const v of line) { if (v) run++; else if (run) { out.push(run); run = 0; } }
+      if (run) out.push(run);
+      return out;
+    }
+
+    // Returns the cells forced by one clue given current knowledge
+    // (-1 unknown, 0 empty, 1 filled), or null on contradiction.
+    function solveLine(clue, cells) {
+      const n = cells.length, k = clue.length, W = k + 1;
+      const zeros = new Int32Array(n + 1);
+      for (let i = 0; i < n; i++) zeros[i + 1] = zeros[i] + (cells[i] === 0 ? 1 : 0);
+      const canBlock = (i, len) => i + len <= n && zeros[i + len] - zeros[i] === 0 && (i + len === n || cells[i + len] !== 1);
+      const S = new Uint8Array((n + 2) * W);
+      S[n * W + k] = 1; S[(n + 1) * W + k] = 1;
+      for (let i = n - 1; i >= 0; i--) for (let j = k; j >= 0; j--) {
+        let ok = cells[i] !== 1 && S[(i + 1) * W + j];
+        if (!ok && j < k && canBlock(i, clue[j])) ok = S[(i + clue[j] + 1) * W + j + 1];
+        S[i * W + j] = ok ? 1 : 0;
+      }
+      if (!S[0]) return null;
+      const R = new Uint8Array((n + 2) * W), cf = new Uint8Array(n), ce = new Uint8Array(n);
+      R[0] = 1;
+      for (let i = 0; i < n; i++) for (let j = 0; j <= k; j++) {
+        if (!R[i * W + j] || !S[i * W + j]) continue;
+        if (cells[i] !== 1 && S[(i + 1) * W + j]) { ce[i] = 1; R[(i + 1) * W + j] = 1; }
+        if (j < k && canBlock(i, clue[j])) {
+          const e = i + clue[j];
+          if (S[(e + 1) * W + j + 1]) {
+            for (let t = i; t < e; t++) cf[t] = 1;
+            if (e < n) ce[e] = 1;
+            R[(e + 1) * W + j + 1] = 1;
+          }
+        }
+      }
+      const out = new Int8Array(n);
+      for (let i = 0; i < n; i++) out[i] = cf[i] && !ce[i] ? 1 : ce[i] && !cf[i] ? 0 : -1;
+      return out;
+    }
+
+    function lineSolvable(n, rows, cols) {
+      const g = new Int8Array(n * n).fill(-1);
+      const dirtyR = new Uint8Array(n).fill(1), dirtyC = new Uint8Array(n).fill(1);
+      let progress = true, unknown = n * n;
+      while (progress) {
+        progress = false;
+        for (let r = 0; r < n; r++) {
+          if (!dirtyR[r]) continue; dirtyR[r] = 0;
+          const line = g.slice(r * n, r * n + n), res = solveLine(rows[r], line);
+          if (!res) return false;
+          for (let c = 0; c < n; c++) if (line[c] === -1 && res[c] !== -1) { g[r * n + c] = res[c]; dirtyC[c] = 1; unknown--; progress = true; }
+        }
+        for (let c = 0; c < n; c++) {
+          if (!dirtyC[c]) continue; dirtyC[c] = 0;
+          const line = new Int8Array(n);
+          for (let r = 0; r < n; r++) line[r] = g[r * n + c];
+          const res = solveLine(cols[c], line);
+          if (!res) return false;
+          for (let r = 0; r < n; r++) if (line[r] === -1 && res[r] !== -1) { g[r * n + c] = res[r]; dirtyR[r] = 1; unknown--; progress = true; }
+        }
+      }
+      return unknown === 0;
+    }
+
+    function cluesFor(n, sol) {
+      const rows = [], cols = [];
+      for (let r = 0; r < n; r++) rows.push(clueOf(sol.slice(r * n, r * n + n)));
+      for (let c = 0; c < n; c++) {
+        const l = [];
+        for (let r = 0; r < n; r++) l.push(sol[r * n + c]);
+        cols.push(clueOf(l));
+      }
+      return { rows, cols };
+    }
+
+    function generate(diff) {
+      const { n, density } = DIFFS[diff];
+      let last = null;
+      for (let attempt = 0; attempt < 2000; attempt++) {
+        const sol = new Uint8Array(n * n);
+        for (let i = 0; i < sol.length; i++) sol[i] = Math.random() < density ? 1 : 0;
+        const filled = sol.reduce((a, b) => a + b, 0);
+        if (filled === 0 || filled === n * n) continue;
+        const clues = cluesFor(n, sol);
+        last = { sol, clues };
+        if (lineSolvable(n, clues.rows, clues.cols)) return last;
+      }
+      return last;
+    }
+
+    // ── Storage ───────────────────────────────────────────────────
+    function load(key, fallback) {
+      try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; }
+    }
+    function save(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
+    }
+
+    const settings = Object.assign({ accent: 'indigo', scheme: null, difficulty: 'easy', mode: 'fill' }, load('nonogram.settings', {}));
+    if (!DIFFS[settings.difficulty]) settings.difficulty = 'easy';
+    const saveSettings = () => save('nonogram.settings', settings);
+
+    // ── Game state ────────────────────────────────────────────────
+    // state per cell: 0 unknown, 1 filled, 2 crossed
+    let game = null;
+    let cellEls = [], rowClueEls = [], colClueEls = [];
+
+    const $ = (id) => document.getElementById(id);
+    const els = {
+      board: $('board'), grid: $('grid'), rowclues: $('rowclues'), colclues: $('colclues'),
+      time: $('time'), lives: $('lives'), main: $('main'), controls: $('controls'),
+      overlay: $('overlay'), card: $('card'), banner: $('banner'), bannerText: $('bannerText'),
+    };
+
+    function newGame(diff, reuse) {
+      const d = diff || settings.difficulty;
+      const n = DIFFS[d].n;
+      const puzzle = reuse || generate(d);
+      game = {
+        diff: d, n,
+        sol: Array.from(puzzle.sol),
+        clues: puzzle.clues || cluesFor(n, puzzle.sol),
+        state: new Array(n * n).fill(0),
+        mistakes: [],
+        autoX: [],
+        lives: MAX_LIVES,
+        elapsed: 0,
+        started: false,
+        status: 'playing',
+      };
+      cursor = null;
+      closeResult();
+      render();
+      persist();
+    }
+
+    function restartSame() {
+      newGame(game.diff, { sol: game.sol, clues: game.clues });
+    }
+
+    function persist() {
+      if (!game) return;
+      save('nonogram.game', {
+        diff: game.diff, sol: game.sol.join(''), state: game.state.join(''),
+        mistakes: game.mistakes, autoX: game.autoX, lives: game.lives,
+        elapsed: currentElapsed(), started: game.started, status: game.status,
+      });
+    }
+
+    function restore() {
+      const s = load('nonogram.game', null);
+      if (!s || !DIFFS[s.diff]) return false;
+      const n = DIFFS[s.diff].n;
+      if (typeof s.sol !== 'string' || s.sol.length !== n * n) return false;
+      const sol = s.sol.split('').map(Number);
+      game = {
+        diff: s.diff, n, sol, clues: cluesFor(n, sol),
+        state: s.state.split('').map(Number),
+        mistakes: s.mistakes || [], autoX: s.autoX || [],
+        lives: s.lives, elapsed: s.elapsed || 0, started: !!s.started, status: s.status || 'playing',
+      };
+      settings.difficulty = s.diff;
+      return true;
+    }
+
+    // ── Timer ─────────────────────────────────────────────────────
+    let tickStart = null, tickHandle = null;
+    function currentElapsed() {
+      return game.elapsed + (tickStart !== null ? performance.now() - tickStart : 0);
+    }
+    function startClock() {
+      if (tickStart !== null || game.status !== 'playing' || document.hidden) return;
+      tickStart = performance.now();
+      tickHandle = setInterval(updateTime, 250);
+    }
+    function stopClock() {
+      if (tickStart === null) return;
+      game.elapsed += performance.now() - tickStart;
+      tickStart = null;
+      clearInterval(tickHandle);
+      updateTime();
+    }
+    function fmt(ms) {
+      const s = Math.floor(ms / 1000), m = Math.floor(s / 60), h = Math.floor(m / 60);
+      const ss = String(s % 60).padStart(2, '0');
+      return h ? h + ':' + String(m % 60).padStart(2, '0') + ':' + ss : m + ':' + ss;
+    }
+    function updateTime() { els.time.textContent = fmt(currentElapsed()); }
+    document.addEventListener('visibilitychange', () => {
+      if (!game) return;
+      if (document.hidden) { stopClock(); persist(); }
+      else if (game.started) startClock();
+    });
+    window.addEventListener('pagehide', persist);
+
+    // ── Rendering ─────────────────────────────────────────────────
+    function render() {
+      const { n, clues } = game;
+      els.board.style.setProperty('--n', n);
+      els.grid.innerHTML = '';
+      els.rowclues.innerHTML = '';
+      els.colclues.innerHTML = '';
+      cellEls = []; rowClueEls = []; colClueEls = [];
+
+      for (let c = 0; c < n; c++) {
+        const el = document.createElement('div');
+        el.className = 'colclue';
+        const nums = clues.cols[c].length ? clues.cols[c] : [0];
+        el.innerHTML = nums.map((v) => '<span>' + v + '</span>').join('');
+        els.colclues.appendChild(el); colClueEls.push(el);
+      }
+      for (let r = 0; r < n; r++) {
+        const el = document.createElement('div');
+        el.className = 'rowclue';
+        const nums = clues.rows[r].length ? clues.rows[r] : [0];
+        el.innerHTML = nums.map((v) => '<span>' + v + '</span>').join('');
+        els.rowclues.appendChild(el); rowClueEls.push(el);
+      }
+      const frag = document.createDocumentFragment();
+      for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+        const el = document.createElement('div');
+        let cls = 'cell';
+        if (c === n - 1) cls += ' er'; else if ((c + 1) % 5 === 0) cls += ' br';
+        if (r === n - 1) cls += ' eb'; else if ((r + 1) % 5 === 0) cls += ' bb';
+        el.className = cls;
+        el.dataset.i = r * n + c;
+        frag.appendChild(el); cellEls.push(el);
+      }
+      els.grid.appendChild(frag);
+
+      for (let i = 0; i < n * n; i++) paintCell(i);
+      for (let r = 0; r < n; r++) updateLineDone('r', r);
+      for (let c = 0; c < n; c++) updateLineDone('c', c);
+
+      document.querySelectorAll('#difficulty button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.diff === game.diff)));
+      renderLives(false);
+      tickStart = null; clearInterval(tickHandle);
+      updateTime();
+      els.board.classList.toggle('over', game.status !== 'playing');
+      els.board.classList.toggle('won', game.status === 'won');
+      if (game.status === 'lost') revealSolution();
+      updateBanner();
+      fitBoard();
+      if (game.started && game.status === 'playing') startClock();
+    }
+
+    function paintCell(i) {
+      const el = cellEls[i], s = game.state[i];
+      el.classList.toggle('f', s === 1);
+      el.classList.toggle('x', s === 2);
+      el.classList.toggle('auto', game.autoX.includes(i));
+    }
+
+    // Red highlight lasts 3s in total: 2.5s held, then a 0.5s fade.
+    function flashMistake(el) {
+      el.classList.add('m');
+      setTimeout(() => el.classList.remove('m'), 2500);
+    }
+
+    function renderLives(animateLoss) {
+      let html = '';
+      for (let i = 0; i < MAX_LIVES; i++) {
+        const lost = i >= game.lives;
+        const pop = animateLoss && i === game.lives;
+        html += '<svg class="heart' + (lost ? ' lost' : '') + (pop ? ' pop' : '') + '" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-heart"/></svg>';
+      }
+      els.lives.innerHTML = html;
+      els.lives.setAttribute('aria-label', game.lives + ' of ' + MAX_LIVES + ' lives remaining');
+    }
+
+    function lineIdx(kind, k) {
+      const n = game.n, out = [];
+      for (let t = 0; t < n; t++) out.push(kind === 'r' ? k * n + t : t * n + k);
+      return out;
+    }
+
+    function lineComplete(kind, k) {
+      return lineIdx(kind, k).every((i) => game.sol[i] !== 1 || game.state[i] === 1);
+    }
+
+    function updateLineDone(kind, k) {
+      const el = kind === 'r' ? rowClueEls[k] : colClueEls[k];
+      el.classList.toggle('done', lineComplete(kind, k));
+    }
+
+    // Fit the board to the space available. Board width and height are linear
+    // in --size (plus fixed padding), so measure at two sizes and solve.
+    function fitBoard() {
+      if (!game) return;
+      const b = els.board;
+      const measure = (s) => { b.style.setProperty('--size', s + 'px'); const r = b.getBoundingClientRect(); return [r.width, r.height]; };
+      const [w1, h1] = measure(20), [w2, h2] = measure(40);
+      const aw = (w2 - w1) / 20, bw = w1 - aw * 20;
+      const ah = (h2 - h1) / 20, bh = h1 - ah * 20;
+      const cs = getComputedStyle(els.main);
+      const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+      const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+      const availW = Math.min(els.main.clientWidth - padX, 960);
+      const availH = els.main.clientHeight - padY - els.controls.offsetHeight - parseFloat(cs.rowGap || 0);
+      const size = Math.floor(Math.min((availW - bw) / aw, (availH - bh) / ah));
+      b.style.setProperty('--size', Math.max(14, Math.min(56, size)) + 'px');
+    }
+    window.addEventListener('resize', fitBoard);
+
+    // ── Marking cells ─────────────────────────────────────────────
+    // Returns false if the action caused a mistake (ends the drag).
+    function applyAt(i, action) {
+      if (game.status !== 'playing' || game.state[i] !== 0) return true;
+      if (!game.started) { game.started = true; startClock(); }
+      const want = action === 'fill' ? 1 : 2;
+      const truth = game.sol[i] === 1 ? 1 : 2;
+      game.state[i] = truth;
+      const ok = want === truth;
+      if (!ok) {
+        game.mistakes.push(i);
+        game.lives--;
+        renderLives(true);
+      }
+      paintCell(i);
+      if (!ok) flashMistake(cellEls[i]);
+      afterChange(i);
+      if (!ok && game.lives <= 0) lose();
+      persist();
+      return ok;
+    }
+
+    function afterChange(i) {
+      const n = game.n, r = Math.floor(i / n), c = i % n;
+      for (const [kind, k] of [['r', r], ['c', c]]) {
+        if (lineComplete(kind, k)) {
+          for (const j of lineIdx(kind, k)) {
+            if (game.state[j] === 0) {
+              game.state[j] = 2;
+              game.autoX.push(j);
+              paintCell(j);
+              // A completed row may in turn complete crossing columns.
+              const jr = Math.floor(j / n), jc = j % n;
+              updateLineDone('r', jr); updateLineDone('c', jc);
+            }
+          }
+        }
+        updateLineDone(kind, k);
+      }
+      if (game.status === 'playing' && game.sol.every((v, j) => v !== 1 || game.state[j] === 1)) win();
+    }
+
+    function win() {
+      game.status = 'won';
+      stopClock();
+      for (let j = 0; j < game.state.length; j++) if (game.state[j] === 0) { game.state[j] = 2; paintCell(j); }
+      els.board.classList.add('over', 'won');
+      persist();
+      updateBanner();
+      setTimeout(() => showResult('won'), 650);
+    }
+
+    function lose() {
+      game.status = 'lost';
+      stopClock();
+      els.board.classList.add('over');
+      revealSolution();
+      persist();
+      updateBanner();
+      setTimeout(() => showResult('lost'), 450);
+    }
+
+    function revealSolution() {
+      for (let j = 0; j < game.sol.length; j++) {
+        cellEls[j].classList.toggle('rev', game.sol[j] === 1 && game.state[j] !== 1);
+      }
+    }
+
+    function updateBanner() {
+      const over = game.status !== 'playing';
+      els.banner.classList.toggle('show', over);
+      $('modeWrap').style.display = over ? 'none' : '';
+      els.bannerText.textContent = game.status === 'won' ? 'Solved in ' + fmt(currentElapsed()) : game.status === 'lost' ? 'Out of lives' : '';
+      fitBoard();
+    }
+
+    // ── Result dialog ─────────────────────────────────────────────
+    let lastFocus = null;
+    function showResult(kind) {
+      const won = kind === 'won';
+      els.card.className = 'card ' + (won ? 'win' : 'lose');
+      $('resultIcon').setAttribute('href', won ? '#i-check' : '#i-broken');
+      $('resultTitle').textContent = won ? 'Solved' : 'Out of lives';
+      $('resultText').textContent = won
+        ? (game.mistakes.length === 0 ? 'A clean solve, no mistakes.' : 'Puzzle complete.')
+        : 'The solution is shown on the board.';
+      $('statTime').textContent = fmt(currentElapsed());
+      $('statMistakes').textContent = game.mistakes.length;
+      $('statSize').textContent = game.n + '×' + game.n;
+      const actions = $('resultActions');
+      actions.innerHTML = '';
+      const mk = (label, cls, fn) => {
+        const b = document.createElement('button');
+        b.className = 'btn' + (cls ? ' ' + cls : '');
+        b.textContent = label;
+        b.addEventListener('click', fn);
+        actions.appendChild(b);
+        return b;
+      };
+      if (won) {
+        mk('View picture', '', closeResult);
+        mk('New puzzle', 'primary', () => newGame());
+      } else {
+        mk('View board', '', closeResult);
+        mk('Retry', '', restartSame);
+        mk('New puzzle', 'primary', () => newGame());
+      }
+      closePalette();
+      lastFocus = document.activeElement;
+      els.overlay.classList.add('open');
+      els.overlay.setAttribute('aria-hidden', 'false');
+      actions.lastChild.focus();
+    }
+    function closeResult() {
+      if (!els.overlay.classList.contains('open')) return;
+      els.overlay.classList.remove('open');
+      els.overlay.setAttribute('aria-hidden', 'true');
+      if (lastFocus && lastFocus.focus) lastFocus.focus();
+    }
+    els.overlay.addEventListener('click', (e) => { if (e.target === els.overlay) closeResult(); });
+
+    // ── Pointer input (click and drag along a line) ───────────────
+    let drag = null;
+    let cursor = null;
+
+    function cellFromPoint(x, y) {
+      const el = document.elementFromPoint(x, y);
+      return el && el.classList && el.classList.contains('cell') ? Number(el.dataset.i) : null;
+    }
+
+    function setHover(i) {
+      const n = game.n;
+      const r = i === null ? -1 : Math.floor(i / n), c = i === null ? -1 : i % n;
+      for (let j = 0; j < cellEls.length; j++) {
+        cellEls[j].classList.toggle('hl', Math.floor(j / n) === r || j % n === c);
+      }
+      rowClueEls.forEach((el, k) => el.classList.toggle('hl', k === r));
+      colClueEls.forEach((el, k) => el.classList.toggle('hl', k === c));
+    }
+
+    els.grid.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    els.grid.addEventListener('pointerdown', (e) => {
+      if (!e.target.classList.contains('cell') || game.status !== 'playing') return;
+      if (e.button !== 0 && e.button !== 2) return;
+      e.preventDefault();
+      const i = Number(e.target.dataset.i);
+      const base = settings.mode;
+      const action = e.button === 2 ? (base === 'fill' ? 'x' : 'fill') : base;
+      setCursor(null);
+      drag = { id: e.pointerId, start: i, last: i, axis: null, action };
+      els.grid.setPointerCapture(e.pointerId);
+      setHover(i);
+      if (!applyAt(i, action)) drag = null;
+    });
+
+    els.grid.addEventListener('pointermove', (e) => {
+      const i = cellFromPoint(e.clientX, e.clientY);
+      if (!drag || drag.id !== e.pointerId) {
+        if (e.pointerType === 'mouse') setHover(i);
+        return;
+      }
+      if (i === null || i === drag.last) return;
+      const n = game.n;
+      const sr = Math.floor(drag.start / n), sc = drag.start % n;
+      let r = Math.floor(i / n), c = i % n;
+      if (!drag.axis) {
+        if (r === sr && c !== sc) drag.axis = 'row';
+        else if (c === sc && r !== sr) drag.axis = 'col';
+        else drag.axis = Math.abs(c - sc) >= Math.abs(r - sr) ? 'row' : 'col';
+      }
+      if (drag.axis === 'row') r = sr; else c = sc;
+      const target = r * n + c;
+      if (target === drag.last) return;
+      // Walk every cell between the last one and the target so fast drags don't skip.
+      const lr = Math.floor(drag.last / n), lc = drag.last % n;
+      const steps = Math.max(Math.abs(r - lr), Math.abs(c - lc));
+      const dr = Math.sign(r - lr), dc = Math.sign(c - lc);
+      for (let s = 1; s <= steps; s++) {
+        const j = (lr + dr * s) * n + (lc + dc * s);
+        drag.last = j;
+        if (!applyAt(j, drag.action)) { drag = null; break; }
+      }
+      setHover(target);
+    });
+
+    const endDrag = (e) => {
+      if (drag && drag.id === e.pointerId) drag = null;
+      if (e.pointerType !== 'mouse') setHover(null);
+    };
+    els.grid.addEventListener('pointerup', endDrag);
+    els.grid.addEventListener('pointercancel', endDrag);
+    els.grid.addEventListener('pointerleave', (e) => { if (!drag && e.pointerType === 'mouse') setHover(null); });
+
+    // ── Keyboard ──────────────────────────────────────────────────
+    function setCursor(i) {
+      if (cursor !== null && cellEls[cursor]) cellEls[cursor].classList.remove('cursor');
+      cursor = i;
+      if (i !== null) {
+        cellEls[i].classList.add('cursor'); setHover(i);
+        // Keep Space from re-pressing whichever header button was last clicked.
+        if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === 'Escape') {
+        closeResult();
+        closePalette();
+        return;
+      }
+      if (els.overlay.classList.contains('open')) return;
+      const tag = (e.target.tagName || '').toLowerCase();
+      if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
+      if (e.key === 'm' || e.key === 'M') { setMode(settings.mode === 'fill' ? 'x' : 'fill'); return; }
+      if (game.status !== 'playing') return;
+      const n = game.n;
+      const moves = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
+      if (moves[e.key]) {
+        e.preventDefault();
+        if (cursor === null) { setCursor(0); return; }
+        const r = Math.min(n - 1, Math.max(0, Math.floor(cursor / n) + moves[e.key][0]));
+        const c = Math.min(n - 1, Math.max(0, cursor % n + moves[e.key][1]));
+        const next = r * n + c;
+        setCursor(next);
+        if (e.shiftKey) applyAt(next, settings.mode);
+        return;
+      }
+      if (cursor === null) return;
+      if (e.key === ' ' || e.key === 'Enter') {
+        if (tag === 'button') return;
+        e.preventDefault(); applyAt(cursor, settings.mode);
+      } else if (e.key === 'f' || e.key === 'F' || e.key === 'z' || e.key === 'Z') {
+        applyAt(cursor, 'fill');
+      } else if (e.key === 'x' || e.key === 'X') {
+        applyAt(cursor, 'x');
+      }
+    });
+
+    // ── Mode toggle ───────────────────────────────────────────────
+    function setMode(m) {
+      settings.mode = m;
+      saveSettings();
+      const x = m === 'x';
+      $('modeWrap').setAttribute('aria-checked', String(x));
+    }
+    // Clicking a half picks that mode; keyboard activation (no pointer position) toggles.
+    $('modeWrap').addEventListener('click', (e) => {
+      if (e.detail === 0) { setMode(settings.mode === 'fill' ? 'x' : 'fill'); return; }
+      const r = e.currentTarget.getBoundingClientRect();
+      setMode(e.clientX < r.left + r.width / 2 ? 'fill' : 'x');
+    });
+
+    // ── Theme controls ────────────────────────────────────────────
+    function applyScheme() {
+      const dark = document.documentElement.dataset.theme === 'dark';
+      $('schemeIcon').setAttribute('href', dark ? '#i-sun' : '#i-moon');
+      $('schemeBtn').title = dark ? 'Switch to light mode' : 'Switch to dark mode';
+    }
+    $('schemeBtn').addEventListener('click', () => {
+      const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+      document.documentElement.dataset.theme = next;
+      settings.scheme = next;
+      saveSettings();
+      applyScheme();
+    });
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+      if (settings.scheme) return;
+      document.documentElement.dataset.theme = e.matches ? 'dark' : 'light';
+      applyScheme();
+    });
+
+    const swatchWrap = $('swatches');
+    function renderSwatches() {
+      const dark = document.documentElement.dataset.theme === 'dark';
+      swatchWrap.innerHTML = '';
+      for (const [key, label] of ACCENTS) {
+        const b = document.createElement('button');
+        b.className = 'swatch';
+        b.setAttribute('role', 'radio');
+        b.setAttribute('aria-checked', String(settings.accent === key));
+        b.dataset.accent = key;
+        b.innerHTML = '<span class="dot"></span>' + label;
+        swatchWrap.appendChild(b);
+        // Read this accent's colors from the stylesheet so the CSS stays the single source.
+        b.querySelector('.dot').style.setProperty('--sw', accentColor(key, dark));
+        b.addEventListener('click', () => {
+          settings.accent = key;
+          document.documentElement.dataset.accent = key;
+          saveSettings();
+          swatchWrap.querySelectorAll('.swatch').forEach((s) => s.setAttribute('aria-checked', String(s.dataset.accent === key)));
+        });
+      }
+    }
+    function accentColor(key, dark) {
+      const root = document.documentElement, prev = root.dataset.accent;
+      root.dataset.accent = key;
+      const v = getComputedStyle(root).getPropertyValue(dark ? '--a-dark' : '--a-light').trim();
+      root.dataset.accent = prev;
+      return v;
+    }
+    function closePalette() {
+      $('palette').classList.remove('open');
+      $('paletteBtn').setAttribute('aria-expanded', 'false');
+    }
+    $('paletteBtn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = !$('palette').classList.contains('open');
+      if (open) renderSwatches();
+      $('palette').classList.toggle('open', open);
+      $('paletteBtn').setAttribute('aria-expanded', String(open));
+    });
+    document.addEventListener('click', (e) => { if (!e.target.closest('.pop-wrap')) closePalette(); });
+
+    // ── Header controls ───────────────────────────────────────────
+    document.querySelectorAll('#difficulty button').forEach((b) => {
+      b.addEventListener('click', () => {
+        settings.difficulty = b.dataset.diff;
+        saveSettings();
+        newGame(b.dataset.diff);
+      });
+    });
+    $('newBtn').addEventListener('click', () => newGame());
+    $('bannerNew').addEventListener('click', () => newGame());
+
+    // ── Boot ──────────────────────────────────────────────────────
+    applyScheme();
+    setMode(settings.mode === 'x' ? 'x' : 'fill');
+    if (restore()) render(); else newGame();
+  })();
+  </script>
+</body>
+</html>
