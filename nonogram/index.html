@@ -342,11 +342,11 @@
       isolation: isolate;
       transition: background-color 0.6s;
     }
-    /* Once solved, the gutters fade to the empty-square color so the empty
-       squares merge into one plain ground and only the picture stands out.
+    /* Once solved, the crossed squares fade to the gutter color so they
+       merge into one plain ground and only the picture stands out.
        Hover highlights would bring the separate squares back, so they stop. */
-    .board.won .grid { background-color: var(--cell); }
-    .board.won .cell.hl:not(.f) { background-color: var(--cell); }
+    .board.won .grid { background-color: var(--gutter); }
+    .board.won .cell.hl:not(.f) { background-color: var(--gutter); }
     /* Gutters every 5 cells are drawn darker by overlays above the empty
        squares but below fills, so joined fills still read as one shape.
        ::before holds the vertical lanes and ::after the horizontal ones.
@@ -503,8 +503,7 @@
     }
     .board.over .cell { cursor: default; }
     .board.won .cell.x::before, .board.won .cell.x::after { opacity: 0; transition: opacity 0.6s; }
-    .board.won .cell.x .piece { fill: var(--cell); transition: fill 0.6s; }
-    .board.won .cell.f .piece { fill: var(--gutter); transition: fill 0.6s; }
+    .board.won .cell.x .piece, .board.won .cell.x.hl .piece { fill: var(--gutter); transition: fill 0.6s; }
 
     /* ── Mode toggle ── */
     /* The end-of-game banner takes the mode switch's place at the same
