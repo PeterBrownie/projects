@@ -884,7 +884,8 @@
       };
       cursor = null;
       clearTimeout(resultTimer);
-      closeResult();
+      // Opened a moment ago: snap it shut instead of flashing a fade-out.
+      closeResult(performance.now() - resultShownAt < RESULT_GRACE);
       render();
       persist();
     }
@@ -898,6 +899,8 @@
     // save right away.
     let persistTimer = 0;
     let resultTimer = 0;
+    let resultShownAt = -1e9;
+    const RESULT_GRACE = 350;
     function persistSoon() { if (!persistTimer) persistTimer = setTimeout(persist, 400); }
     function persist() {
       clearTimeout(persistTimer); persistTimer = 0;
@@ -1609,26 +1612,35 @@
         return b;
       };
       if (won) {
-        mk('View picture', '', closeResult);
+        mk('View picture', '', () => closeResult());
         mk('New puzzle', 'primary', () => newGame());
       } else {
-        mk('View board', '', closeResult);
+        mk('View board', '', () => closeResult());
         mk('Retry', '', restartSame);
         mk('New puzzle', 'primary', () => newGame());
       }
       closePalette();
       lastFocus = document.activeElement;
+      resultShownAt = performance.now();
       els.overlay.classList.add('open');
       els.overlay.setAttribute('aria-hidden', 'false');
       actions.lastChild.focus();
     }
-    function closeResult() {
+    function closeResult(instant) {
       if (!els.overlay.classList.contains('open')) return;
+      if (instant) els.overlay.style.transition = els.card.style.transition = 'none';
       els.overlay.classList.remove('open');
+      if (instant) { void els.overlay.offsetWidth; els.overlay.style.transition = els.card.style.transition = ''; }
       els.overlay.setAttribute('aria-hidden', 'true');
       if (lastFocus && lastFocus.focus) lastFocus.focus();
     }
-    els.overlay.addEventListener('click', (e) => { if (e.target === els.overlay) closeResult(); });
+    // A click aimed at a new-board button that the card covered just before it landed still counts.
+    const hits = (b, e) => { const r = b.getBoundingClientRect(); return r.width > 0 && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom; };
+    els.overlay.addEventListener('click', (e) => {
+      if (e.target !== els.overlay) return;
+      if (performance.now() - resultShownAt < RESULT_GRACE && [$('newBtn'), $('bannerNew')].some((b) => hits(b, e))) newGame();
+      else closeResult();
+    });
 
     // ── Pointer input (click and drag along a line) ───────────────
     let drag = null;
@@ -2051,6 +2063,8 @@
     });
     $('newBtn').addEventListener('click', () => newGame());
     $('bannerNew').addEventListener('click', () => newGame());
+    // Pressed down as the result is about to open: the overlay would swallow the release, so cancel it now.
+    for (const id of ['newBtn', 'bannerNew']) $(id).addEventListener('pointerdown', () => clearTimeout(resultTimer));
 
     // ── Boot ──────────────────────────────────────────────────────
     applyScheme();
