@@ -91,15 +91,25 @@
     /* Color themes: one light and one dark tone each */
     /* Not limited to :root, so a hidden probe element can read any preset.
        A custom color is set inline on <html> and overrides these. */
-    :root, [data-accent="indigo"] { --a-light: #4f46e5; --a-dark: #8f8cff; }
-    [data-accent="teal"]     { --a-light: #0d8a7f; --a-dark: #34d1bf; }
-    [data-accent="rose"]     { --a-light: #d6336c; --a-dark: #ff7aa2; }
-    [data-accent="amber"]    { --a-light: #c26a06; --a-dark: #fbbf3c; }
-    [data-accent="forest"]   { --a-light: #2f8a3e; --a-dark: #6edb7f; }
-    [data-accent="ocean"]    { --a-light: #1f6fd1; --a-dark: #63a8ff; }
-    [data-accent="graphite"] { --a-light: #33333d; --a-dark: #d6d6e0; }
+    :root, [data-accent="indigo"] { --a-light: #4f46e5; --a-dark: #7c79e6; }
+    [data-accent="teal"]     { --a-light: #0d8a7f; --a-dark: #2db3a4; }
+    [data-accent="rose"]     { --a-light: #d6336c; --a-dark: #e06d90; }
+    [data-accent="amber"]    { --a-light: #c26a06; --a-dark: #dba73d; }
+    [data-accent="forest"]   { --a-light: #2f8a3e; --a-dark: #5fbd6f; }
+    [data-accent="ocean"]    { --a-light: #1f6fd1; --a-dark: #5893e0; }
+    [data-accent="graphite"] { --a-light: #33333d; --a-dark: #b9b9c6; }
 
-    html, body { height: 100%; }
+    /* manipulation turns off double-tap zoom (quick taps on the mode switch
+       or other buttons zoomed the page in Safari) but keeps pinch zoom.
+       Descendants can only narrow it, so on html it covers the whole page;
+       it is repeated on the tappable things and the controls area because
+       older iOS Safari only checked the tapped element itself. Quick taps
+       there also shouldn't start a text selection. */
+    html, body { height: 100%; touch-action: manipulation; }
+    button, a, label, input, select, [role="switch"], .controls, .controls * {
+      touch-action: manipulation;
+    }
+    .controls, button { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
     body {
       margin: 0;
       background: var(--bg);
@@ -393,7 +403,13 @@
       display: none; overflow: visible; pointer-events: none;
       fill: var(--accent);
     }
-    .cell.f .piece { display: block; }
+    .cell.f .piece, .cell.x .piece { display: block; }
+    /* A crossed square fills in the same way, as a plain square in the
+       gutter color, so it reads as part of the ground between squares with
+       its X on top. Its tile goes transparent once covered, like a fill's. */
+    .cell.x:not(.growing) { background-color: transparent; }
+    .cell.x .piece { fill: var(--gutter); transition: fill 0.08s; }
+    .cell.x.hl .piece { fill: color-mix(in srgb, var(--accent) 12%, var(--gutter)); }
     /* Completed-line wave: a lighter color sweeps along the line outward from
        the cell just placed, with no change in size so joined shapes stay
        whole. Fills lighten; other tiles take an accent tint. The light on
@@ -403,6 +419,8 @@
        animation. */
     .cell.wave:not(.f):not(.m):not(.mfade) { animation: waveTile 0.45s ease var(--wd, 0ms) 1; }
     @keyframes waveTile { 35% { background-color: var(--hl-strong); } }
+    .cell.wave.x:not(.m):not(.mfade) .piece { animation: waveCross 0.45s ease var(--wd, 0ms) 1; }
+    @keyframes waveCross { 35% { fill: color-mix(in srgb, var(--accent) 22%, var(--gutter)); } }
     .waves {
       position: absolute; left: var(--edge); top: var(--edge); z-index: 3;
       width: calc(var(--size) * var(--n)); height: calc(var(--size) * var(--n));
@@ -416,6 +434,7 @@
       background: var(--cross);
       transform: translate(-50%, -50%) rotate(45deg);
       animation: fadeIn 0.14s ease-out;
+      z-index: 1; /* above the square's piece */
     }
     .cell.x::after { transform: translate(-50%, -50%) rotate(-45deg); }
     @keyframes fadeIn { from { opacity: 0; } }
@@ -425,7 +444,8 @@
        fill never has a red element to show. Cells use background-color, not
        the shorthand, so the content-box clip stays in place. */
     .cell.m, .cell.mfade { z-index: 4; }
-    .cell.m.x, .cell.mfade.x { background-color: color-mix(in srgb, var(--danger) 14%, var(--cell)); }
+    .cell.m.x .piece { fill: color-mix(in srgb, var(--danger) 22%, var(--gutter)); transition: none; }
+    .cell.mfade.x .piece { transition: fill 0.5s ease; }
     .cell.m.x::before, .cell.m.x::after,
     .cell.mfade.x::before, .cell.mfade.x::after { background: var(--danger); opacity: 1; }
     .cell.m.f::after, .cell.mfade.f::after {
@@ -434,12 +454,10 @@
       box-shadow: inset 0 0 0 2px var(--danger), inset 0 0 0 4px var(--cell);
     }
     .cell.mfade.f::after { animation: mistakeFade 0.5s ease forwards; }
-    .cell.mfade.x { animation: mistakeBgFade 0.5s ease forwards; }
     /* An X placed by a mistake keeps red lines for the rest of the game;
        only the red background fades. */
     .cell.mx::before, .cell.mx::after { background: var(--danger); opacity: 1; }
     @keyframes mistakeFade { to { opacity: 0; } }
-    @keyframes mistakeBgFade { to { background-color: var(--cell); } }
     .cell.m { animation: shake 0.32s ease; }
     @keyframes shake {
       0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); }
@@ -453,6 +471,7 @@
     }
     .board.over .cell { cursor: default; }
     .board.won .cell.x::before, .board.won .cell.x::after { opacity: 0; transition: opacity 0.6s; }
+    .board.won .cell.x .piece { fill: var(--cell); transition: fill 0.6s; }
 
     /* ── Mode toggle ── */
     /* The end-of-game banner takes the mode switch's place at the same
@@ -971,6 +990,7 @@
       el.classList.toggle('f', s === 1);
       el.classList.toggle('x', s === 2);
       el.classList.toggle('mx', s === 2 && game.mistakes.includes(i));
+      if (s === 2) setPiece(i, fillPaths(0, false)); // crosses never join
       refreshShapes(i);
     }
 
@@ -1118,9 +1138,11 @@
       growFrame = 0; growClock = 0;
     }
 
+    // Crossed squares grow in the same way, as a lone square.
     function startGrow(i, from) {
-      const n = game.n, bits = neighborBits(i, true), el = cellEls[i];
-      setPiece(i, fillPaths(bits, true));
+      const n = game.n, fill = game.state[i] === 1, el = cellEls[i];
+      const bits = fill ? neighborBits(i, true) : 0;
+      setPiece(i, fillPaths(bits, fill));
       const prev = from ? growing.get({ l: i - 1, r: i + 1, t: i - n, b: i + n }[from]) : null;
       let g0 = growClock;
       if (prev) g0 = Math.max(g0, prev.g0 + (!prev.from ? CHAIN.tap : prev.from === from ? CHAIN.straight : CHAIN.turn));
@@ -1320,9 +1342,7 @@
       const want = action === 'fill' ? 1 : 2;
       const truth = game.sol[i] === 1 ? 1 : 2;
       game.state[i] = truth;
-      if (truth === 1) {
-        startGrow(i, from);
-      }
+      startGrow(i, from);
       const ok = want === truth;
       if (!ok) {
         game.mistakes.push(i);
@@ -1445,6 +1465,7 @@
             if (game.state[j] === 0) {
               game.state[j] = 2;
               game.autoX.push(j);
+              startGrow(j);
               paintCell(j);
               // A completed row may in turn complete crossing columns.
               rows.add(Math.floor(j / n)); cols.add(j % n);
