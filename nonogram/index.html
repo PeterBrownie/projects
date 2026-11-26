@@ -332,7 +332,7 @@
        squares merge into one plain ground and only the picture stands out.
        Hover highlights would bring the separate squares back, so they stop. */
     .board.won .grid { background-color: var(--cell); }
-    .board.won .cell.hl { background-color: var(--cell); }
+    .board.won .cell.hl:not(.f) { background-color: var(--cell); }
     /* Gutters every 5 cells are drawn darker by overlays above the empty
        squares but below fills, so joined fills still read as one shape.
        ::before holds the vertical lanes and ::after the horizontal ones.
@@ -378,72 +378,33 @@
        neighbors. Inline paths update in the same frame; CSS mask images
        decode asynchronously and flashed blank while switching. The SVG box
        overhangs the tile by 21% (T_PAD) on every side to make room for the
-       concave fillets. The tile's own square goes transparent once the grow
-       animation has covered it, so no light edge shows around the fill.
-       Fills sit above the major-lane overlay. */
-    .cell.f { z-index: 3; background-color: transparent; transition: background-color 0s 0.2s; }
+       concave fillets. New fills are revealed by a clip path the script
+       moves every frame (see startGrow). The tile's own square goes
+       transparent once the fill has covered it, so no light edge shows
+       around the fill. Fills sit above the major-lane overlay. */
+    .cell.f { z-index: 3; }
+    .cell.f:not(.growing) { background-color: transparent; }
     .piece {
       position: absolute; left: -21%; top: -21%; width: 142%; height: 142%;
       display: none; overflow: visible; pointer-events: none;
       fill: var(--accent);
     }
-    .cell.f .piece {
-      display: block;
-      animation: var(--grow, grow) 0.2s cubic-bezier(.2,.7,.3,1);
-    }
-    /* Once grown, drop the animation so nothing can ever replay it. */
-    .cell.f.grown .piece { animation: none; }
+    .cell.f .piece { display: block; }
     /* Completed-line wave: a lighter color sweeps along the line outward from
        the cell just placed, with no change in size so joined shapes stay
-       whole. Fills lighten; other tiles take an accent tint. The fill wave
-       runs on the piece's inner group, never on the element that grows, so
-       starting or ending it can't touch the grow animation. Its keyframes
-       are all explicit: a missing end keyframe on an SVG fill can resolve to
-       the default black. Cells showing a mistake keep their own animation. */
-    .cell.wave.f .pg { animation: waveFill 0.45s ease var(--wd, 0ms) 1; }
+       whole. Fills lighten; other tiles take an accent tint. The light on
+       fills is one overlay per line (.waves, see waveLine in the script),
+       masked to the line's fill shape, so it has no seams between squares
+       and its edges are soft. Cells showing a mistake keep their own
+       animation. */
     .cell.wave:not(.f):not(.m):not(.mfade) { animation: waveTile 0.45s ease var(--wd, 0ms) 1; }
-    @keyframes waveFill {
-      0%, 100% { fill: var(--accent); }
-      35% { fill: color-mix(in srgb, var(--accent) 55%, #fff); }
-    }
     @keyframes waveTile { 35% { background-color: var(--hl-strong); } }
-    /* A new fill never changes size: its final shape stays put and the
-       color is revealed inside it by an animated clip-path.
-       Tap or drag start: a circle opens from the center. 71% of the
-       142-unit box reaches its corners, so the whole shape is covered.
-       Dragged in from a neighbor: everything on the entry side of this
-       square's near edge (the gutter and the neighbor's corners it squares
-       off) shows from the first frame, then the color sweeps across the
-       square. The sweep's leading corners are rounded like a square's, and
-       it spans only the square's own band (24..118 of the 142-unit box), so
-       the front reads as the shape stretching across. In the last fifth the
-       clip opens to the full box, bringing in joins on the other two sides.
-       Box units: 24 = 21 overhang + 3 half gutter, 118 = 142 - 24, 18 = the
-       corner radius. */
-    @keyframes grow { from { clip-path: circle(0% at 50% 50%); } to { clip-path: circle(71% at 50% 50%); } }
-    .cell.gl { --grow: growL; } .cell.gr { --grow: growR; }
-    .cell.gt { --grow: growT; } .cell.gb { --grow: growB; }
-    @keyframes growL {
-      from { clip-path: inset(calc(100% * 24 / 142) calc(100% * 118 / 142) calc(100% * 24 / 142) 0 round 0 calc(100% * 18 / 142) calc(100% * 18 / 142) 0); }
-      80% { clip-path: inset(calc(100% * 24 / 142) 0 calc(100% * 24 / 142) 0 round 0 calc(100% * 18 / 142) calc(100% * 18 / 142) 0); }
-      to { clip-path: inset(0 0 0 0 round 0 0 0 0); }
+    .waves {
+      position: absolute; left: var(--edge); top: var(--edge); z-index: 3;
+      width: calc(var(--size) * var(--n)); height: calc(var(--size) * var(--n));
+      overflow: visible; pointer-events: none;
     }
-    @keyframes growR {
-      from { clip-path: inset(calc(100% * 24 / 142) 0 calc(100% * 24 / 142) calc(100% * 118 / 142) round calc(100% * 18 / 142) 0 0 calc(100% * 18 / 142)); }
-      80% { clip-path: inset(calc(100% * 24 / 142) 0 calc(100% * 24 / 142) 0 round calc(100% * 18 / 142) 0 0 calc(100% * 18 / 142)); }
-      to { clip-path: inset(0 0 0 0 round 0 0 0 0); }
-    }
-    @keyframes growT {
-      from { clip-path: inset(0 calc(100% * 24 / 142) calc(100% * 118 / 142) calc(100% * 24 / 142) round 0 0 calc(100% * 18 / 142) calc(100% * 18 / 142)); }
-      80% { clip-path: inset(0 calc(100% * 24 / 142) 0 calc(100% * 24 / 142) round 0 0 calc(100% * 18 / 142) calc(100% * 18 / 142)); }
-      to { clip-path: inset(0 0 0 0 round 0 0 0 0); }
-    }
-    @keyframes growB {
-      from { clip-path: inset(calc(100% * 118 / 142) calc(100% * 24 / 142) 0 calc(100% * 24 / 142) round calc(100% * 18 / 142) calc(100% * 18 / 142) 0 0); }
-      80% { clip-path: inset(0 calc(100% * 24 / 142) 0 calc(100% * 24 / 142) round calc(100% * 18 / 142) calc(100% * 18 / 142) 0 0); }
-      to { clip-path: inset(0 0 0 0 round 0 0 0 0); }
-    }
-
+    .waves .lit stop { stop-color: color-mix(in srgb, var(--accent) 55%, #fff); }
     .cell.x::before, .cell.x::after {
       content: ""; position: absolute; left: 50%; top: 50%;
       width: 56%; height: 3px; border-radius: 1.5px;
@@ -941,7 +902,7 @@
       els.rowclues.innerHTML = '';
       els.colclues.innerHTML = '';
       cellEls = []; rowClueEls = []; colClueEls = [];
-      growing = new Set();
+      resetGrow();
 
       for (let c = 0; c < n; c++) {
         const el = document.createElement('div');
@@ -961,11 +922,14 @@
       for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
         const el = document.createElement('div');
         el.className = 'cell';
-        el.innerHTML = '<svg class="piece" viewBox="' + -T_PAD + ' ' + -T_PAD + ' ' + (100 + 2 * T_PAD) + ' ' + (100 + 2 * T_PAD) + '" aria-hidden="true"><g class="pg"></g></svg>';
+        el.innerHTML = '<svg class="piece" viewBox="' + -T_PAD + ' ' + -T_PAD + ' ' + (100 + 2 * T_PAD) + ' ' + (100 + 2 * T_PAD) + '" aria-hidden="true"><g class="pg"></g><clipPath id="gc' + (r * n + c) + '"></clipPath></svg>';
         el.dataset.i = r * n + c;
         frag.appendChild(el); cellEls.push(el);
       }
       els.grid.appendChild(frag);
+      els.grid.insertAdjacentHTML('beforeend', '<svg class="waves" viewBox="0 0 ' + n * 100 + ' ' + n * 100 + '" aria-hidden="true"></svg>');
+      wavesEl = els.grid.lastChild;
+      waves = []; cancelAnimationFrame(waveFrame); waveFrame = 0;
 
       for (let i = 0; i < n * n; i++) paintCell(i);
       for (let r = 0; r < n; r++) updateLineDone('r', r);
@@ -1003,25 +967,6 @@
           setPiece(j, fillPaths(neighborBits(j, false), false));
         }
       }
-    }
-
-    // A new fill grows in on its own while the shapes around it stay as they
-    // were: settled pieces ignore growing neighbors, and the growing cell's
-    // join shape covers everything joining adds. Once the grow ends, every
-    // piece switches to its settled shape. Both states cover the same area,
-    // so the switch can't be seen.
-    let growing = new Set();
-    const GROW_MS = 250; // a little past the 0.2s grow animation
-    function startGrow(i) {
-      const g = game;
-      growing.add(i);
-      setPiece(i, fillPaths(neighborBits(i, true), true));
-      setTimeout(() => {
-        if (game !== g) return;
-        growing.delete(i);
-        cellEls[i].classList.add('grown');
-        refreshShapes(i);
-      }, GROW_MS);
     }
 
     // ── Fill shapes ───────────────────────────────────────────────
@@ -1120,6 +1065,113 @@
       if (g._markup !== markup) { g.innerHTML = markup; g._markup = markup; }
     }
 
+    // ── Grow-in animation ─────────────────────────────────────────
+    // A new fill grows in on its own while the shapes around it stay as they
+    // were: settled pieces ignore growing neighbors, and the growing cell's
+    // join shape covers everything joining adds. Once the grow ends, every
+    // piece switches to its settled shape. Both states cover the same area,
+    // so the switch can't be seen.
+    //
+    // The reveal is a clip path inside the piece's SVG, in tile units, moved
+    // every frame. A tap opens a circle from the center. A fill dragged in
+    // from a neighbor is swept from the shared edge by a straight frontier.
+    // All grows run on one clock (growClock, in tile units) and each covers
+    // a span of it. A fill entered from a neighbor that is still growing
+    // starts where that neighbor's sweep reaches their shared edge, so a
+    // drag reads as one shape stretching along with no gaps. The clock has
+    // a base speed but closes a fixed share of the outstanding work each
+    // moment, so a fast drag sweeps faster rather than falling behind.
+    let growing = new Map(), growClock = 0, growFrame = 0, growLast = 0;
+    const GROW_SPEED = 0.6;            // tile units per ms, the slowest pace
+    const GROW_LAG = 90;               // ms time constant for catching up
+    const SWEEP_LEN = 100 + 2 * T_PAD; // frontier travel across the piece box
+    const CIRCLE_LEN = 100;            // the circle's radius reaches the box corners
+    // Where a fill entered from a growing neighbor starts, measured from
+    // the neighbor's start: straight on, as the neighbor's frontier reaches
+    // the shared edge; after a turn, once the neighbor's square is covered;
+    // after a tap, once the circle is nearly round the square.
+    const CHAIN = { straight: 100, turn: 100 + T_PAD - T_IN, tap: 70 };
+    // The sweep is drawn as if moving down (+y); this maps it to the real
+    // direction. Keys name the side the fill was entered from.
+    const SWEEP_XFORM = { t: '', b: 'matrix(1 0 0 -1 0 100)', l: 'matrix(0 1 1 0 0 0)', r: 'matrix(0 1 -1 0 100 0)' };
+
+    function resetGrow() {
+      growing = new Map();
+      cancelAnimationFrame(growFrame);
+      growFrame = 0; growClock = 0;
+    }
+
+    function startGrow(i, from) {
+      const n = game.n, bits = neighborBits(i, true), el = cellEls[i];
+      setPiece(i, fillPaths(bits, true));
+      const prev = from ? growing.get({ l: i - 1, r: i + 1, t: i - n, b: i + n }[from]) : null;
+      let g0 = growClock;
+      if (prev) g0 = Math.max(g0, prev.g0 + (!prev.from ? CHAIN.tap : prev.from === from ? CHAIN.straight : CHAIN.turn));
+      // Sides of the sweep, across its direction: A is left/top, B right/bottom.
+      const across = from === 'l' || from === 'r' ? [0, 2] : [3, 1]; // N,S or W,E bits
+      const item = {
+        i, from: from || null, g0, g1: g0 + (from ? SWEEP_LEN : CIRCLE_LEN),
+        sideA: (bits >> across[0]) & 1, sideB: (bits >> across[1]) & 1,
+        clip: el.firstChild.lastChild,
+      };
+      growing.set(i, item);
+      el.classList.add('growing');
+      el.firstChild.firstChild.setAttribute('clip-path', 'url(#gc' + i + ')');
+      drawClip(item);
+      if (!growFrame) { growLast = performance.now(); growFrame = requestAnimationFrame(growTick); }
+    }
+
+    function growTick(now) {
+      const dt = Math.max(0, now - growLast);
+      growLast = now;
+      let end = growClock;
+      growing.forEach((it) => { if (it.g1 > end) end = it.g1; });
+      const left = end - growClock;
+      growClock += Math.min(left, Math.max(GROW_SPEED * dt, left * (1 - Math.exp(-dt / GROW_LAG))));
+      growing.forEach((it) => { if (growClock >= it.g1) finishGrow(it); else drawClip(it); });
+      growFrame = growing.size ? requestAnimationFrame(growTick) : 0;
+    }
+
+    function finishGrow(it) {
+      growing.delete(it.i);
+      const el = cellEls[it.i];
+      el.classList.remove('growing');
+      el.firstChild.firstChild.removeAttribute('clip-path');
+      it.clip.innerHTML = ''; it.clip._d = '';
+      refreshShapes(it.i);
+    }
+
+    function drawClip(it) {
+      const t = growClock - it.g0;
+      let markup = '';
+      if (t > 0 && !it.from) {
+        const r = t * 1.01;
+        markup = '<path d="M' + (50 - r) + ' 50a' + r + ' ' + r + ' 0 1 0 ' + 2 * r + ' 0a' + r + ' ' + r + ' 0 1 0 ' + -2 * r + ' 0Z"/>';
+      } else if (t > 0) {
+        const xf = SWEEP_XFORM[it.from];
+        markup = '<path d="' + sweepPath(t - T_PAD, it.sideA, it.sideB) + '"' + (xf ? ' transform="' + xf + '"' : '') + '/>';
+      }
+      if (it.clip._d !== markup) { it.clip.innerHTML = markup; it.clip._d = markup; }
+    }
+
+    // Area revealed by a frontier at y = f, moving down. Across the square's
+    // own band the frontier's corners are rounded like a square's. On a side
+    // joined to a neighbor it reaches across the gutter into that neighbor
+    // and meets it in a concave corner, the same radius as the settled
+    // shape's inner corners, so it reads as the shape stretching alongside.
+    // On an open side, the strip outside the square is revealed straight
+    // (it only holds fillets this fill adds around a neighbor's corner).
+    function sweepPath(f, A, B) {
+      const lo = -T_PAD, hi = 100 + T_PAD, a = T_IN, z = 100 - T_IN, F = T_FIL;
+      const r = Math.max(0, Math.min(T_RAD, f - lo));
+      let d = roundRect(A ? lo : a, lo, B ? hi : z, f, 0, 0, B ? 0 : r, A ? 0 : r);
+      if (A) d += 'M' + lo + ' ' + f + 'H' + (F - a) + 'A' + F + ' ' + F + ' 0 0 0 ' + -a + ' ' + (f + F) + 'H' + lo + 'Z';
+      else d += roundRect(lo, lo, a, f, 0, 0, 0, 0);
+      if (B) d += 'M' + hi + ' ' + f + 'V' + (f + F) + 'H' + (100 + a) + 'A' + F + ' ' + F + ' 0 0 0 ' + (100 + a - F) + ' ' + f + 'Z';
+      else d += roundRect(z, lo, hi, f, 0, 0, 0, 0);
+      return d;
+    }
+
     // Red highlight lasts 3s in total: 2.5s held, then a 0.5s fade.
     function flashMistake(el) {
       el.classList.add('m');
@@ -1152,9 +1204,12 @@
 
     // Which clue numbers are settled by the line's own marks: number t is
     // settled when every arrangement of the clue that agrees with the line's
-    // fills and crosses puts block t in the same place, and all of that
-    // block's squares are filled. A lone filled square mid-line doesn't settle
-    // a "1" in "1 1 1", since any of the three could be the one there.
+    // fills and crosses puts block t in the same place, all of that block's
+    // squares are filled, and every square between the block and one end of
+    // the line is marked (filled or crossed), so the run visibly connects to
+    // the edge. A lone filled square mid-line doesn't settle a "1" in
+    // "1 1 1", since any of the three could be the one there; even a lone
+    // "1" waits until the crosses reach it from one end.
     // Lines are at most 15 long, so listing the arrangements is cheap.
     function settledClues(clue, cells) {
       const n = cells.length, m = clue.length;
@@ -1180,11 +1235,12 @@
         }
       };
       place(0, 0);
+      const markedFrom = (a, b) => { for (let i = a; i < b; i++) if (cells[i] === 0) return false; return true; };
       return clue.map((k, t) => {
         if (starts[t].size !== 1) return false;
         const s = starts[t].values().next().value;
         for (let i = s; i < s + k; i++) if (cells[i] !== 1) return false;
-        return true;
+        return markedFrom(0, s) || markedFrom(s + k, n);
       });
     }
 
@@ -1231,8 +1287,7 @@
       const truth = game.sol[i] === 1 ? 1 : 2;
       game.state[i] = truth;
       if (truth === 1) {
-        if (from) cellEls[i].classList.add('g' + from);
-        startGrow(i);
+        startGrow(i, from);
       }
       const ok = want === truth;
       if (!ok) {
@@ -1249,10 +1304,29 @@
     }
 
     // Ripple a just-completed line outward from position `origin` in it.
-    const WAVE_STEP = 40;
+    // Empty tiles get a CSS tint, each delayed by its distance. Fills are
+    // lit by one overlay per line: a light rectangle over the line whose
+    // brightness, a gradient along the line redrawn every frame, is a pulse
+    // travelling outward. It is masked to the line's fill pieces, painted
+    // with a gradient that fades toward the line's two long edges, so the
+    // light blends into neighboring lines and the shape's outline instead
+    // of stopping in a hard step. The wave waits for fills in the line that
+    // are still growing, so it never lights squares not yet revealed.
+    const WAVE_STEP = 40;    // ms of delay per cell of distance
+    const WAVE_LEN = 450;    // ms each point takes to brighten and fade
+    const WAVE_PEAK = 0.35;  // share of WAVE_LEN spent brightening
+    const WAVE_FEATHER = 0.14; // share of the line's width the light fades over, each side
+    let wavesEl = null, waves = [], waveFrame = 0, waveIds = 0;
+
     function waveLine(kind, k, origin) {
-      lineIdx(kind, k).forEach((j, t) => {
-        const el = cellEls[j], delay = Math.abs(t - origin) * WAVE_STEP;
+      waves.push({ kind, k, origin, start: null, g: null, stops: null });
+      if (!waveFrame) waveFrame = requestAnimationFrame(waveTick);
+    }
+
+    function startWave(w, now) {
+      const n = game.n, idx = lineIdx(w.kind, w.k), id = ++waveIds, row = w.kind === 'r';
+      idx.forEach((j, t) => {
+        const el = cellEls[j], delay = Math.abs(t - w.origin) * WAVE_STEP;
         el.style.setProperty('--wd', delay + 'ms');
         el.classList.remove('wave');
         void el.offsetWidth; // restart if it was already waving
@@ -1260,6 +1334,55 @@
         clearTimeout(el._waveTimer);
         el._waveTimer = setTimeout(() => el.classList.remove('wave'), delay + 500);
       });
+      let pieces = '';
+      idx.forEach((j) => {
+        if (game.state[j] !== 1) return;
+        pieces += '<g transform="translate(' + (j % n) * 100 + ' ' + Math.floor(j / n) * 100 + ')">' + fillPaths(neighborBits(j, true), false) + '</g>';
+      });
+      const samples = n * 4;
+      let stops = '';
+      for (let s = 0; s <= samples; s++) stops += '<stop offset="' + s / samples + '" stop-opacity="0"/>';
+      const across = row ? 'x1="0" y1="0" x2="0" y2="100"' : 'x1="0" y1="0" x2="100" y2="0"';
+      const along = row ? 'x1="0" y1="0" x2="' + n * 100 + '" y2="0"' : 'x1="0" y1="0" x2="0" y2="' + n * 100 + '"';
+      const rect = row ? 'x="-30" y="' + (w.k * 100 - 30) + '" width="' + (n * 100 + 60) + '" height="160"'
+                       : 'x="' + (w.k * 100 - 30) + '" y="-30" width="160" height="' + (n * 100 + 60) + '"';
+      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.innerHTML =
+        '<linearGradient id="wf' + id + '" gradientUnits="userSpaceOnUse" ' + across + '>' +
+          '<stop offset="0" stop-color="#000"/><stop offset="' + WAVE_FEATHER + '" stop-color="#fff"/>' +
+          '<stop offset="' + (1 - WAVE_FEATHER) + '" stop-color="#fff"/><stop offset="1" stop-color="#000"/></linearGradient>' +
+        '<linearGradient class="lit" id="wl' + id + '" gradientUnits="userSpaceOnUse" ' + along + '>' + stops + '</linearGradient>' +
+        '<mask id="wm' + id + '" maskUnits="userSpaceOnUse" ' + rect + '><g fill="url(#wf' + id + ')">' + pieces + '</g></mask>' +
+        '<rect ' + rect + ' fill="url(#wl' + id + ')" mask="url(#wm' + id + ')"/>';
+      wavesEl.appendChild(g);
+      w.g = g; w.stops = Array.from(g.querySelectorAll('.lit stop')); w.start = now;
+      w.end = WAVE_LEN + WAVE_STEP * Math.max(w.origin + 0.5, n - w.origin - 0.5);
+    }
+
+    // Brightness of one point, `ms` after its own start: up, then back down.
+    function waveLevel(ms) {
+      const p = ms / WAVE_LEN;
+      if (p <= 0 || p >= 1) return 0;
+      const u = p < WAVE_PEAK ? p / WAVE_PEAK : (1 - p) / (1 - WAVE_PEAK);
+      return u * u * (3 - 2 * u);
+    }
+
+    function waveTick(now) {
+      waves = waves.filter((w) => {
+        if (w.start === null) {
+          if (lineIdx(w.kind, w.k).some((j) => growing.has(j))) return true;
+          startWave(w, now);
+        }
+        const t = now - w.start;
+        if (t >= w.end) { w.g.remove(); return false; }
+        const samples = w.stops.length - 1;
+        w.stops.forEach((stop, s) => {
+          const pos = (s / samples) * game.n;
+          stop.setAttribute('stop-opacity', waveLevel(t - WAVE_STEP * Math.abs(pos - (w.origin + 0.5))).toFixed(3));
+        });
+        return true;
+      });
+      waveFrame = waves.length ? requestAnimationFrame(waveTick) : 0;
     }
 
     function afterChange(i) {
@@ -1297,6 +1420,8 @@
       save(HISTORY_KEY, history.slice(-HISTORY_MAX));
     }
 
+    // Time to look at the finished board before the result card covers it.
+    const RESULT_DELAY = 1500;
     function win() {
       game.status = 'won';
       stopClock();
@@ -1305,7 +1430,7 @@
       els.board.classList.add('over', 'won');
       persist();
       updateBanner();
-      setTimeout(() => showResult('won'), 650);
+      setTimeout(() => showResult('won'), RESULT_DELAY);
     }
 
     function lose() {
@@ -1315,7 +1440,7 @@
       revealSolution();
       persist();
       updateBanner();
-      setTimeout(() => showResult('lost'), 450);
+      setTimeout(() => showResult('lost'), RESULT_DELAY);
     }
 
     function revealSolution() {
