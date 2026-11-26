@@ -883,6 +883,7 @@
         status: 'playing',
       };
       cursor = null;
+      clearTimeout(resultTimer);
       closeResult();
       render();
       persist();
@@ -896,6 +897,7 @@
     // once instead of once per cell. Leaving the page and ending a game
     // save right away.
     let persistTimer = 0;
+    let resultTimer = 0;
     function persistSoon() { if (!persistTimer) persistTimer = setTimeout(persist, 400); }
     function persist() {
       clearTimeout(persistTimer); persistTimer = 0;
@@ -1556,7 +1558,7 @@
       els.board.classList.add('over', 'won');
       persist();
       updateBanner();
-      setTimeout(() => showResult('won'), RESULT_DELAY);
+      resultTimer = setTimeout(() => showResult('won'), RESULT_DELAY);
     }
 
     function lose() {
@@ -1566,7 +1568,7 @@
       revealSolution();
       persist();
       updateBanner();
-      setTimeout(() => showResult('lost'), RESULT_DELAY);
+      resultTimer = setTimeout(() => showResult('lost'), RESULT_DELAY);
     }
 
     function revealSolution() {
