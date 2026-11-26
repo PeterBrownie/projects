@@ -75,6 +75,12 @@
       }
     }
 
+    /* Registering --accent as a color lets it transition, so changing the
+       color theme (or light / dark) fades every accent-colored thing at
+       once, including colors mixed from it such as --hl. */
+    @property --accent { syntax: '<color>'; inherits: true; initial-value: #4f46e5; }
+    :root { transition: --accent 0.35s ease; }
+
     /* Color themes: one light and one dark tone each */
     :root, :root[data-accent="indigo"] { --a-light: #4f46e5; --a-dark: #8f8cff; }
     :root[data-accent="teal"]     { --a-light: #0d8a7f; --a-dark: #34d1bf; }
@@ -325,34 +331,63 @@
       position: absolute; left: -21%; top: -21%; width: 142%; height: 142%;
       display: none; overflow: visible; pointer-events: none;
       fill: var(--accent);
-      transform-origin: center;
     }
     .cell.f .piece {
       display: block;
       animation: var(--grow, grow) 0.2s cubic-bezier(.2,.7,.3,1);
     }
+    /* Once grown, drop the animation so nothing can ever replay it. */
+    .cell.f.grown .piece { animation: none; }
     /* Completed-line wave: a lighter color sweeps along the line outward from
        the cell just placed, with no change in size so joined shapes stay
-       whole. Fills lighten; other tiles take an accent tint. The grow
-       animation stays first in the list so it doesn't replay. Cells showing
-       a mistake keep their own animation. */
-    .cell.wave.f .piece {
-      animation: var(--grow, grow) 0.2s cubic-bezier(.2,.7,.3,1), waveFill 0.45s ease var(--wd, 0ms) 1;
-    }
+       whole. Fills lighten; other tiles take an accent tint. The fill wave
+       runs on the piece's inner group, never on the element that grows, so
+       starting or ending it can't touch the grow animation. Its keyframes
+       are all explicit: a missing end keyframe on an SVG fill can resolve to
+       the default black. Cells showing a mistake keep their own animation. */
+    .cell.wave.f .pg { animation: waveFill 0.45s ease var(--wd, 0ms) 1; }
     .cell.wave:not(.f):not(.m):not(.mfade) { animation: waveTile 0.45s ease var(--wd, 0ms) 1; }
-    @keyframes waveFill { 35% { fill: color-mix(in srgb, var(--accent) 55%, #fff); } }
+    @keyframes waveFill {
+      0%, 100% { fill: var(--accent); }
+      35% { fill: color-mix(in srgb, var(--accent) 55%, #fff); }
+    }
     @keyframes waveTile { 35% { background-color: var(--hl-strong); } }
-    @keyframes grow { from { transform: scale(0); } to { transform: scale(1); } }
-    /* Cells filled by dragging in from a neighbor grow out of the shared
-       edge instead of the center. The tile edge sits 50 tile units from the
-       center of the 142-unit piece box, so translating by 50/142 of the box
-       while scaling from 0 keeps that edge fixed. */
+    /* A new fill never changes size: its final shape stays put and the
+       color is revealed inside it by an animated clip-path.
+       Tap or drag start: a circle opens from the center. 71% of the
+       142-unit box reaches its corners, so the whole shape is covered.
+       Dragged in from a neighbor: everything on the entry side of this
+       square's near edge (the gutter and the neighbor's corners it squares
+       off) shows from the first frame, then the color sweeps across the
+       square. The sweep's leading corners are rounded like a square's, and
+       it spans only the square's own band (24..118 of the 142-unit box), so
+       the front reads as the shape stretching across. In the last fifth the
+       clip opens to the full box, bringing in joins on the other two sides.
+       Box units: 24 = 21 overhang + 3 half gutter, 118 = 142 - 24, 18 = the
+       corner radius. */
+    @keyframes grow { from { clip-path: circle(0% at 50% 50%); } to { clip-path: circle(71% at 50% 50%); } }
     .cell.gl { --grow: growL; } .cell.gr { --grow: growR; }
     .cell.gt { --grow: growT; } .cell.gb { --grow: growB; }
-    @keyframes growL { from { transform: translateX(calc(-100% * 50 / 142)) scaleX(0); } }
-    @keyframes growR { from { transform: translateX(calc(100% * 50 / 142)) scaleX(0); } }
-    @keyframes growT { from { transform: translateY(calc(-100% * 50 / 142)) scaleY(0); } }
-    @keyframes growB { from { transform: translateY(calc(100% * 50 / 142)) scaleY(0); } }
+    @keyframes growL {
+      from { clip-path: inset(calc(100% * 24 / 142) calc(100% * 118 / 142) calc(100% * 24 / 142) 0 round 0 calc(100% * 18 / 142) calc(100% * 18 / 142) 0); }
+      80% { clip-path: inset(calc(100% * 24 / 142) 0 calc(100% * 24 / 142) 0 round 0 calc(100% * 18 / 142) calc(100% * 18 / 142) 0); }
+      to { clip-path: inset(0 0 0 0 round 0 0 0 0); }
+    }
+    @keyframes growR {
+      from { clip-path: inset(calc(100% * 24 / 142) 0 calc(100% * 24 / 142) calc(100% * 118 / 142) round calc(100% * 18 / 142) 0 0 calc(100% * 18 / 142)); }
+      80% { clip-path: inset(calc(100% * 24 / 142) 0 calc(100% * 24 / 142) 0 round calc(100% * 18 / 142) 0 0 calc(100% * 18 / 142)); }
+      to { clip-path: inset(0 0 0 0 round 0 0 0 0); }
+    }
+    @keyframes growT {
+      from { clip-path: inset(0 calc(100% * 24 / 142) calc(100% * 118 / 142) calc(100% * 24 / 142) round 0 0 calc(100% * 18 / 142) calc(100% * 18 / 142)); }
+      80% { clip-path: inset(0 calc(100% * 24 / 142) 0 calc(100% * 24 / 142) round 0 0 calc(100% * 18 / 142) calc(100% * 18 / 142)); }
+      to { clip-path: inset(0 0 0 0 round 0 0 0 0); }
+    }
+    @keyframes growB {
+      from { clip-path: inset(calc(100% * 118 / 142) calc(100% * 24 / 142) 0 calc(100% * 24 / 142) round calc(100% * 18 / 142) calc(100% * 18 / 142) 0 0); }
+      80% { clip-path: inset(0 calc(100% * 24 / 142) 0 calc(100% * 24 / 142) round calc(100% * 18 / 142) calc(100% * 18 / 142) 0 0); }
+      to { clip-path: inset(0 0 0 0 round 0 0 0 0); }
+    }
 
     .cell.x::before, .cell.x::after {
       content: ""; position: absolute; left: 50%; top: 50%;
@@ -414,7 +449,8 @@
       box-shadow: 0 1px 4px rgba(0,0,0,0.22);
       transition: transform 0.22s cubic-bezier(.3,.7,.4,1);
     }
-    .mode[aria-checked="true"] .knob { transform: translateX(100%); }
+    /* Cross is on the left, fill on the right: the knob sits right in fill mode. */
+    .mode[aria-checked="false"] .knob { transform: translateX(100%); }
     .mode .side {
       position: relative; z-index: 1; flex: 1;
       display: flex; align-items: center; justify-content: center;
@@ -543,8 +579,8 @@
       </div>
       <button class="mode" id="modeWrap" role="switch" aria-checked="false" aria-label="Cross mode" title="Fill or cross mode (Space)">
         <span class="knob"></span>
-        <span class="side fill"><svg class="ic"><use href="#i-square"/></svg></span>
         <span class="side cross"><svg class="ic"><use href="#i-x"/></svg></span>
+        <span class="side fill"><svg class="ic"><use href="#i-square"/></svg></span>
       </button>
       <div class="hint kb">Drag to mark a line. Right-click uses the other mode. Keys: arrows, <kbd>Enter</kbd> mark, <kbd>Space</kbd> switch mode</div>
     </div>
@@ -813,7 +849,7 @@
       for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
         const el = document.createElement('div');
         el.className = 'cell';
-        el.innerHTML = '<svg class="piece" viewBox="' + -T_PAD + ' ' + -T_PAD + ' ' + (100 + 2 * T_PAD) + ' ' + (100 + 2 * T_PAD) + '" aria-hidden="true"></svg>';
+        el.innerHTML = '<svg class="piece" viewBox="' + -T_PAD + ' ' + -T_PAD + ' ' + (100 + 2 * T_PAD) + ' ' + (100 + 2 * T_PAD) + '" aria-hidden="true"><g class="pg"></g></svg>';
         el.dataset.i = r * n + c;
         frag.appendChild(el); cellEls.push(el);
       }
@@ -870,6 +906,7 @@
       setTimeout(() => {
         if (game !== g) return;
         growing.delete(i);
+        cellEls[i].classList.add('grown');
         refreshShapes(i);
       }, GROW_MS);
     }
@@ -966,8 +1003,8 @@
     }
 
     function setPiece(i, markup) {
-      const svg = cellEls[i].firstChild;
-      if (svg._markup !== markup) { svg.innerHTML = markup; svg._markup = markup; }
+      const g = cellEls[i].firstChild.firstChild;
+      if (g._markup !== markup) { g.innerHTML = markup; g._markup = markup; }
     }
 
     // Red highlight lasts 3s in total: 2.5s held, then a 0.5s fade.
