@@ -264,17 +264,22 @@
     .cell.x.auto::before, .cell.x.auto::after { opacity: 0.55; }
     @keyframes fadeIn { from { opacity: 0; } }
 
-    /* Mistake highlight: shown briefly, then fades back to a normal mark. */
-    .cell.x { transition: background 0.5s; }
-    .cell.x::before, .cell.x::after { transition: background 0.5s; }
-    .cell.m.x { background: color-mix(in srgb, var(--danger) 14%, var(--cell)); }
-    .cell.m.x::before, .cell.m.x::after { background: var(--danger); opacity: 1; }
-    .cell.f::after {
+    /* Mistake highlight: .m holds it, .mfade fades it out, then both are removed.
+       The ring only exists while one of those classes is set, so a correct
+       fill never has a red element to show. */
+    .cell.m.x, .cell.mfade.x { background: color-mix(in srgb, var(--danger) 14%, var(--cell)); }
+    .cell.m.x::before, .cell.m.x::after,
+    .cell.mfade.x::before, .cell.mfade.x::after { background: var(--danger); opacity: 1; }
+    .cell.m.f::after, .cell.mfade.f::after {
       content: ""; position: absolute; inset: 0;
       box-shadow: inset 0 0 0 2px var(--danger), inset 0 0 0 4px var(--cell);
-      opacity: 0; transition: opacity 0.5s;
     }
-    .cell.m.f::after { opacity: 1; }
+    .cell.mfade.f::after { animation: mistakeFade 0.5s ease forwards; }
+    .cell.mfade.x { animation: mistakeBgFade 0.5s ease forwards; }
+    .cell.mfade.x::before, .cell.mfade.x::after { animation: mistakeLineFade 0.5s ease forwards; }
+    @keyframes mistakeFade { to { opacity: 0; } }
+    @keyframes mistakeBgFade { to { background: var(--cell); } }
+    @keyframes mistakeLineFade { to { background: var(--cross); } }
     .cell.m { animation: shake 0.32s ease; }
     @keyframes shake {
       0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); }
@@ -733,7 +738,10 @@
     // Red highlight lasts 3s in total: 2.5s held, then a 0.5s fade.
     function flashMistake(el) {
       el.classList.add('m');
-      setTimeout(() => el.classList.remove('m'), 2500);
+      setTimeout(() => {
+        el.classList.replace('m', 'mfade');
+        setTimeout(() => el.classList.remove('mfade'), 500);
+      }, 2500);
     }
 
     function renderLives(animateLoss) {
