@@ -15,6 +15,12 @@
       var dark = s.scheme ? s.scheme === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
       document.documentElement.dataset.theme = dark ? 'dark' : 'light';
       document.documentElement.dataset.accent = s.accent || 'indigo';
+      if (s.accent === 'custom' && s.custom && s.custom.hex) {
+        var st = document.documentElement.style;
+        st.setProperty('--a-light', s.custom.hex);
+        st.setProperty('--a-dark', s.custom.hex);
+        st.setProperty('--accent-ink', s.custom.ink);
+      }
     })();
   </script>
   <style>
@@ -80,15 +86,18 @@
        once, including colors mixed from it such as --hl. */
     @property --accent { syntax: '<color>'; inherits: true; initial-value: #4f46e5; }
     :root { transition: --accent 0.35s ease; }
+    :root.picking { transition: none; } /* follow the custom picker directly */
 
     /* Color themes: one light and one dark tone each */
-    :root, :root[data-accent="indigo"] { --a-light: #4f46e5; --a-dark: #8f8cff; }
-    :root[data-accent="teal"]     { --a-light: #0d8a7f; --a-dark: #34d1bf; }
-    :root[data-accent="rose"]     { --a-light: #d6336c; --a-dark: #ff7aa2; }
-    :root[data-accent="amber"]    { --a-light: #c26a06; --a-dark: #fbbf3c; }
-    :root[data-accent="forest"]   { --a-light: #2f8a3e; --a-dark: #6edb7f; }
-    :root[data-accent="ocean"]    { --a-light: #1f6fd1; --a-dark: #63a8ff; }
-    :root[data-accent="graphite"] { --a-light: #33333d; --a-dark: #d6d6e0; }
+    /* Not limited to :root, so a hidden probe element can read any preset.
+       A custom color is set inline on <html> and overrides these. */
+    :root, [data-accent="indigo"] { --a-light: #4f46e5; --a-dark: #8f8cff; }
+    [data-accent="teal"]     { --a-light: #0d8a7f; --a-dark: #34d1bf; }
+    [data-accent="rose"]     { --a-light: #d6336c; --a-dark: #ff7aa2; }
+    [data-accent="amber"]    { --a-light: #c26a06; --a-dark: #fbbf3c; }
+    [data-accent="forest"]   { --a-light: #2f8a3e; --a-dark: #6edb7f; }
+    [data-accent="ocean"]    { --a-light: #1f6fd1; --a-dark: #63a8ff; }
+    [data-accent="graphite"] { --a-light: #33333d; --a-dark: #d6d6e0; }
 
     html, body { height: 100%; }
     body {
@@ -198,6 +207,45 @@
     }
     .swatch[aria-checked="true"] span.dot { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--sw); }
     .swatch[aria-checked="true"] { color: var(--text); }
+    .swatch.custom span.dot { background: conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); }
+    .swatch.custom.set span.dot { background: var(--sw); }
+
+    /* Custom color: hue runs left to right, saturation top (vivid) to bottom
+       (gray). The layers build HSV: the rainbow, a white fade for
+       saturation, then black at 1 - brightness on top. */
+    .picker { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .spectrum {
+      position: relative; height: 96px; border-radius: 8px;
+      cursor: crosshair; touch-action: none;
+      --v: 1;
+      background:
+        linear-gradient(rgba(0, 0, 0, calc(1 - var(--v))), rgba(0, 0, 0, calc(1 - var(--v)))),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0), #fff),
+        linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+    }
+    .spectrum:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .spot {
+      position: absolute; width: 16px; height: 16px; border-radius: 50%;
+      transform: translate(-50%, -50%); pointer-events: none;
+      border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+    .bright {
+      -webkit-appearance: none; appearance: none; display: block;
+      width: 100%; height: 14px; margin: 0; border-radius: 7px; cursor: pointer;
+      background: linear-gradient(to right, #000, var(--full, #fff));
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+    }
+    .bright:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .bright::-moz-range-track { background: transparent; }
+    .bright::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%;
+      background: #fff; border: 0; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+    .bright::-moz-range-thumb {
+      width: 18px; height: 18px; border-radius: 50%;
+      background: #fff; border: 0; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
 
     /* ── Board ── */
     main {
@@ -266,7 +314,8 @@
       border-color: color-mix(in srgb, var(--accent) 30%, var(--cap-line));
     }
     .colclue span, .rowclue span { transition: opacity 0.2s; }
-    .colclue.done span, .rowclue.done span { opacity: 0.32; }
+    /* Each number fades once its run of squares is filled. */
+    .colclue span.done, .rowclue span.done { opacity: 0.32; }
 
     .grid {
       display: grid;
@@ -555,9 +604,14 @@
     </div>
     <div class="pop-wrap">
       <button class="icon-btn" id="paletteBtn" title="Color theme" aria-label="Color theme" aria-haspopup="true" aria-expanded="false"><svg class="ic"><use href="#i-palette"/></svg></button>
-      <div class="popover" id="palette" role="radiogroup" aria-label="Color theme">
+      <div class="popover" id="palette">
         <h3>Color theme</h3>
-        <div class="swatches" id="swatches"></div>
+        <div class="swatches" id="swatches" role="radiogroup" aria-label="Color theme"></div>
+        <div class="picker">
+          <div class="spectrum" id="spectrum" tabindex="0" role="slider" aria-label="Custom color: hue and saturation"><span class="spot" id="spot"></span></div>
+          <input class="bright" id="bright" type="range" min="10" max="100" step="1" aria-label="Custom color: brightness">
+        </div>
+        <span id="accentProbe" hidden></span>
       </div>
     </div>
     <button class="icon-btn" id="schemeBtn" title="Toggle light / dark" aria-label="Toggle light or dark mode"><svg class="ic"><use id="schemeIcon" href="#i-moon"/></svg></button>
@@ -1037,9 +1091,20 @@
       return lineIdx(kind, k).every((i) => game.sol[i] !== 1 || game.state[i] === 1);
     }
 
+    // Fade each clue number whose run is fully filled. Every mark is checked
+    // against the solution, so the solution's runs are exactly the squares
+    // each number refers to. A blank line's "0" fades when the line is done.
     function updateLineDone(kind, k) {
       const el = kind === 'r' ? rowClueEls[k] : colClueEls[k];
-      el.classList.toggle('done', lineComplete(kind, k));
+      const runs = [];
+      let run = null;
+      for (const i of lineIdx(kind, k)) {
+        if (game.sol[i] === 1) { if (!run) runs.push(run = []); run.push(i); } else run = null;
+      }
+      const filled = runs.map((r) => r.every((i) => game.state[i] === 1));
+      const complete = filled.every(Boolean);
+      el.classList.toggle('done', complete);
+      Array.from(el.children).forEach((span, t) => span.classList.toggle('done', runs.length ? filled[t] : complete));
     }
 
     // Fit the board to the space available. Board width and height are linear
@@ -1127,9 +1192,22 @@
       if (game.status === 'playing' && game.sol.every((v, j) => v !== 1 || game.state[j] === 1)) win();
     }
 
+    // Solved boards, newest last, kept in localStorage.
+    const HISTORY_KEY = 'nonogram.history', HISTORY_MAX = 500;
+    function recordWin() {
+      const saved = load(HISTORY_KEY, []), history = Array.isArray(saved) ? saved : [];
+      history.push({
+        diff: game.diff, n: game.n, sol: game.sol.join(''),
+        time: Math.round(currentElapsed()), mistakes: game.mistakes.length,
+        date: new Date().toISOString(),
+      });
+      save(HISTORY_KEY, history.slice(-HISTORY_MAX));
+    }
+
     function win() {
       game.status = 'won';
       stopClock();
+      recordWin();
       for (let j = 0; j < game.state.length; j++) if (game.state[j] === 0) { game.state[j] = 2; paintCell(j); }
       els.board.classList.add('over', 'won');
       persist();
@@ -1326,6 +1404,7 @@
         return;
       }
       if (els.overlay.classList.contains('open')) return;
+      if (e.target.closest && e.target.closest('.popover')) return; // the color picker handles its own keys
       const tag = (e.target.tagName || '').toLowerCase();
       if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
       if (e.key === ' ') {
@@ -1389,35 +1468,141 @@
       applyScheme();
     });
 
+    // ── Color theme: presets and a custom color ────────────────────
+    // A custom color is kept as HSV (h 0-360, s and v 0-1) for the picker,
+    // plus the hex and ink color the pre-paint script applies on load. It is
+    // used as-is in both light and dark mode.
+    const root = document.documentElement;
     const swatchWrap = $('swatches');
-    function renderSwatches() {
-      const dark = document.documentElement.dataset.theme === 'dark';
-      swatchWrap.innerHTML = '';
-      for (const [key, label] of ACCENTS) {
-        const b = document.createElement('button');
-        b.className = 'swatch';
-        b.setAttribute('role', 'radio');
-        b.setAttribute('aria-checked', String(settings.accent === key));
-        b.dataset.accent = key;
-        b.innerHTML = '<span class="dot"></span>' + label;
-        swatchWrap.appendChild(b);
-        // Read this accent's colors from the stylesheet so the CSS stays the single source.
-        b.querySelector('.dot').style.setProperty('--sw', accentColor(key, dark));
-        b.addEventListener('click', () => {
-          settings.accent = key;
-          document.documentElement.dataset.accent = key;
-          saveSettings();
-          swatchWrap.querySelectorAll('.swatch').forEach((s) => s.setAttribute('aria-checked', String(s.dataset.accent === key)));
-        });
+    const pick = { h: 240, s: 0.7, v: 0.9 };
+
+    function hsvToRgb(h, s, v) {
+      const f = (n) => { const k = (n + h / 60) % 6; return v - v * s * Math.max(0, Math.min(k, 4 - k, 1)); };
+      return [f(5), f(3), f(1)].map((x) => Math.round(x * 255));
+    }
+    function rgbToHsv(r, g, b) {
+      r /= 255; g /= 255; b /= 255;
+      const max = Math.max(r, g, b), d = max - Math.min(r, g, b);
+      let h = 0;
+      if (d) h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+      return { h: (h * 60 + 360) % 360, s: max ? d / max : 0, v: max };
+    }
+    const hex = (rgb) => '#' + rgb.map((x) => x.toString(16).padStart(2, '0')).join('');
+    // Ink for text and icons on the accent: whichever of white or near-black
+    // contrasts more.
+    function inkFor([r, g, b]) {
+      const lin = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+      const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+      return 1.05 / (L + 0.05) >= (L + 0.05) / 0.057 ? '#ffffff' : '#14141b';
+    }
+
+    // Read a preset's color from the stylesheet through a hidden probe, so
+    // the CSS stays the single source and the page's own accent never flips.
+    function accentColor(key, dark) {
+      const probe = $('accentProbe');
+      probe.dataset.accent = key;
+      return getComputedStyle(probe).getPropertyValue(dark ? '--a-dark' : '--a-light').trim();
+    }
+
+    function setInlineAccent(c) {
+      for (const [prop, val] of [['--a-light', c && c.hex], ['--a-dark', c && c.hex], ['--accent-ink', c && c.ink]]) {
+        if (val) root.style.setProperty(prop, val); else root.style.removeProperty(prop);
       }
     }
-    function accentColor(key, dark) {
-      const root = document.documentElement, prev = root.dataset.accent;
-      root.dataset.accent = key;
-      const v = getComputedStyle(root).getPropertyValue(dark ? '--a-dark' : '--a-light').trim();
-      root.dataset.accent = prev;
-      return v;
+
+    function markChecked() {
+      swatchWrap.querySelectorAll('.swatch').forEach((sw) => sw.setAttribute('aria-checked', String(sw.dataset.key === settings.accent)));
     }
+
+    function chooseAccent(key) {
+      settings.accent = key;
+      root.dataset.accent = key;
+      setInlineAccent(key === 'custom' ? settings.custom : null);
+      saveSettings();
+      markChecked();
+    }
+
+    // Start the picker from the color in use, so dragging begins nearby.
+    function loadPick() {
+      if (settings.accent === 'custom' && settings.custom) Object.assign(pick, settings.custom);
+      else {
+        const m = /^#([0-9a-f]{6})$/i.exec(accentColor(settings.accent, root.dataset.theme === 'dark'));
+        if (m) Object.assign(pick, rgbToHsv(...[0, 2, 4].map((k) => parseInt(m[1].slice(k, k + 2), 16))));
+      }
+      syncPicker();
+    }
+
+    function syncPicker() {
+      const full = hex(hsvToRgb(pick.h, pick.s, 1)), cur = hex(hsvToRgb(pick.h, pick.s, pick.v));
+      const spec = $('spectrum'), spot = $('spot');
+      spec.style.setProperty('--v', pick.v);
+      spot.style.left = (pick.h / 360) * 100 + '%';
+      spot.style.top = (1 - pick.s) * 100 + '%';
+      spot.style.background = cur;
+      spec.setAttribute('aria-valuetext', 'hue ' + Math.round(pick.h) + ', saturation ' + Math.round(pick.s * 100) + '%');
+      $('bright').value = Math.round(pick.v * 100);
+      $('bright').style.setProperty('--full', full);
+    }
+
+    // Apply the picker's color as the custom accent. While the picker is in
+    // use the accent follows it directly instead of fading.
+    let pickTimer = null;
+    function applyPick() {
+      const rgb = hsvToRgb(pick.h, pick.s, pick.v);
+      settings.custom = { h: pick.h, s: pick.s, v: pick.v, hex: hex(rgb), ink: inkFor(rgb) };
+      root.classList.add('picking');
+      clearTimeout(pickTimer);
+      pickTimer = setTimeout(() => root.classList.remove('picking'), 200);
+      chooseAccent('custom');
+      const customDot = swatchWrap.querySelector('.swatch.custom');
+      if (customDot) { customDot.classList.add('set'); customDot.querySelector('.dot').style.setProperty('--sw', settings.custom.hex); }
+      syncPicker();
+    }
+
+    function renderSwatches() {
+      const dark = root.dataset.theme === 'dark';
+      swatchWrap.innerHTML = '';
+      for (const [key, label] of [...ACCENTS, ['custom', 'Custom']]) {
+        const b = document.createElement('button');
+        b.className = 'swatch' + (key === 'custom' ? ' custom' + (settings.custom ? ' set' : '') : '');
+        b.setAttribute('role', 'radio');
+        b.dataset.key = key; // not data-accent: that attribute selects preset colors in CSS
+        b.innerHTML = '<span class="dot"></span>' + label;
+        swatchWrap.appendChild(b);
+        const color = key === 'custom' ? settings.custom && settings.custom.hex : accentColor(key, dark);
+        if (color) b.querySelector('.dot').style.setProperty('--sw', color);
+        b.addEventListener('click', () => {
+          if (key === 'custom' && !settings.custom) { applyPick(); return; }
+          chooseAccent(key);
+          loadPick();
+        });
+      }
+      markChecked();
+    }
+
+    const spectrum = $('spectrum');
+    function pickFromPointer(e) {
+      const r = spectrum.getBoundingClientRect();
+      pick.h = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)) * 360;
+      pick.s = 1 - Math.min(1, Math.max(0, (e.clientY - r.top) / r.height));
+      applyPick();
+    }
+    spectrum.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      spectrum.focus();
+      spectrum.setPointerCapture(e.pointerId);
+      pickFromPointer(e);
+    });
+    spectrum.addEventListener('pointermove', (e) => { if (spectrum.hasPointerCapture(e.pointerId)) pickFromPointer(e); });
+    spectrum.addEventListener('keydown', (e) => {
+      const step = { ArrowLeft: [-5, 0], ArrowRight: [5, 0], ArrowUp: [0, 0.05], ArrowDown: [0, -0.05] }[e.key];
+      if (!step) return;
+      e.preventDefault();
+      pick.h = Math.min(360, Math.max(0, pick.h + step[0]));
+      pick.s = Math.min(1, Math.max(0, pick.s + step[1]));
+      applyPick();
+    });
+    $('bright').addEventListener('input', (e) => { pick.v = e.target.value / 100; applyPick(); });
     function closePalette() {
       $('palette').classList.remove('open');
       $('paletteBtn').setAttribute('aria-expanded', 'false');
@@ -1425,7 +1610,7 @@
     $('paletteBtn').addEventListener('click', (e) => {
       e.stopPropagation();
       const open = !$('palette').classList.contains('open');
-      if (open) renderSwatches();
+      if (open) { renderSwatches(); loadPick(); }
       $('palette').classList.toggle('open', open);
       $('paletteBtn').setAttribute('aria-expanded', String(open));
     });
