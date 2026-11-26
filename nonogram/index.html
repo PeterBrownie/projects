@@ -240,9 +240,9 @@
       width: var(--size);
       display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
       padding: max(8px, calc(var(--size) * 0.24)) 0 6px;
-      /* Room for the most numbers a column can have (--slots), so the clue
-         area is the same size for every puzzle of a given board size. */
-      min-height: calc(var(--slots) * var(--size) * 0.44 * 1.22 + max(8px, calc(var(--size) * 0.24)) + 6px);
+      /* Room for --col-slots numbers (colSlots per difficulty in the
+         script), so puzzles of a given board size share one clue height. */
+      min-height: calc(var(--col-slots) * var(--size) * 0.44 * 1.22 + max(8px, calc(var(--size) * 0.24)) + 6px);
       line-height: 1.22;
     }
     .rowclue {
@@ -312,20 +312,23 @@
     .cell.hl { background-color: var(--hl); }
     .cell.cursor { outline: 2px solid var(--accent); outline-offset: calc(var(--gut) / -2 - 2px); z-index: 1; }
 
-    /* Filled squares take their shape from a per-cell SVG mask (--shape, see
-       fillMask in the script) that joins them to filled edge neighbors. The
-       mask box overhangs the tile by 21% (T_PAD) on every side to make room
-       for the concave fillets. The tile's own square goes transparent once
-       the grow animation has covered it, so no light edge shows around the
-       fill. Fills sit above the major-lane overlay. */
+    /* Filled squares are drawn by an inline SVG in each cell (.piece, see
+       fillPaths in the script) whose paths join them to filled edge
+       neighbors. Inline paths update in the same frame; CSS mask images
+       decode asynchronously and flashed blank while switching. The SVG box
+       overhangs the tile by 21% (T_PAD) on every side to make room for the
+       concave fillets. The tile's own square goes transparent once the grow
+       animation has covered it, so no light edge shows around the fill.
+       Fills sit above the major-lane overlay. */
     .cell.f { z-index: 3; background-color: transparent; transition: background-color 0s 0.2s; }
-    .cell.f::before {
-      content: ""; position: absolute; inset: -21%;
-      pointer-events: none;
-      background: var(--accent);
-      -webkit-mask: var(--shape) center / 100% 100% no-repeat;
-      mask: var(--shape) center / 100% 100% no-repeat;
+    .piece {
+      position: absolute; left: -21%; top: -21%; width: 142%; height: 142%;
+      display: none; overflow: visible; pointer-events: none;
+      fill: var(--accent);
       transform-origin: center;
+    }
+    .cell.f .piece {
+      display: block;
       animation: var(--grow, grow) 0.2s cubic-bezier(.2,.7,.3,1);
     }
     /* Completed-line wave: a lighter color sweeps along the line outward from
@@ -333,16 +336,16 @@
        whole. Fills lighten; other tiles take an accent tint. The grow
        animation stays first in the list so it doesn't replay. Cells showing
        a mistake keep their own animation. */
-    .cell.wave.f::before {
+    .cell.wave.f .piece {
       animation: var(--grow, grow) 0.2s cubic-bezier(.2,.7,.3,1), waveFill 0.45s ease var(--wd, 0ms) 1;
     }
     .cell.wave:not(.f):not(.m):not(.mfade) { animation: waveTile 0.45s ease var(--wd, 0ms) 1; }
-    @keyframes waveFill { 35% { background-color: color-mix(in srgb, var(--accent) 55%, #fff); } }
+    @keyframes waveFill { 35% { fill: color-mix(in srgb, var(--accent) 55%, #fff); } }
     @keyframes waveTile { 35% { background-color: var(--hl-strong); } }
     @keyframes grow { from { transform: scale(0); } to { transform: scale(1); } }
     /* Cells filled by dragging in from a neighbor grow out of the shared
        edge instead of the center. The tile edge sits 50 tile units from the
-       center of the 142-unit mask box, so translating by 50/142 of the box
+       center of the 142-unit piece box, so translating by 50/142 of the box
        while scaling from 0 keeps that edge fixed. */
     .cell.gl { --grow: growL; } .cell.gr { --grow: growR; }
     .cell.gt { --grow: growT; } .cell.gb { --grow: growB; }
@@ -571,9 +574,11 @@
     // which matters because every mark is checked against that solution.
 
     const DIFFS = {
-      easy:   { n: 5,  density: 0.62, label: 'Easy' },
-      medium: { n: 10, density: 0.57, label: 'Medium' },
-      hard:   { n: 15, density: 0.53, label: 'Hard' },
+      // colSlots: clue numbers the column caps always have room for. A
+      // column needing more makes the caps taller for that puzzle.
+      easy:   { n: 5,  density: 0.62, label: 'Easy',   colSlots: 3 },
+      medium: { n: 10, density: 0.57, label: 'Medium', colSlots: 4 },
+      hard:   { n: 15, density: 0.53, label: 'Hard',   colSlots: 6 },
     };
     const MAX_LIVES = 3;
     const ACCENTS = [
@@ -783,6 +788,7 @@
       els.board.style.setProperty('--n', n);
       // Most numbers one line can need: alternating filled and empty cells.
       els.board.style.setProperty('--slots', Math.ceil(n / 2));
+      els.board.style.setProperty('--col-slots', DIFFS[game.diff].colSlots);
       els.grid.innerHTML = '';
       els.rowclues.innerHTML = '';
       els.colclues.innerHTML = '';
@@ -807,6 +813,7 @@
       for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
         const el = document.createElement('div');
         el.className = 'cell';
+        el.innerHTML = '<svg class="piece" viewBox="' + -T_PAD + ' ' + -T_PAD + ' ' + (100 + 2 * T_PAD) + ' ' + (100 + 2 * T_PAD) + '" aria-hidden="true"></svg>';
         el.dataset.i = r * n + c;
         frag.appendChild(el); cellEls.push(el);
       }
@@ -838,20 +845,20 @@
     }
 
     // A fill's shape depends on its 8 neighbors, so refresh the 3x3 block.
-    // Growing cells are skipped: they keep the join mask set when they began.
+    // Growing cells are skipped: they keep the join shape set when they began.
     function refreshShapes(i) {
       const n = game.n, r = Math.floor(i / n), c = i % n;
       for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
         const rr = r + dr, cc = c + dc, j = rr * n + cc;
         if (rr >= 0 && rr < n && cc >= 0 && cc < n && game.state[j] === 1 && !growing.has(j)) {
-          cellEls[j].style.setProperty('--shape', fillMask(neighborBits(j, false), false));
+          setPiece(j, fillPaths(neighborBits(j, false), false));
         }
       }
     }
 
     // A new fill grows in on its own while the shapes around it stay as they
     // were: settled pieces ignore growing neighbors, and the growing cell's
-    // join mask covers everything joining adds. Once the grow ends, every
+    // join shape covers everything joining adds. Once the grow ends, every
     // piece switches to its settled shape. Both states cover the same area,
     // so the switch can't be seen.
     let growing = new Set();
@@ -859,7 +866,7 @@
     function startGrow(i) {
       const g = game;
       growing.add(i);
-      cellEls[i].style.setProperty('--shape', fillMask(neighborBits(i, true), true));
+      setPiece(i, fillPaths(neighborBits(i, true), true));
       setTimeout(() => {
         if (game !== g) return;
         growing.delete(i);
@@ -869,7 +876,7 @@
 
     // ── Fill shapes ───────────────────────────────────────────────
     // Filled squares that share an edge join into one shape; diagonal ones
-    // stay apart. Each filled cell draws its own piece as an SVG mask in tile
+    // stay apart. Each filled cell draws its own piece as SVG paths in tile
     // units: the tile is 100 wide and its square spans 3..97, leaving a
     // 6-unit gutter between squares. A piece is the square plus a bridge
     // across the gutter toward each filled edge neighbor (bridges meet at the
@@ -880,7 +887,7 @@
     // corner so the gutter keeps an even width around it.
     const T_GUT = 6, T_RAD = 18;              // must match --gut and --rad
     const T_IN = T_GUT / 2, T_FIL = T_RAD + T_GUT, T_OVER = 1;
-    const T_PAD = T_FIL - T_IN;                // mask overhang; must match .cell.f::before inset
+    const T_PAD = T_FIL - T_IN;                // piece overhang; must match the .piece box in CSS
     // Bit order: N E S W NE SE SW NW
     const NEIGHBORS = [[-1, 0], [0, 1], [1, 0], [0, -1], [-1, 1], [1, 1], [1, -1], [-1, -1]];
 
@@ -915,15 +922,15 @@
         'H' + (kx - o * sx) + 'Z';
     }
 
-    // join = the mask for a cell that is growing in. On top of its own piece
+    // join = the shape for a cell that is growing in. On top of its own piece
     // it covers everything its arrival changes around it: the whole gutter
     // to each joined neighbor plus a strip of that neighbor's square deep
     // enough to square off its corners, full gutter crossings, and fillets
     // that neighbors will own. All of it lies inside the final shape.
-    const maskCache = new Map();
-    function fillMask(bits, join) {
+    const pieceCache = new Map();
+    function fillPaths(bits, join) {
       const key = bits | (join ? 256 : 0);
-      if (maskCache.has(key)) return maskCache.get(key);
+      if (pieceCache.has(key)) return pieceCache.get(key);
       const [N, E, S, W, NE, SE, SW, NW] = NEIGHBORS.map((_, b) => (bits >> b) & 1);
       const a = T_IN, z = 100 - T_IN, o = T_OVER, R = T_RAD;
       const tl = !N && !W ? R : 0, tr = !N && !E ? R : 0;
@@ -952,11 +959,15 @@
           paths.push(h ? fillet(-sx, sy, 100 * sx, 0) : fillet(sx, -sy, 0, 100 * sy));
         }
       }
-      const svg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='" + -T_PAD + ' ' + -T_PAD + ' ' + (100 + 2 * T_PAD) + ' ' + (100 + 2 * T_PAD) + "'>" +
-        paths.map((d) => "<path d='" + d + "'/>").join('') + '</svg>';
-      const url = 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")';
-      maskCache.set(key, url);
-      return url;
+      // Separate paths, so overlapping pieces always union whatever their winding.
+      const markup = paths.map((d) => '<path d="' + d + '"/>').join('');
+      pieceCache.set(key, markup);
+      return markup;
+    }
+
+    function setPiece(i, markup) {
+      const svg = cellEls[i].firstChild;
+      if (svg._markup !== markup) { svg.innerHTML = markup; svg._markup = markup; }
     }
 
     // Red highlight lasts 3s in total: 2.5s held, then a 0.5s fade.
@@ -1319,12 +1330,8 @@
       const x = m === 'x';
       $('modeWrap').setAttribute('aria-checked', String(x));
     }
-    // Clicking a half picks that mode; keyboard activation (no pointer position) toggles.
-    $('modeWrap').addEventListener('click', (e) => {
-      if (e.detail === 0) { setMode(settings.mode === 'fill' ? 'x' : 'fill'); return; }
-      const r = e.currentTarget.getBoundingClientRect();
-      setMode(e.clientX < r.left + r.width / 2 ? 'fill' : 'x');
-    });
+    // Any click or tap on the switch toggles, whichever side it lands on.
+    $('modeWrap').addEventListener('click', () => setMode(settings.mode === 'fill' ? 'x' : 'fill'));
 
     // ── Theme controls ────────────────────────────────────────────
     function applyScheme() {
