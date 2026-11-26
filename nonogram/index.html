@@ -347,10 +347,11 @@
     }
     .cell.mfade.f::after { animation: mistakeFade 0.5s ease forwards; }
     .cell.mfade.x { animation: mistakeBgFade 0.5s ease forwards; }
-    .cell.mfade.x::before, .cell.mfade.x::after { animation: mistakeLineFade 0.5s ease forwards; }
+    /* An X placed by a mistake keeps red lines for the rest of the game;
+       only the red background fades. */
+    .cell.mx::before, .cell.mx::after { background: var(--danger); opacity: 1; }
     @keyframes mistakeFade { to { opacity: 0; } }
     @keyframes mistakeBgFade { to { background: var(--cell); } }
-    @keyframes mistakeLineFade { to { background: var(--cross); } }
     .cell.m { animation: shake 0.32s ease; }
     @keyframes shake {
       0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); }
@@ -809,6 +810,7 @@
       el.classList.toggle('f', s === 1);
       el.classList.toggle('x', s === 2);
       el.classList.toggle('auto', game.autoX.includes(i));
+      el.classList.toggle('mx', s === 2 && game.mistakes.includes(i));
     }
 
     // Red highlight lasts 3s in total: 2.5s held, then a 0.5s fade.
