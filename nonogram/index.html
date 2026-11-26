@@ -419,14 +419,46 @@
        animation. */
     .cell.wave:not(.f):not(.m):not(.mfade) { animation: waveTile 0.45s ease var(--wd, 0ms) 1; }
     @keyframes waveTile { 35% { background-color: var(--hl-strong); } }
-    .cell.wave.x:not(.m):not(.mfade) .piece { animation: waveCross 0.45s ease var(--wd, 0ms) 1; }
+    .cell.wave.x:not(.m):not(.mfade):not(.xin) .piece { animation: waveCross 0.45s ease var(--wd, 0ms) 1; }
+    /* A completed line's new crosses wait, as plain empty squares, for the
+       wave to reach them (.xwait), then grow in already lit (.xin). */
+    .cell.x.xwait .piece, .cell.xwait::before, .cell.xwait::after { display: none; }
+    .cell.x.xwait { background-color: var(--cell); }
+    .cell.x.xwait.hl { background-color: var(--hl); }
+    .cell.xin .piece { animation: waveCross 0.45s ease 1; }
     @keyframes waveCross { 35% { fill: color-mix(in srgb, var(--accent) 22%, var(--gutter)); } }
     .waves {
       position: absolute; left: var(--edge); top: var(--edge); z-index: 3;
       width: calc(var(--size) * var(--n)); height: calc(var(--size) * var(--n));
       pointer-events: none;
     }
-    .waves svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+    /* Each line's overlay is clipped to a strip around its line, in cells
+       (--sx, --sy, --sw, --sh, set by the script), and the strip is a layer
+       of its own, so the overlay's mask changing every frame repaints only
+       that strip. Without it Safari repaints every square under the
+       overlay, every frame, for the length of the wave. The overlay keeps
+       the board's size and origin, so it draws exactly as before. */
+    .wstrip {
+      position: absolute; overflow: hidden; will-change: transform;
+      left: calc(var(--size) * var(--sx)); top: calc(var(--size) * var(--sy));
+      width: calc(var(--size) * var(--sw)); height: calc(var(--size) * var(--sh));
+    }
+    .waves svg {
+      position: absolute; overflow: visible;
+      left: calc(var(--size) * var(--sx) * -1); top: calc(var(--size) * var(--sy) * -1);
+      width: calc(var(--size) * var(--n)); height: calc(var(--size) * var(--n));
+    }
+    /* Run count shown while dragging over filled squares (see trackRunCount). */
+    .runcount {
+      position: absolute; z-index: 5; pointer-events: none;
+      left: calc(var(--edge) + var(--size) * var(--rx));
+      top: calc(var(--edge) + var(--size) * var(--ry));
+      transform: translate(-50%, -50%);
+      font-size: calc(var(--size) * 0.56); font-weight: 550; line-height: 1;
+      color: #000;
+      opacity: 0; transition: opacity 0.18s ease;
+    }
+    .runcount.show { opacity: 1; }
     .waves .lit { fill: color-mix(in srgb, var(--accent) 55%, #fff); }
     .cell.x::before, .cell.x::after {
       content: ""; position: absolute; left: 50%; top: 50%;
@@ -1393,6 +1425,7 @@
         el.classList.add('wave');
         clearTimeout(el._waveTimer);
         el._waveTimer = setTimeout(() => el.classList.remove('wave'), delay + 500);
+        if (el.classList.contains('xwait')) setTimeout(() => revealCross(j, el), delay);
       });
       let pieces = '';
       idx.forEach((j) => {
@@ -1400,8 +1433,16 @@
         pieces += '<g transform="translate(' + (j % n) * 100 + ' ' + Math.floor(j / n) * 100 + ')">' + fillPaths(neighborBits(j, true), false) + '</g>';
       });
       const across = row ? 'x1="0" y1="0" x2="0" y2="100"' : 'x1="0" y1="0" x2="100" y2="0"';
-      const rect = row ? 'x="-30" y="' + (w.k * 100 - 30) + '" width="' + (n * 100 + 60) + '" height="160"'
-                       : 'x="' + (w.k * 100 - 30) + '" y="-30" width="160" height="' + (n * 100 + 60) + '"';
+      // The light covers the line and 30 units on each side, in board units.
+      const box = row ? [-30, w.k * 100 - 30, n * 100 + 60, 160] : [w.k * 100 - 30, -30, 160, n * 100 + 60];
+      const rect = 'x="' + box[0] + '" y="' + box[1] + '" width="' + box[2] + '" height="' + box[3] + '"';
+      // The board-sized overlay sits in a strip-sized clip (.wstrip) that is
+      // its own compositing layer, so the per-frame mask change repaints the
+      // strip alone instead of every square beneath it.
+      const strip = document.createElement('div');
+      strip.className = 'wstrip';
+      strip.style.setProperty('--sx', box[0] / 100); strip.style.setProperty('--sy', box[1] / 100);
+      strip.style.setProperty('--sw', box[2] / 100); strip.style.setProperty('--sh', box[3] / 100);
       const svg = document.createElementNS(SVG_NS, 'svg');
       svg.setAttribute('viewBox', '0 0 ' + n * 100 + ' ' + n * 100);
       svg.innerHTML =
@@ -1413,7 +1454,17 @@
       w.svg = svg; w.start = now;
       w.end = WAVE_LEN + WAVE_STEP * Math.max(w.origin + 0.5, n - w.origin - 0.5);
       drawWave(w, 0); // dark before it is shown
-      wavesEl.appendChild(svg);
+      strip.appendChild(svg);
+      wavesEl.appendChild(strip);
+    }
+
+    // A cross added by a completed line, shown as the wave reaches it: it
+    // grows in like a placed cross while lit with the wave's tint.
+    function revealCross(j, el) {
+      if (cellEls[j] !== el || !el.classList.contains('xwait')) return;
+      el.classList.replace('xwait', 'xin');
+      startGrow(j);
+      setTimeout(() => el.classList.remove('xin'), 500);
     }
 
     // The pulse along the line, sampled 4 times per cell, as an alpha mask
@@ -1447,7 +1498,7 @@
           startWave(w, now);
         }
         const t = now - w.start;
-        if (t >= w.end) { w.svg.remove(); return false; }
+        if (t >= w.end) { w.svg.parentNode.remove(); return false; }
         drawWave(w, t);
         return true;
       });
@@ -1459,13 +1510,16 @@
       const wasDone = { r: rowClueEls[r].classList.contains('done'), c: colClueEls[c].classList.contains('done') };
       // Lines whose clues need rechecking, each checked once at the end.
       const rows = new Set([r]), cols = new Set([c]);
+      // Lines completed just now get a wave, and their new crosses appear as
+      // it reaches them (see startWave).
+      const waved = { r: !wasDone.r && lineComplete('r', r), c: !wasDone.c && lineComplete('c', c) };
       for (const [kind, k] of [['r', r], ['c', c]]) {
         if (lineComplete(kind, k)) {
           for (const j of lineIdx(kind, k)) {
             if (game.state[j] === 0) {
               game.state[j] = 2;
               game.autoX.push(j);
-              startGrow(j);
+              if (waved[kind]) cellEls[j].classList.add('xwait'); else startGrow(j);
               paintCell(j);
               // A completed row may in turn complete crossing columns.
               rows.add(Math.floor(j / n)); cols.add(j % n);
@@ -1475,8 +1529,8 @@
       }
       rows.forEach((k) => updateLineDone('r', k));
       cols.forEach((k) => updateLineDone('c', k));
-      if (!wasDone.r && lineComplete('r', r)) waveLine('r', r, c);
-      if (!wasDone.c && lineComplete('c', c)) waveLine('c', c, r);
+      if (waved.r) waveLine('r', r, c);
+      if (waved.c) waveLine('c', c, r);
       if (game.status === 'playing' && game.sol.every((v, j) => v !== 1 || game.state[j] === 1)) win();
     }
 
@@ -1638,11 +1692,55 @@
       const steps = Math.max(Math.abs(r - lr), Math.abs(c - lc));
       const dr = Math.sign(r - lr), dc = Math.sign(c - lc);
       for (let s = 1; s <= steps; s++) {
-        const j = (lr + dr * s) * n + (lc + dc * s);
+        const j = (lr + dr * s) * n + (lc + dc * s), prev = drag.last, wasFilled = game.state[j] === 1;
         drag.last = j;
-        if (!applyAt(j, drag.action, dc > 0 ? 'l' : dc < 0 ? 'r' : dr > 0 ? 't' : 'b')) { drag = null; return false; }
+        if (!applyAt(j, drag.action, dc > 0 ? 'l' : dc < 0 ? 'r' : dr > 0 ? 't' : 'b')) { hideRunCount(); drag = null; return false; }
+        trackRunCount(prev, j, dc ? 'row' : 'col', wasFilled);
       }
       return true;
+    }
+
+    // ── Run count ─────────────────────────────────────────────────
+    // Dragging from a filled square into one that was already filled shows
+    // the length of that filled run along the drag, at the run's middle.
+    // The number stays where it first appeared and counts up as the drag
+    // fills past the end of the run. It goes when the drag ends or turns.
+    function runAround(i, axis) {
+      const n = game.n, r = Math.floor(i / n), c = i % n, row = axis === 'row';
+      const at = (t) => game.state[row ? r * n + t : t * n + c] === 1;
+      let a = row ? c : r, b = a;
+      while (a > 0 && at(a - 1)) a--;
+      while (b < n - 1 && at(b + 1)) b++;
+      return { a, b, line: row ? r : c };
+    }
+
+    function trackRunCount(prev, j, axis, wasFilled) {
+      const rc = drag.count;
+      if (rc && rc.axis !== axis) hideRunCount();
+      if (!drag.count) {
+        if (!wasFilled || game.state[prev] !== 1) return;
+        const run = runAround(j, axis), el = document.createElement('div');
+        el.className = 'runcount';
+        el.setAttribute('aria-hidden', 'true');
+        // Middle of the run, in cells from the grid's first square.
+        const mid = (run.a + run.b + 1) / 2, across = run.line + 0.5;
+        el.style.setProperty('--rx', axis === 'row' ? mid : across);
+        el.style.setProperty('--ry', axis === 'row' ? across : mid);
+        els.grid.appendChild(el);
+        drag.count = { el, axis, anchor: j, len: 0 };
+        void el.offsetWidth; // start from transparent so it fades in
+        el.classList.add('show');
+      }
+      const c = drag.count, run = runAround(c.anchor, axis), len = run.b - run.a + 1;
+      if (len !== c.len) { c.len = len; c.el.textContent = len; }
+    }
+
+    function hideRunCount() {
+      if (!drag || !drag.count) return;
+      const el = drag.count.el;
+      drag.count = null;
+      el.classList.remove('show');
+      setTimeout(() => el.remove(), 250);
     }
 
     els.grid.addEventListener('pointermove', (e) => {
@@ -1696,7 +1794,7 @@
     });
 
     const endDrag = (e) => {
-      if (drag && drag.id === e.pointerId) drag = null;
+      if (drag && drag.id === e.pointerId) { hideRunCount(); drag = null; }
       if (e.pointerType !== 'mouse') setHover(null);
     };
     els.grid.addEventListener('pointerup', endDrag);
