@@ -504,6 +504,7 @@
     .board.over .cell { cursor: default; }
     .board.won .cell.x::before, .board.won .cell.x::after { opacity: 0; transition: opacity 0.6s; }
     .board.won .cell.x .piece { fill: var(--cell); transition: fill 0.6s; }
+    .board.won .cell.f .piece { fill: var(--gutter); transition: fill 0.6s; }
 
     /* ── Mode toggle ── */
     /* The end-of-game banner takes the mode switch's place at the same
