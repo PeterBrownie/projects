@@ -259,6 +259,7 @@
       grid-template-columns: auto auto;
       grid-template-rows: auto auto;
       user-select: none; -webkit-user-select: none;
+      -webkit-touch-callout: none;
       touch-action: none;
       font-variant-numeric: tabular-nums;
       /* Declared here so they resolve against the board's fitted --size.
@@ -326,6 +327,9 @@
       background: var(--gutter);
       overflow: hidden;
       position: relative;
+      /* Its own stacking context, so the z-index changes cells make while
+         playing are resolved inside the grid, not across the whole page. */
+      isolation: isolate;
       transition: background-color 0.6s;
     }
     /* Once solved, the gutters fade to the empty-square color so the empty
@@ -402,9 +406,10 @@
     .waves {
       position: absolute; left: var(--edge); top: var(--edge); z-index: 3;
       width: calc(var(--size) * var(--n)); height: calc(var(--size) * var(--n));
-      overflow: visible; pointer-events: none;
+      pointer-events: none;
     }
-    .waves .lit stop { stop-color: color-mix(in srgb, var(--accent) 55%, #fff); }
+    .waves svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+    .waves .lit { fill: color-mix(in srgb, var(--accent) 55%, #fff); }
     .cell.x::before, .cell.x::after {
       content: ""; position: absolute; left: 50%; top: 50%;
       width: 56%; height: 3px; border-radius: 1.5px;
@@ -413,7 +418,6 @@
       animation: fadeIn 0.14s ease-out;
     }
     .cell.x::after { transform: translate(-50%, -50%) rotate(-45deg); }
-    .cell.x.auto::before, .cell.x.auto::after { opacity: 0.55; }
     @keyframes fadeIn { from { opacity: 0; } }
 
     /* Mistake highlight: .m holds it, .mfade fades it out, then both are removed.
@@ -491,9 +495,12 @@
       display: flex; align-items: center; justify-content: center; padding: 16px;
       background: color-mix(in srgb, var(--bg) 55%, transparent);
       backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
-      opacity: 0; pointer-events: none; transition: opacity 0.25s;
+      opacity: 0; pointer-events: none;
+      /* Hidden once faded out, so the full-screen blur isn't composited
+         over the board during play. */
+      visibility: hidden; transition: opacity 0.25s, visibility 0s 0.25s;
     }
-    .overlay.open { opacity: 1; pointer-events: auto; }
+    .overlay.open { opacity: 1; pointer-events: auto; visibility: visible; transition: opacity 0.25s; }
     .card {
       background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
       box-shadow: var(--shadow); padding: 24px; width: min(380px, 100%); text-align: center;
@@ -834,7 +841,13 @@
       newGame({ n: game.n, diff: game.diff, sol: game.sol, clues: game.clues });
     }
 
+    // Marking saves through persistSoon, so a drag across many cells writes
+    // once instead of once per cell. Leaving the page and ending a game
+    // save right away.
+    let persistTimer = 0;
+    function persistSoon() { if (!persistTimer) persistTimer = setTimeout(persist, 400); }
     function persist() {
+      clearTimeout(persistTimer); persistTimer = 0;
       if (!game) return;
       save('nonogram.game', {
         n: game.n, diff: game.diff, sol: game.sol.join(''), state: game.state.join(''),
@@ -883,7 +896,11 @@
       const ss = String(s % 60).padStart(2, '0');
       return h ? h + ':' + String(m % 60).padStart(2, '0') + ':' + ss : m + ':' + ss;
     }
-    function updateTime() { els.time.textContent = fmt(currentElapsed()); }
+    let shownTime = '';
+    function updateTime() {
+      const t = fmt(currentElapsed());
+      if (t !== shownTime) { els.time.textContent = t; shownTime = t; }
+    }
     document.addEventListener('visibilitychange', () => {
       if (!game) return;
       if (document.hidden) { stopClock(); persist(); }
@@ -927,8 +944,9 @@
         frag.appendChild(el); cellEls.push(el);
       }
       els.grid.appendChild(frag);
-      els.grid.insertAdjacentHTML('beforeend', '<svg class="waves" viewBox="0 0 ' + n * 100 + ' ' + n * 100 + '" aria-hidden="true"></svg>');
+      els.grid.insertAdjacentHTML('beforeend', '<div class="waves" aria-hidden="true"></div>');
       wavesEl = els.grid.lastChild;
+      hoverR = hoverC = -1; geom = null;
       waves = []; cancelAnimationFrame(waveFrame); waveFrame = 0;
 
       for (let i = 0; i < n * n; i++) paintCell(i);
@@ -952,7 +970,6 @@
       const el = cellEls[i], s = game.state[i];
       el.classList.toggle('f', s === 1);
       el.classList.toggle('x', s === 2);
-      el.classList.toggle('auto', game.autoX.includes(i));
       el.classList.toggle('mx', s === 2 && game.mistakes.includes(i));
       refreshShapes(i);
     }
@@ -1112,7 +1129,7 @@
       const item = {
         i, from: from || null, g0, g1: g0 + (from ? SWEEP_LEN : CIRCLE_LEN),
         sideA: (bits >> across[0]) & 1, sideB: (bits >> across[1]) & 1,
-        clip: el.firstChild.lastChild,
+        clip: el.firstChild.lastChild, xf: from ? SWEEP_XFORM[from] : '', d: null,
       };
       growing.set(i, item);
       el.classList.add('growing');
@@ -1137,21 +1154,31 @@
       const el = cellEls[it.i];
       el.classList.remove('growing');
       el.firstChild.firstChild.removeAttribute('clip-path');
-      it.clip.innerHTML = ''; it.clip._d = '';
+      it.clip.textContent = '';
       refreshShapes(it.i);
     }
 
+    // Each change swaps in a new <path> node built directly, not parsed from
+    // markup. Safari doesn't fully repaint the clipped piece when only an
+    // existing clip path's d changes, so the node itself is replaced.
+    // An empty clip path reveals nothing.
+    const SVG_NS = 'http://www.w3.org/2000/svg';
     function drawClip(it) {
       const t = growClock - it.g0;
-      let markup = '';
+      let d = '';
       if (t > 0 && !it.from) {
         const r = t * 1.01;
-        markup = '<path d="M' + (50 - r) + ' 50a' + r + ' ' + r + ' 0 1 0 ' + 2 * r + ' 0a' + r + ' ' + r + ' 0 1 0 ' + -2 * r + ' 0Z"/>';
+        d = 'M' + (50 - r) + ' 50a' + r + ' ' + r + ' 0 1 0 ' + 2 * r + ' 0a' + r + ' ' + r + ' 0 1 0 ' + -2 * r + ' 0Z';
       } else if (t > 0) {
-        const xf = SWEEP_XFORM[it.from];
-        markup = '<path d="' + sweepPath(t - T_PAD, it.sideA, it.sideB) + '"' + (xf ? ' transform="' + xf + '"' : '') + '/>';
+        d = sweepPath(t - T_PAD, it.sideA, it.sideB);
       }
-      if (it.clip._d !== markup) { it.clip.innerHTML = markup; it.clip._d = markup; }
+      if (it.d === d) return;
+      it.d = d;
+      if (!d) { it.clip.textContent = ''; return; }
+      const path = document.createElementNS(SVG_NS, 'path');
+      path.setAttribute('d', d);
+      if (it.xf) path.setAttribute('transform', it.xf);
+      if (it.clip.firstChild) it.clip.replaceChild(path, it.clip.firstChild); else it.clip.appendChild(path);
     }
 
     // Area revealed by a frontier at y = f, moving down. Across the square's
@@ -1272,8 +1299,15 @@
       const availH = els.main.clientHeight - padY - els.controls.offsetHeight - parseFloat(cs.rowGap || 0);
       const size = Math.floor(Math.min((availW - bw) / aw, (availH - bh) / ah));
       b.style.setProperty('--size', Math.max(14, Math.min(56, size)) + 'px');
+      geom = null;
     }
-    window.addEventListener('resize', fitBoard);
+    // Mobile browsers fire resize in bursts as their toolbars slide, so fit
+    // at most once a frame.
+    let fitFrame = 0;
+    window.addEventListener('resize', () => {
+      geom = null;
+      if (!fitFrame) fitFrame = requestAnimationFrame(() => { fitFrame = 0; fitBoard(); });
+    });
 
     // ── Marking cells ─────────────────────────────────────────────
     // Returns false if the action caused a mistake (ends the drag).
@@ -1299,19 +1333,22 @@
       if (!ok) flashMistake(cellEls[i]);
       afterChange(i);
       if (!ok && game.lives <= 0) lose();
-      persist();
+      persistSoon();
       return ok;
     }
 
     // Ripple a just-completed line outward from position `origin` in it.
     // Empty tiles get a CSS tint, each delayed by its distance. Fills are
-    // lit by one overlay per line: a light rectangle over the line whose
-    // brightness, a gradient along the line redrawn every frame, is a pulse
-    // travelling outward. It is masked to the line's fill pieces, painted
-    // with a gradient that fades toward the line's two long edges, so the
-    // light blends into neighboring lines and the shape's outline instead
-    // of stopping in a hard step. The wave waits for fills in the line that
-    // are still growing, so it never lights squares not yet revealed.
+    // lit by one overlay per line: a light rectangle over the line, masked
+    // to the line's fill pieces, painted with a gradient that fades toward
+    // the line's two long edges, so the light blends into neighboring lines
+    // and the shape's outline instead of stopping in a hard step. Its
+    // brightness along the line is a pulse travelling outward, applied as a
+    // CSS mask gradient on the overlay's <svg> and redrawn every frame.
+    // Keeping the per-frame change outside the SVG leaves the SVG mask
+    // untouched, so browsers (Safari especially) render it once instead of
+    // every frame. The wave waits for fills in the line that are still
+    // growing, so it never lights squares not yet revealed.
     const WAVE_STEP = 40;    // ms of delay per cell of distance
     const WAVE_LEN = 450;    // ms each point takes to brighten and fade
     const WAVE_PEAK = 0.35;  // share of WAVE_LEN spent brightening
@@ -1319,17 +1356,20 @@
     let wavesEl = null, waves = [], waveFrame = 0, waveIds = 0;
 
     function waveLine(kind, k, origin) {
-      waves.push({ kind, k, origin, start: null, g: null, stops: null });
+      waves.push({ kind, k, origin, start: null, svg: null, mask: '' });
       if (!waveFrame) waveFrame = requestAnimationFrame(waveTick);
     }
 
     function startWave(w, now) {
       const n = game.n, idx = lineIdx(w.kind, w.k), id = ++waveIds, row = w.kind === 'r';
+      // Restart tiles that are already waving: clear them all, then one
+      // style flush, then set them again (not a flush per tile).
+      let restart = false;
+      idx.forEach((j) => { const el = cellEls[j]; if (el.classList.contains('wave')) { el.classList.remove('wave'); restart = true; } });
+      if (restart) void els.grid.offsetWidth;
       idx.forEach((j, t) => {
         const el = cellEls[j], delay = Math.abs(t - w.origin) * WAVE_STEP;
         el.style.setProperty('--wd', delay + 'ms');
-        el.classList.remove('wave');
-        void el.offsetWidth; // restart if it was already waving
         el.classList.add('wave');
         clearTimeout(el._waveTimer);
         el._waveTimer = setTimeout(() => el.classList.remove('wave'), delay + 500);
@@ -1339,24 +1379,37 @@
         if (game.state[j] !== 1) return;
         pieces += '<g transform="translate(' + (j % n) * 100 + ' ' + Math.floor(j / n) * 100 + ')">' + fillPaths(neighborBits(j, true), false) + '</g>';
       });
-      const samples = n * 4;
-      let stops = '';
-      for (let s = 0; s <= samples; s++) stops += '<stop offset="' + s / samples + '" stop-opacity="0"/>';
       const across = row ? 'x1="0" y1="0" x2="0" y2="100"' : 'x1="0" y1="0" x2="100" y2="0"';
-      const along = row ? 'x1="0" y1="0" x2="' + n * 100 + '" y2="0"' : 'x1="0" y1="0" x2="0" y2="' + n * 100 + '"';
       const rect = row ? 'x="-30" y="' + (w.k * 100 - 30) + '" width="' + (n * 100 + 60) + '" height="160"'
                        : 'x="' + (w.k * 100 - 30) + '" y="-30" width="160" height="' + (n * 100 + 60) + '"';
-      const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      g.innerHTML =
+      const svg = document.createElementNS(SVG_NS, 'svg');
+      svg.setAttribute('viewBox', '0 0 ' + n * 100 + ' ' + n * 100);
+      svg.innerHTML =
         '<linearGradient id="wf' + id + '" gradientUnits="userSpaceOnUse" ' + across + '>' +
           '<stop offset="0" stop-color="#000"/><stop offset="' + WAVE_FEATHER + '" stop-color="#fff"/>' +
           '<stop offset="' + (1 - WAVE_FEATHER) + '" stop-color="#fff"/><stop offset="1" stop-color="#000"/></linearGradient>' +
-        '<linearGradient class="lit" id="wl' + id + '" gradientUnits="userSpaceOnUse" ' + along + '>' + stops + '</linearGradient>' +
         '<mask id="wm' + id + '" maskUnits="userSpaceOnUse" ' + rect + '><g fill="url(#wf' + id + ')">' + pieces + '</g></mask>' +
-        '<rect ' + rect + ' fill="url(#wl' + id + ')" mask="url(#wm' + id + ')"/>';
-      wavesEl.appendChild(g);
-      w.g = g; w.stops = Array.from(g.querySelectorAll('.lit stop')); w.start = now;
+        '<rect class="lit" ' + rect + ' mask="url(#wm' + id + ')"/>';
+      w.svg = svg; w.start = now;
       w.end = WAVE_LEN + WAVE_STEP * Math.max(w.origin + 0.5, n - w.origin - 0.5);
+      drawWave(w, 0); // dark before it is shown
+      wavesEl.appendChild(svg);
+    }
+
+    // The pulse along the line, sampled 4 times per cell, as an alpha mask
+    // gradient spanning the board (the line's full length).
+    function drawWave(w, t) {
+      const n = game.n, samples = n * 4;
+      let g = 'linear-gradient(' + (w.kind === 'r' ? 'to right' : 'to bottom');
+      for (let s = 0; s <= samples; s++) {
+        const pos = (s / samples) * n;
+        g += ', rgba(0,0,0,' + waveLevel(t - WAVE_STEP * Math.abs(pos - (w.origin + 0.5))).toFixed(3) + ') ' + (s / samples) * 100 + '%';
+      }
+      g += ')';
+      if (g === w.mask) return;
+      w.mask = g;
+      w.svg.style.webkitMaskImage = g;
+      w.svg.style.maskImage = g;
     }
 
     // Brightness of one point, `ms` after its own start: up, then back down.
@@ -1374,12 +1427,8 @@
           startWave(w, now);
         }
         const t = now - w.start;
-        if (t >= w.end) { w.g.remove(); return false; }
-        const samples = w.stops.length - 1;
-        w.stops.forEach((stop, s) => {
-          const pos = (s / samples) * game.n;
-          stop.setAttribute('stop-opacity', waveLevel(t - WAVE_STEP * Math.abs(pos - (w.origin + 0.5))).toFixed(3));
-        });
+        if (t >= w.end) { w.svg.remove(); return false; }
+        drawWave(w, t);
         return true;
       });
       waveFrame = waves.length ? requestAnimationFrame(waveTick) : 0;
@@ -1388,6 +1437,8 @@
     function afterChange(i) {
       const n = game.n, r = Math.floor(i / n), c = i % n;
       const wasDone = { r: rowClueEls[r].classList.contains('done'), c: colClueEls[c].classList.contains('done') };
+      // Lines whose clues need rechecking, each checked once at the end.
+      const rows = new Set([r]), cols = new Set([c]);
       for (const [kind, k] of [['r', r], ['c', c]]) {
         if (lineComplete(kind, k)) {
           for (const j of lineIdx(kind, k)) {
@@ -1396,13 +1447,13 @@
               game.autoX.push(j);
               paintCell(j);
               // A completed row may in turn complete crossing columns.
-              const jr = Math.floor(j / n), jc = j % n;
-              updateLineDone('r', jr); updateLineDone('c', jc);
+              rows.add(Math.floor(j / n)); cols.add(j % n);
             }
           }
         }
-        updateLineDone(kind, k);
       }
+      rows.forEach((k) => updateLineDone('r', k));
+      cols.forEach((k) => updateLineDone('c', k));
       if (!wasDone.r && lineComplete('r', r)) waveLine('r', r, c);
       if (!wasDone.c && lineComplete('c', c)) waveLine('c', c, r);
       if (game.status === 'playing' && game.sol.every((v, j) => v !== 1 || game.state[j] === 1)) win();
@@ -1505,20 +1556,34 @@
     // ── Pointer input (click and drag along a line) ───────────────
     let drag = null;
     let cursor = null;
+    // Where the grid's squares sit on screen, measured once per drag rather
+    // than on every move, which would force a style and layout flush each
+    // time right after marking. Cleared whenever the board can move.
+    let geom = null;
+    function gridGeom() {
+      if (!geom) { const r = cellEls[0].getBoundingClientRect(); geom = { left: r.left, top: r.top, size: r.width }; }
+      return geom;
+    }
+    els.main.addEventListener('scroll', () => { geom = null; }, { passive: true });
 
     function cellFromPoint(x, y) {
       const el = document.elementFromPoint(x, y);
       return el && el.classList && el.classList.contains('cell') ? Number(el.dataset.i) : null;
     }
 
+    // Only the lines entering or leaving the highlight are touched.
+    let hoverR = -1, hoverC = -1;
     function setHover(i) {
       const n = game.n;
       const r = i === null ? -1 : Math.floor(i / n), c = i === null ? -1 : i % n;
-      for (let j = 0; j < cellEls.length; j++) {
-        cellEls[j].classList.toggle('hl', Math.floor(j / n) === r || j % n === c);
-      }
-      rowClueEls.forEach((el, k) => el.classList.toggle('hl', k === r));
-      colClueEls.forEach((el, k) => el.classList.toggle('hl', k === c));
+      if (r === hoverR && c === hoverC) return;
+      const pr = hoverR, pc = hoverC;
+      hoverR = r; hoverC = c;
+      const mark = (j) => cellEls[j].classList.toggle('hl', Math.floor(j / n) === r || j % n === c);
+      for (const lr of pr === r ? [r] : [pr, r]) if (lr >= 0) for (let t = 0; t < n; t++) mark(lr * n + t);
+      for (const lc of pc === c ? [c] : [pc, c]) if (lc >= 0) for (let t = 0; t < n; t++) mark(t * n + lc);
+      if (pr !== r) { if (pr >= 0) rowClueEls[pr].classList.remove('hl'); if (r >= 0) rowClueEls[r].classList.add('hl'); }
+      if (pc !== c) { if (pc >= 0) colClueEls[pc].classList.remove('hl'); if (c >= 0) colClueEls[c].classList.add('hl'); }
     }
 
     els.grid.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -1528,6 +1593,7 @@
       if (e.button !== 0 && e.button !== 2) return;
       e.preventDefault();
       const i = Number(e.target.dataset.i);
+      geom = null; gridGeom(); // measure before marking dirties the layout
       const base = settings.mode;
       const action = e.button === 2 ? (base === 'fill' ? 'x' : 'fill') : base;
       setCursor(null);
@@ -1564,7 +1630,7 @@
         return;
       }
       const n = game.n;
-      const first = cellEls[0].getBoundingClientRect(), size = first.width;
+      const first = gridGeom(), size = first.size;
       // Fractional grid position, clamped so dragging past the edge still works.
       const rx = (e.clientX - first.left) / size, ry = (e.clientY - first.top) / size;
       const fx = Math.min(n - 0.001, Math.max(0, rx));
