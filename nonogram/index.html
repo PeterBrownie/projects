@@ -963,11 +963,12 @@
     };
     // Squares filled so far in the current drag (or Shift+arrow run).
     let fillStreak = 0;
-    // The tone for the k-th fill of a streak: one note up the scale per
-    // square. A drag covers at most one 15-square line, so it never runs
-    // out; a longer Shift+arrow run holds on the top note.
+    // The tone for the k-th fill of a streak: up the scale and back down,
+    // over and over (1 2 ... 14 15 14 ... 2 1 2 ...). Each end plays once
+    // before the direction turns, so no note repeats back to back.
     function fillTone(k) {
-      return Math.min(k, SFX.fill.length - 1);
+      const top = SFX.fill.length - 1, p = k % (2 * top);
+      return p <= top ? p : 2 * top - p;
     }
 
     const sound = (() => {
