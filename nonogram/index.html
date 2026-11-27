@@ -880,7 +880,7 @@
     const sound = (() => {
       const AC = window.AudioContext || window.webkitAudioContext;
       const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-      const none = { play() {} };
+      const none = { play() {}, hushLines() {} };
       if (!AC || !OAC) return none;
       const buffers = new Map(); // url -> AudioBuffer
       let ctx = null, out = null, lastFill = null;
@@ -930,8 +930,19 @@
           if (lastFill) lastFill.gain.setTargetAtTime(0, ctx.currentTime, 0.04);
           lastFill = gain;
         }
+        if (name === 'line') {
+          lineVoices.add(gain);
+          src.onended = () => lineVoices.delete(gain);
+        }
       }
-      return { play };
+      // Line chimes still ringing, so a solve can cut them off.
+      const lineVoices = new Set();
+      function hushLines() {
+        if (!ctx) return;
+        lineVoices.forEach((gain) => gain.gain.setTargetAtTime(0, ctx.currentTime, 0.02));
+        lineVoices.clear();
+      }
+      return { play, hushLines };
     })();
 
     // ── Game state ────────────────────────────────────────────────
@@ -1642,6 +1653,9 @@
     function win() {
       game.status = 'won';
       stopClock();
+      // The solve sound replaces the line chime: one from a move just
+      // before is cut off, and waves still to start skip theirs (startWave).
+      sound.hushLines();
       sound.play('solve');
       recordWin();
       for (let j = 0; j < game.state.length; j++) if (game.state[j] === 0) { game.state[j] = 2; paintCell(j); }
