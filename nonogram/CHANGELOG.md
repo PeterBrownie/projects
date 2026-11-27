@@ -8,6 +8,10 @@ change a player would notice, grouped under the time it was pushed live (US Cent
 
 ## 2026-11-27
 
+### 17:49
+
+- Major grid lines run unbroken through the inner corners of filled shapes.
+
 ### 17:36
 
 - New sounds for switching to square mode and to cross mode.

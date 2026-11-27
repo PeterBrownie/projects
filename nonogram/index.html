@@ -1290,6 +1290,22 @@
         'H' + (kx - o * sx) + 'Z';
     }
 
+    // The parts of the two gutter lanes under that fillet, for a major line
+    // crossing it: the vertical lane (vert) and the horizontal lane (horiz)
+    // each run from the crossing's near edge (backed T_OVER into the stripe
+    // that ends there) out to the fillet's arc, where the plain lane takes
+    // over. Without them the fillet's fill breaks the major line.
+    const LANE_ARC = T_FIL - Math.sqrt(T_FIL * T_FIL - (T_FIL - T_GUT) ** 2); // the arc's depth at the lane's far edge
+    function filletLanes(sx, sy, ox, oy, vert, horiz) {
+      const kx = ox + 50 + (50 - T_IN) * sx, ky = oy + 50 + (50 - T_IN) * sy, o = T_OVER, f = sx * sy > 0 ? 0 : 1;
+      const lanes = [];
+      if (vert) lanes.push('M' + kx + ' ' + (ky - o * sy) + 'H' + (kx + T_GUT * sx) + 'V' + (ky + LANE_ARC * sy) +
+        'A' + T_FIL + ' ' + T_FIL + ' 0 0 ' + f + ' ' + kx + ' ' + (ky + T_FIL * sy) + 'Z');
+      if (horiz) lanes.push('M' + (kx - o * sx) + ' ' + ky + 'V' + (ky + T_GUT * sy) + 'H' + (kx + LANE_ARC * sx) +
+        'A' + T_FIL + ' ' + T_FIL + ' 0 0 ' + (1 - f) + ' ' + (kx + T_FIL * sx) + ' ' + ky + 'Z');
+      return lanes;
+    }
+
     // join = the shape for a cell that is growing in. On top of its own piece
     // it covers everything its arrival changes around it: the whole gutter
     // to each joined neighbor plus a strip of that neighbor's square deep
@@ -1316,8 +1332,12 @@
       ];
       // Gutter crossings at each corner joined on both sides: fill this
       // cell's quarter (or, when joining, the whole crossing) when the
-      // diagonal is filled too, else add a fillet.
+      // diagonal is filled too, else add a fillet. A fillet over a major
+      // lane also gets that lane's stripe (lanes): both lanes through a
+      // crossing lie along this cell's sides, whichever piece owns the fillet.
+      const lanes = [];
       for (const [h, v, diag, sx, sy] of [[E, N, NE, 1, -1], [E, S, SE, 1, 1], [W, S, SW, -1, 1], [W, N, NW, -1, -1]]) {
+        const vert = maj & (sx > 0 ? 2 : 8), horiz = maj & (sy > 0 ? 4 : 1);
         if (h && v) {
           if (diag) {
             const back = join ? T_IN : 0; // whole crossing, not just this cell's quarter
@@ -1326,11 +1346,14 @@
             paths.push(roundRect(x0, y0, x0 + size, y0 + size, 0, 0, 0, 0));
           } else {
             paths.push(fillet(sx, sy));
+            lanes.push(...filletLanes(sx, sy, 0, 0, vert, horiz));
           }
         } else if (join && diag && (h || v)) {
           // Only one side neighbor is filled: the one that is filled owns a
           // fillet facing the empty one, curving around its corner.
-          paths.push(h ? fillet(-sx, sy, 100 * sx, 0) : fillet(sx, -sy, 0, 100 * sy));
+          const [fx, fy, ox, oy] = h ? [-sx, sy, 100 * sx, 0] : [sx, -sy, 0, 100 * sy];
+          paths.push(fillet(fx, fy, ox, oy));
+          lanes.push(...filletLanes(fx, fy, ox, oy, vert, horiz));
         }
       }
       const half = join ? T_IN + o : o; // how far a stripe goes past the tile edge
@@ -1341,7 +1364,8 @@
       if (maj & 1 && N) stripes.push([W && NW ? -half : a, -half, E && NE ? 100 + half : z, a]);
       // Separate paths, so overlapping pieces always union whatever their winding.
       const markup = paths.map((d) => '<path d="' + d + '"/>').join('') +
-        stripes.map(([x0, y0, x1, y1]) => '<path class="maj" d="' + roundRect(x0, y0, x1, y1, 0, 0, 0, 0) + '"/>').join('');
+        stripes.map(([x0, y0, x1, y1]) => '<path class="maj" d="' + roundRect(x0, y0, x1, y1, 0, 0, 0, 0) + '"/>').join('') +
+        lanes.map((d) => '<path class="maj" d="' + d + '"/>').join('');
       pieceCache.set(key, markup);
       return markup;
     }
