@@ -960,6 +960,8 @@
       solve: 'sfx/solve.mp3',
       lost: 'sfx/lost.mp3',
       mistake: 'sfx/mistake.mp3',
+      modeFill: 'sfx/mode-fill.mp3', // the player switched to fill (square) mode
+      modeX: 'sfx/mode-x.mp3',       // the player switched to cross mode
     };
     // Squares filled so far in the current drag (or Shift+arrow run).
     let fillStreak = 0;
@@ -2096,7 +2098,7 @@
         // pressing whichever button has focus (such as New) on key-up.
         e.preventDefault();
         if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
-        setMode(settings.mode === 'fill' ? 'x' : 'fill');
+        toggleMode();
         return;
       }
       if (e.key === 'm' || e.key === 'M') { setSound(!settings.sound); return; }
@@ -2147,8 +2149,15 @@
       const x = m === 'x';
       $('modeWrap').setAttribute('aria-checked', String(x));
     }
+    // A switch the player makes (the switch itself or Space) plays the
+    // sound of the mode it lands on. Resets on a new board and at load stay quiet.
+    function toggleMode() {
+      const m = settings.mode === 'fill' ? 'x' : 'fill';
+      setMode(m);
+      sound.play(m === 'x' ? 'modeX' : 'modeFill');
+    }
     // Any click or tap on the switch toggles, whichever side it lands on.
-    $('modeWrap').addEventListener('click', () => setMode(settings.mode === 'fill' ? 'x' : 'fill'));
+    $('modeWrap').addEventListener('click', toggleMode);
 
     // ── Theme controls ────────────────────────────────────────────
     function applyScheme() {
