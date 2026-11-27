@@ -1070,6 +1070,7 @@
         status: 'playing',
       };
       cursor = null;
+      setMode('fill'); // every new board starts in square mode, whatever the last one ended in
       clearTimeout(resultTimer);
       // Opened a moment ago: snap it shut instead of flashing a fade-out.
       closeResult(performance.now() - resultShownAt < RESULT_GRACE);
