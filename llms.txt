@@ -73,3 +73,6 @@ An interactive generative art tool. Users start from a random SVG artwork and it
 
 **KenKen** — Math-based cage puzzle, 4×4 to 8×8 grids.
 - https://peterbrown.space/kenken
+
+**Nonogram** — Picture logic puzzle with uniquely solvable boards. 5×5 to 15×15, three difficulties, three lives, sound effects.
+- https://peterbrown.space/nonogram
