@@ -178,12 +178,31 @@
     }
     .seg small { font-weight: 500; color: var(--faint); margin-left: 4px; }
 
-    .stats { display: flex; align-items: center; gap: 14px; }
-    .timer {
-      display: inline-flex; align-items: center; gap: 6px;
-      font-variant-numeric: tabular-nums; color: var(--muted); font-size: 0.92rem; min-width: 62px;
+    /* Narrow-window header: the size and difficulty choices and the page
+       options fold into two drawers, each opened by its own button. On wide
+       windows the drawers and their wrappers are display: contents, so their
+       contents sit in the header row as plain items and the buttons hide. */
+    .drawer, .drawer-clip, .drawer-body { display: contents; }
+    .disclose, .opt-lbl { display: none; }
+    .disclose[aria-expanded="true"] { background: var(--surface-2); border-color: var(--line-strong); }
+
+    /* Time and lives sit together above the column caps, centered over the
+       grid (see .board). inline-size containment keeps them from widening
+       the grid's column on small boards: they overflow evenly instead. Two
+       equal columns put the middle between the two, so neither moves as the
+       time grows. */
+    .stats {
+      grid-area: 1 / 2; contain: inline-size;
+      display: flex; justify-content: center;
+      padding-bottom: 12px;
     }
-    .lives { display: inline-flex; gap: 4px; }
+    .stats-in { display: grid; grid-template-columns: 1fr 1fr; align-items: center; column-gap: 18px; }
+    .timer {
+      justify-self: end;
+      display: inline-flex; align-items: center; gap: 6px;
+      font-variant-numeric: tabular-nums; color: var(--muted); font-size: 0.92rem;
+    }
+    .lives { display: inline-flex; gap: 4px; justify-self: start; }
     .heart {
       width: 20px; height: 20px; color: var(--danger);
       fill: currentColor; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round;
@@ -267,7 +286,7 @@
     .board {
       display: grid;
       grid-template-columns: auto auto;
-      grid-template-rows: auto auto;
+      grid-template-rows: auto auto auto; /* stats, column clues, rows */
       user-select: none; -webkit-user-select: none;
       -webkit-touch-callout: none;
       touch-action: none;
@@ -284,8 +303,9 @@
        rounded at the far end. The container padding matches the grid's
        outer padding (--edge) and each cap is inset by half the gutter, so
        caps line up with the squares. */
-    .colclues { display: flex; align-items: stretch; padding: 0 var(--edge); }
-    .rowclues { display: flex; flex-direction: column; align-items: stretch; padding: var(--edge) 0; }
+    .corner { grid-area: 2 / 1; }
+    .colclues { grid-area: 2 / 2; display: flex; align-items: stretch; padding: 0 var(--edge); }
+    .rowclues { grid-area: 3 / 1; display: flex; flex-direction: column; align-items: stretch; padding: var(--edge) 0; }
     .colclue, .rowclue {
       --gap: calc(var(--gut) / 2);
       --round: max(3px, calc(var(--size) * 0.12));
@@ -298,9 +318,14 @@
       border: 1px solid var(--cap-line);
       transition: background 0.1s, border-color 0.1s;
     }
-    /* No outline on the flat end that meets the grid. */
-    .colclue::before { inset: 0 var(--gap); border-radius: var(--round) var(--round) 0 0; border-bottom: 0; }
-    .rowclue::before { inset: var(--gap) 0; border-radius: var(--round) 0 0 var(--round); border-right: 0; }
+    /* No outline on the flat end that meets the grid. That end runs on
+       under the grid by the grid's corner radius (--tuck), so where the
+       grid's rounded corners curve away, the cap shows behind them rather
+       than the page. The grid paints over the rest (it comes later and has
+       z-index 1). */
+    .colclue::before, .rowclue::before { --tuck: calc(-1 * (var(--rad) + var(--gut))); }
+    .colclue::before { inset: 0 var(--gap) var(--tuck); border-radius: var(--round) var(--round) 0 0; border-bottom: 0; }
+    .rowclue::before { inset: var(--gap) var(--tuck) var(--gap) 0; border-radius: var(--round) 0 0 var(--round); border-right: 0; }
     .colclue {
       width: var(--size);
       display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
@@ -320,6 +345,16 @@
       min-width: calc(var(--slots) * var(--size) * 0.3 + (var(--slots) - 1) * var(--size) * 0.2 + 8px + max(10px, calc(var(--size) * 0.3)));
     }
     .rowclue span { min-width: calc(var(--size) * 0.3); text-align: center; }
+    /* A new board of the same size eases from the old tile size and row
+       clue width to the new ones (see fitBoard) instead of jumping, since
+       its row clues can need a different width. Registering --size as a
+       length lets it transition; everything sized from it follows. */
+    @property --size { syntax: '<length>'; inherits: true; initial-value: 32px; }
+    .board.easing { transition: --size 0.18s ease; }
+    .board.easing .rowclues { transition: width 0.18s ease; }
+    @media (prefers-reduced-motion: reduce) {
+      .board.easing, .board.easing .rowclues { transition: none; }
+    }
     .colclue.hl::before, .rowclue.hl::before {
       background: var(--hl-strong);
       border-color: color-mix(in srgb, var(--accent) 30%, var(--cap-line));
@@ -329,6 +364,7 @@
     .colclue span.done, .rowclue span.done { opacity: 0.32; }
 
     .grid {
+      grid-area: 3 / 2;
       display: grid;
       grid-template-columns: repeat(var(--n), var(--size));
       grid-auto-rows: var(--size);
@@ -336,7 +372,7 @@
       border-radius: calc(var(--rad) + var(--gut)); /* concentric with the corner squares */
       background: var(--gutter);
       overflow: hidden;
-      position: relative;
+      position: relative; z-index: 1; /* above the caps tucked under it */
       /* Its own stacking context, so the z-index changes cells make while
          playing are resolved inside the grid, not across the whole page. */
       isolation: isolate;
@@ -595,6 +631,50 @@
       .icon-btn.text { padding: 0 8px; }
       main { padding: 12px 16px; gap: 14px; }
     }
+
+    /* Below this width the full header no longer fits on one line (see the
+       drawer note under Header). Each drawer is a full-width row of its own
+       below the first and grows open by animating its single grid row from
+       0fr to 1fr. Closed, its contents are hidden once the fold finishes,
+       so they can't be tabbed to. Open and settled (.shown, set by the
+       script once the grow ends), it stops clipping, so the color popover
+       can hang below the header. Only one drawer is open at a time. */
+    @media (max-width: 767px) {
+      /* The first row (title, two drawer buttons, New) is tightened to fit
+         in 380px; narrower than that, the title makes way. */
+      header { gap: 4px; row-gap: 0; padding: 8px 10px; }
+      .title { margin-right: 2px; font-size: 0.9rem; }
+      .spacer { display: none; }
+      .icon-btn.disclose { display: inline-flex; padding: 0 7px; font-size: 0.8rem; }
+      #pageOptsBtn { margin-left: auto; }
+      .drawer {
+        display: grid; order: 10; flex-basis: 100%;
+        grid-template-rows: 0fr; transition: grid-template-rows 0.25s ease;
+      }
+      .drawer.open { grid-template-rows: 1fr; }
+      .drawer-clip {
+        display: block; min-height: 0; overflow: hidden;
+        visibility: hidden; transition: visibility 0s 0.25s;
+      }
+      .drawer.open .drawer-clip { visibility: visible; transition: none; }
+      .drawer.shown .drawer-clip { overflow: visible; }
+      .drawer-body { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 0 2px; }
+      /* Board settings: each choice group stretches, sharing the row when
+         both fit and taking a row each when not. */
+      .drawer-body .seg { flex: 1 1 auto; }
+      .drawer-body .seg button { flex: 1; }
+      /* Page options: the buttons share the row, each with its label. */
+      .drawer-body > .icon-btn, .drawer-body > .pop-wrap { flex: 1 1 0; }
+      .drawer-body .pop-wrap > .icon-btn { width: 100%; }
+      .drawer-body .icon-btn { padding: 0 10px; color: var(--text); white-space: nowrap; }
+      .opt-lbl { display: inline; font-size: 0.85rem; font-weight: 600; }
+      .drawer .popover { left: 0; right: auto; }
+      /* Board width is what limits the tiles here, so the row clues take
+         only the width their numbers need rather than room for the most
+         numbers a line could have. */
+      .rowclue { min-width: 0; }
+    }
+    @media (max-width: 379px) { .title-group { display: none; } }
   </style>
 </head>
 <body>
@@ -620,6 +700,8 @@
     <div class="title-group">
       <span class="title">Nonogram</span>
     </div>
+    <button class="icon-btn text disclose" id="boardOptsBtn" aria-expanded="false" aria-controls="boardOpts">Board settings…</button>
+    <div class="drawer" id="boardOpts"><div class="drawer-clip"><div class="drawer-body">
     <div class="seg" id="size" role="group" aria-label="Board size">
       <button data-size="5">5×5</button>
       <button data-size="10">10×10</button>
@@ -630,13 +712,12 @@
       <button data-diff="medium">Medium</button>
       <button data-diff="hard">Hard</button>
     </div>
+    </div></div></div>
     <div class="spacer"></div>
-    <div class="stats">
-      <span class="timer" title="Time"><svg class="ic"><use href="#i-clock"/></svg><span id="time">0:00</span></span>
-      <span class="lives" id="lives" aria-label="Lives remaining"></span>
-    </div>
+    <button class="icon-btn text disclose" id="pageOptsBtn" aria-expanded="false" aria-controls="pageOpts">Page options…</button>
+    <div class="drawer" id="pageOpts"><div class="drawer-clip"><div class="drawer-body">
     <div class="pop-wrap">
-      <button class="icon-btn" id="paletteBtn" title="Color theme" aria-label="Color theme" aria-haspopup="true" aria-expanded="false"><svg class="ic"><use href="#i-palette"/></svg></button>
+      <button class="icon-btn" id="paletteBtn" title="Color theme" aria-label="Color theme" aria-haspopup="true" aria-expanded="false"><svg class="ic"><use href="#i-palette"/></svg><span class="opt-lbl">Color theme</span></button>
       <div class="popover" id="palette">
         <h3>Color theme</h3>
         <div class="swatches" id="swatches" role="radiogroup" aria-label="Color theme"></div>
@@ -647,13 +728,18 @@
         <span id="accentProbe" hidden></span>
       </div>
     </div>
-    <button class="icon-btn" id="soundBtn" title="Sound on (M)" aria-label="Sound" aria-pressed="true"><svg class="ic"><use id="soundIcon" href="#i-sound"/></svg></button>
-    <button class="icon-btn" id="schemeBtn" title="Toggle light / dark" aria-label="Toggle light or dark mode"><svg class="ic"><use id="schemeIcon" href="#i-moon"/></svg></button>
+    <button class="icon-btn" id="soundBtn" title="Sound on (M)" aria-label="Sound" aria-pressed="true"><svg class="ic"><use id="soundIcon" href="#i-sound"/></svg><span class="opt-lbl" id="soundLbl">Sound on</span></button>
+    <button class="icon-btn" id="schemeBtn" title="Toggle light / dark" aria-label="Toggle light or dark mode"><svg class="ic"><use id="schemeIcon" href="#i-moon"/></svg><span class="opt-lbl" id="schemeLbl">Dark mode</span></button>
+    </div></div></div>
     <button class="icon-btn text" id="newBtn" title="New puzzle"><svg class="ic"><use href="#i-refresh"/></svg><span class="lbl">New</span></button>
   </header>
 
   <main id="main">
     <div class="board" id="board">
+      <div class="stats"><div class="stats-in">
+        <span class="timer" title="Time"><svg class="ic"><use href="#i-clock"/></svg><span id="time">0:00</span></span>
+        <span class="lives" id="lives" aria-label="Lives remaining"></span>
+      </div></div>
       <div class="corner"></div>
       <div class="colclues" id="colclues"></div>
       <div class="rowclues" id="rowclues"></div>
@@ -960,6 +1046,11 @@
     function newGame(reuse) {
       const n = reuse ? reuse.n : settings.size, d = reuse ? reuse.diff : settings.difficulty;
       const puzzle = reuse || generate(n, d);
+      // A board of the same size eases from the old one's layout (see fitBoard).
+      const from = game && game.n === n ? {
+        size: parseFloat(getComputedStyle(els.board).getPropertyValue('--size')),
+        w: els.rowclues.getBoundingClientRect().width,
+      } : null;
       game = {
         diff: d, n,
         sol: Array.from(puzzle.sol),
@@ -976,7 +1067,7 @@
       clearTimeout(resultTimer);
       // Opened a moment ago: snap it shut instead of flashing a fade-out.
       closeResult(performance.now() - resultShownAt < RESULT_GRACE);
-      render();
+      render(from);
       persist();
     }
 
@@ -1055,7 +1146,8 @@
     window.addEventListener('pagehide', persist);
 
     // ── Rendering ─────────────────────────────────────────────────
-    function render() {
+    // from: the previous board's layout to ease from, if any (see fitBoard).
+    function render(from) {
       const { n, clues } = game;
       els.board.style.setProperty('--n', n);
       // Most numbers one line can need: alternating filled and empty cells.
@@ -1108,7 +1200,7 @@
       els.board.classList.toggle('won', game.status === 'won');
       if (game.status === 'lost') revealSolution();
       updateBanner();
-      fitBoard();
+      fitBoard(from);
       if (game.started && game.status === 'playing') startClock();
     }
 
@@ -1434,9 +1526,25 @@
 
     // Fit the board to the space available. Board width and height are linear
     // in --size (plus fixed padding), so measure at two sizes and solve.
-    function fitBoard() {
+    //
+    // from: { size, w }, the tile size and row clue width a new board
+    // replaced. The new board first takes those, then both ease to their
+    // new values (.easing), so the board neither jumps in size nor shifts
+    // sideways as the row clues change width. The clues' width is pinned
+    // inline while easing, then released at its natural value. Any other
+    // fit (a resize, a game ending) ends an ease in place.
+    const EASE_MS = 180; // must match the .board.easing transitions
+    let easeTimer = 0;
+    function endEase() {
+      clearTimeout(easeTimer); easeTimer = 0;
+      els.board.classList.remove('easing');
+      els.rowclues.style.width = '';
+      geom = null;
+    }
+    function fitBoard(from) {
       if (!game) return;
       const b = els.board;
+      endEase();
       const measure = (s) => { b.style.setProperty('--size', s + 'px'); const r = b.getBoundingClientRect(); return [r.width, r.height]; };
       const [w1, h1] = measure(20), [w2, h2] = measure(40);
       const aw = (w2 - w1) / 20, bw = w1 - aw * 20;
@@ -1446,17 +1554,30 @@
       const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
       const availW = Math.min(els.main.clientWidth - padX, 960);
       const availH = els.main.clientHeight - padY - els.controls.offsetHeight - parseFloat(cs.rowGap || 0);
-      const size = Math.floor(Math.min((availW - bw) / aw, (availH - bh) / ah));
-      b.style.setProperty('--size', Math.max(14, Math.min(56, size)) + 'px');
+      const size = Math.max(14, Math.min(56, Math.floor(Math.min((availW - bw) / aw, (availH - bh) / ah))));
+      b.style.setProperty('--size', size + 'px');
       geom = null;
+      if (!from) return;
+      const toW = els.rowclues.getBoundingClientRect().width;
+      if (Math.abs(from.size - size) < 0.5 && Math.abs(from.w - toW) < 0.5) return;
+      b.style.setProperty('--size', from.size + 'px');
+      els.rowclues.style.width = from.w + 'px';
+      void b.offsetWidth; // start from the old layout
+      b.classList.add('easing');
+      b.style.setProperty('--size', size + 'px');
+      els.rowclues.style.width = toW + 'px';
+      easeTimer = setTimeout(endEase, EASE_MS + 40);
     }
-    // Mobile browsers fire resize in bursts as their toolbars slide, so fit
-    // at most once a frame.
+    // Refit whenever the board's area changes size: window resizes, and the
+    // header growing or shrinking as a drawer opens or closes (refitting
+    // every frame of the fold). Mobile browsers fire resize in bursts as
+    // their toolbars slide, so fit at most once a frame. The area's size
+    // never depends on the board, so refitting can't trigger itself.
     let fitFrame = 0;
-    window.addEventListener('resize', () => {
+    new ResizeObserver(() => {
       geom = null;
       if (!fitFrame) fitFrame = requestAnimationFrame(() => { fitFrame = 0; fitBoard(); });
-    });
+    }).observe(els.main);
 
     // ── Marking cells ─────────────────────────────────────────────
     // Returns false if the action caused a mistake (ends the drag).
@@ -1932,8 +2053,10 @@
     document.addEventListener('keydown', (e) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === 'Escape') {
-        closeResult();
-        closePalette();
+        // One layer at a time: the result card, then the color popover, then a drawer.
+        if (els.overlay.classList.contains('open')) closeResult();
+        else if ($('palette').classList.contains('open')) closePalette();
+        else setDrawer(null);
         return;
       }
       if (els.overlay.classList.contains('open')) return;
@@ -1985,6 +2108,7 @@
       $('soundIcon').setAttribute('href', on ? '#i-sound' : '#i-mute');
       $('soundBtn').setAttribute('aria-pressed', String(on));
       $('soundBtn').title = on ? 'Sound on (M)' : 'Sound off (M)';
+      $('soundLbl').textContent = on ? 'Sound on' : 'Sound off';
     }
     $('soundBtn').addEventListener('click', () => setSound(!settings.sound));
 
@@ -2003,6 +2127,8 @@
       const dark = document.documentElement.dataset.theme === 'dark';
       $('schemeIcon').setAttribute('href', dark ? '#i-sun' : '#i-moon');
       $('schemeBtn').title = dark ? 'Switch to light mode' : 'Switch to dark mode';
+      // Like the icon, the label names the mode a press switches to.
+      $('schemeLbl').textContent = dark ? 'Light mode' : 'Dark mode';
     }
     $('schemeBtn').addEventListener('click', () => {
       const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
@@ -2164,6 +2290,29 @@
       $('paletteBtn').setAttribute('aria-expanded', String(open));
     });
     document.addEventListener('click', (e) => { if (!e.target.closest('.pop-wrap')) closePalette(); });
+
+    // ── Header drawers (narrow windows) ───────────────────────────
+    // Opens the named drawer and closes the other; null closes both. The
+    // drawer clips its contents while it grows, then stops clipping (.shown)
+    // so the color popover can hang below it. A timer rather than
+    // transitionend, which never fires when the transition is skipped.
+    const DRAWERS = { boardOpts: 'boardOptsBtn', pageOpts: 'pageOptsBtn' };
+    const DRAWER_MS = 250; // must match the .drawer transition
+    let drawerTimer = 0;
+    function setDrawer(id) {
+      clearTimeout(drawerTimer);
+      for (const [d, btn] of Object.entries(DRAWERS)) {
+        const open = d === id;
+        $(d).classList.toggle('open', open);
+        $(d).classList.remove('shown');
+        $(btn).setAttribute('aria-expanded', String(open));
+      }
+      if (id !== 'pageOpts') closePalette();
+      if (id) drawerTimer = setTimeout(() => $(id).classList.add('shown'), DRAWER_MS);
+    }
+    for (const [d, btn] of Object.entries(DRAWERS)) {
+      $(btn).addEventListener('click', () => setDrawer($(d).classList.contains('open') ? null : d));
+    }
 
     // ── Header controls ───────────────────────────────────────────
     document.querySelectorAll('#size button').forEach((b) => {

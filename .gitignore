@@ -16,3 +16,6 @@ dist/
 description.txt
 # Local test image for the decorations rack scanner
 af-decorations/example_decs.png
+
+# Private notes for AI agents
+nonogram/AGENTS.md
