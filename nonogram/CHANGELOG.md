@@ -7,6 +7,7 @@ change a player would notice. The "Unreleased" section collects changes that are
 
 ## 2026-11-27
 
+- New sounds for switching to square mode and to cross mode.
 - Switching between square and cross mode plays a sound for the mode it lands on (the switch or
   Space). A new board resetting to square mode and the page load stay quiet.
 - Fill tones ladder back down the 15-note scale after the top, then climb again.
