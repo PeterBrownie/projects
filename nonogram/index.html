@@ -48,6 +48,7 @@
       --hl-strong: color-mix(in srgb, var(--accent) 18%, var(--cell));
       --gutter: #d8d5cc; /* space between squares, darker than --cell */
       --major-line: #b3b0a7; /* gutters every 5 cells */
+      --major-fill: color-mix(in srgb, var(--accent) 70%, #000); /* the same gutters where they run through a fill */
       --size: 32px;
       color-scheme: light;
     }
@@ -439,6 +440,7 @@
       display: none; overflow: visible; pointer-events: none;
       fill: var(--accent);
     }
+    .piece .maj { fill: var(--major-fill); }
     .cell.f .piece, .cell.x .piece { display: block; }
     /* A crossed square fills in the same way, as a plain square in the
        gutter color, so it reads as part of the ground between squares with
@@ -952,7 +954,7 @@
     // press, tap or key, so the AudioContext that plays the buffers is made
     // (or resumed) then.
     const SFX = {
-      fill: [1, 2, 3, 4, 5, 6].map((k) => 'sfx/fill-' + k + '.mp3'), // rising tones, one step per square a drag fills (see fillTone)
+      fill: Array.from({ length: 15 }, (_, k) => 'sfx/fill-' + (k + 1) + '.mp3'), // a rising 15-note scale, one step per square a drag fills (see fillTone)
       tap: 'sfx/tap.mp3',      // a cross placed
       line: 'sfx/line.mp3',    // a row or column completed
       solve: 'sfx/solve.mp3',
@@ -961,12 +963,11 @@
     };
     // Squares filled so far in the current drag (or Shift+arrow run).
     let fillStreak = 0;
-    // The tone for the k-th fill of a streak: up the scale and back down,
-    // over and over (1 2 3 4 5 6 5 4 3 2 1 2 ...). Each end plays once
-    // before the direction turns, so no note repeats back to back.
+    // The tone for the k-th fill of a streak: one note up the scale per
+    // square. A drag covers at most one 15-square line, so it never runs
+    // out; a longer Shift+arrow run holds on the top note.
     function fillTone(k) {
-      const top = SFX.fill.length - 1, p = k % (2 * top);
-      return p <= top ? p : 2 * top - p;
+      return Math.min(k, SFX.fill.length - 1);
     }
 
     const sound = (() => {
@@ -1227,7 +1228,7 @@
       for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
         const rr = r + dr, cc = c + dc, j = rr * n + cc;
         if (rr >= 0 && rr < n && cc >= 0 && cc < n && game.state[j] === 1 && !growing.has(j)) {
-          setPiece(j, fillPaths(neighborBits(j, false), false));
+          setPiece(j, fillPaths(neighborBits(j, false), false, majorSides(j)));
         }
       }
     }
@@ -1250,6 +1251,12 @@
     const NEIGHBORS = [[-1, 0], [0, 1], [1, 0], [0, -1], [-1, 1], [1, 1], [1, -1], [-1, -1]];
 
     // withGrowing: count neighbors that are still growing as filled.
+    // Sides of square i that face a major gutter (every 5 squares, never the frame), as fillPaths' maj.
+    function majorSides(i) {
+      const n = game.n, r = Math.floor(i / n), c = i % n, at = (k) => k > 0 && k < n && k % 5 === 0;
+      return (at(r) ? 1 : 0) | (at(c + 1) ? 2 : 0) | (at(r + 1) ? 4 : 0) | (at(c) ? 8 : 0);
+    }
+
     function neighborBits(i, withGrowing) {
       const n = game.n, r = Math.floor(i / n), c = i % n;
       let bits = 0;
@@ -1285,9 +1292,15 @@
     // to each joined neighbor plus a strip of that neighbor's square deep
     // enough to square off its corners, full gutter crossings, and fillets
     // that neighbors will own. All of it lies inside the final shape.
+    //
+    // maj marks the sides (1 N, 2 E, 4 S, 8 W) that face a major gutter. Where
+    // the fill joins across one, a stripe in --major-fill covers this cell's
+    // half of the gutter (all of it when joining), through the crossings at
+    // its ends when those are filled, so the major lines carry on through
+    // the shape. A major gutter beside an empty square stays the plain lane.
     const pieceCache = new Map();
-    function fillPaths(bits, join) {
-      const key = bits | (join ? 256 : 0);
+    function fillPaths(bits, join, maj = 0) {
+      const key = bits | (join ? 256 : 0) | (maj << 9);
       if (pieceCache.has(key)) return pieceCache.get(key);
       const [N, E, S, W, NE, SE, SW, NW] = NEIGHBORS.map((_, b) => (bits >> b) & 1);
       const a = T_IN, z = 100 - T_IN, o = T_OVER, R = T_RAD;
@@ -1317,8 +1330,15 @@
           paths.push(h ? fillet(-sx, sy, 100 * sx, 0) : fillet(sx, -sy, 0, 100 * sy));
         }
       }
+      const half = join ? T_IN + o : o; // how far a stripe goes past the tile edge
+      const stripes = [];
+      if (maj & 2 && E) stripes.push([z, N && NE ? -half : a, 100 + half, S && SE ? 100 + half : z]);
+      if (maj & 8 && W) stripes.push([-half, N && NW ? -half : a, a, S && SW ? 100 + half : z]);
+      if (maj & 4 && S) stripes.push([W && SW ? -half : a, z, E && SE ? 100 + half : z, 100 + half]);
+      if (maj & 1 && N) stripes.push([W && NW ? -half : a, -half, E && NE ? 100 + half : z, a]);
       // Separate paths, so overlapping pieces always union whatever their winding.
-      const markup = paths.map((d) => '<path d="' + d + '"/>').join('');
+      const markup = paths.map((d) => '<path d="' + d + '"/>').join('') +
+        stripes.map(([x0, y0, x1, y1]) => '<path class="maj" d="' + roundRect(x0, y0, x1, y1, 0, 0, 0, 0) + '"/>').join('');
       pieceCache.set(key, markup);
       return markup;
     }
@@ -1368,7 +1388,7 @@
     function startGrow(i, from) {
       const n = game.n, fill = game.state[i] === 1, el = cellEls[i];
       const bits = fill ? neighborBits(i, true) : 0;
-      setPiece(i, fillPaths(bits, fill));
+      setPiece(i, fillPaths(bits, fill, fill ? majorSides(i) : 0));
       const prev = from ? growing.get({ l: i - 1, r: i + 1, t: i - n, b: i + n }[from]) : null;
       let g0 = growClock;
       if (prev) g0 = Math.max(g0, prev.g0 + (!prev.from ? CHAIN.tap : prev.from === from ? CHAIN.straight : CHAIN.turn));
