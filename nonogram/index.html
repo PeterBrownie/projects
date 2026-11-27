@@ -952,16 +952,22 @@
     // press, tap or key, so the AudioContext that plays the buffers is made
     // (or resumed) then.
     const SFX = {
-      fill: [1, 2, 3, 4, 5, 6].map((k) => 'sfx/fill-' + k + '.mp3'), // rising tones, one step per square a drag fills
+      fill: [1, 2, 3, 4, 5, 6].map((k) => 'sfx/fill-' + k + '.mp3'), // rising tones, one step per square a drag fills (see fillTone)
       tap: 'sfx/tap.mp3',      // a cross placed
       line: 'sfx/line.mp3',    // a row or column completed
       solve: 'sfx/solve.mp3',
       lost: 'sfx/lost.mp3',
       mistake: 'sfx/mistake.mp3',
     };
-    // Squares filled so far in the current drag (or Shift+arrow run). Each
-    // fill plays the next tone up, holding on the last one.
+    // Squares filled so far in the current drag (or Shift+arrow run).
     let fillStreak = 0;
+    // The tone for the k-th fill of a streak: up the scale and back down,
+    // over and over (1 2 3 4 5 6 5 4 3 2 1 2 ...). Each end plays once
+    // before the direction turns, so no note repeats back to back.
+    function fillTone(k) {
+      const top = SFX.fill.length - 1, p = k % (2 * top);
+      return p <= top ? p : 2 * top - p;
+    }
 
     const sound = (() => {
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -1601,7 +1607,7 @@
       if (!ok) flashMistake(cellEls[i]);
       // The last life lost plays the lost sound instead (see lose).
       if (!ok) { fillStreak = 0; if (game.lives > 0) sound.play('mistake'); }
-      else if (truth === 1) sound.play('fill', Math.min(fillStreak++, SFX.fill.length - 1));
+      else if (truth === 1) sound.play('fill', fillTone(fillStreak++));
       else sound.play('tap');
       afterChange(i);
       if (!ok && game.lives <= 0) lose();
@@ -2075,8 +2081,8 @@
       if (game.status !== 'playing') return;
       const n = game.n;
       const moves = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
-      // Shift+arrow marks a run like a drag, so its fills keep climbing in
-      // tone; any other key starts the next mark from the bottom.
+      // Shift+arrow marks a run like a drag, so its fills keep stepping
+      // through the tones; any other key starts the next mark from the bottom.
       if (!(moves[e.key] && e.shiftKey)) fillStreak = 0;
       if (moves[e.key]) {
         e.preventDefault();
