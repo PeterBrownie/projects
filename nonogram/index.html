@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Nonogram</title>
-  <meta name="description" content="Nonogram picture logic puzzle with randomly generated, uniquely solvable boards. Three board sizes and three difficulties, three lives, light and dark mode, and color themes.">
+  <meta name="description" content="Nonogram picture logic puzzle with randomly generated, uniquely solvable boards. Three board sizes and three difficulties, three lives, sound effects, light and dark mode, and color themes.">
   <link rel="icon" type="image/png" href="../evolveIcon.png">
   <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "03a89f35132a4e8aa86bf1ed1b60541a"}'></script><!-- End Cloudflare Web Analytics -->
   <script>
@@ -610,6 +610,8 @@
       <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke-width="2.6"/></symbol>
       <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" stroke-width="2.4"/></symbol>
       <symbol id="i-broken" viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.6 7.6 3.8 4 7.4 4c2 0 3.5 1.1 4.6 2.6l-1.5 3.4 3 2-2 3.5 3-3.5-3-2 1.5-3.4C14.1 5.1 15.6 4 16.6 4c3.6 0 5.8 3.6 4.6 7.1-1.7 4.8-9.2 9.4-9.2 9.4z"/></symbol>
+      <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9.2a4 4 0 0 1 0 5.6M18.4 6.5a7.8 7.8 0 0 1 0 11"/></symbol>
+      <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></symbol>
       <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
     </defs>
   </svg>
@@ -645,6 +647,7 @@
         <span id="accentProbe" hidden></span>
       </div>
     </div>
+    <button class="icon-btn" id="soundBtn" title="Sound on (M)" aria-label="Sound" aria-pressed="true"><svg class="ic"><use id="soundIcon" href="#i-sound"/></svg></button>
     <button class="icon-btn" id="schemeBtn" title="Toggle light / dark" aria-label="Toggle light or dark mode"><svg class="ic"><use id="schemeIcon" href="#i-moon"/></svg></button>
     <button class="icon-btn text" id="newBtn" title="New puzzle"><svg class="ic"><use href="#i-refresh"/></svg><span class="lbl">New</span></button>
   </header>
@@ -667,7 +670,7 @@
         <span class="side cross"><svg class="ic"><use href="#i-x"/></svg></span>
         <span class="side fill"><svg class="ic"><use href="#i-square"/></svg></span>
       </button>
-      <div class="hint kb">Drag to mark a line. Right-click uses the other mode. Keys: arrows, <kbd>Enter</kbd> mark, <kbd>Space</kbd> switch mode</div>
+      <div class="hint kb">Drag to mark a line. Right-click uses the other mode. Keys: arrows, <kbd>Enter</kbd> mark, <kbd>Space</kbd> switch mode, <kbd>M</kbd> sound</div>
     </div>
   </main>
 
@@ -850,10 +853,86 @@
 
     // Before sizes and difficulties were split, the difficulty named the size.
     const LEGACY_SIZE = { easy: 5, medium: 10, hard: 15 };
-    const settings = Object.assign({ accent: 'indigo', scheme: null, size: null, difficulty: 'medium', mode: 'fill' }, load('nonogram.settings', {}));
+    const settings = Object.assign({ accent: 'indigo', scheme: null, size: null, difficulty: 'medium', mode: 'fill', sound: true }, load('nonogram.settings', {}));
     if (!SIZES[settings.size]) { settings.size = LEGACY_SIZE[settings.difficulty] || 5; settings.difficulty = 'medium'; }
     if (!DIFFS[settings.difficulty]) settings.difficulty = 'medium';
     const saveSettings = () => save('nonogram.settings', settings);
+
+    // ── Sound ─────────────────────────────────────────────────────
+    // Short mono MP3s (the one format every browser decodes), fetched and
+    // decoded into Web Audio buffers as the page loads, so a sound starts
+    // the moment it is triggered. Decoding runs on an OfflineAudioContext,
+    // which needs no user gesture. Browsers keep audio off until the first
+    // press, tap or key, so the AudioContext that plays the buffers is made
+    // (or resumed) then.
+    const SFX = {
+      fill: [1, 2, 3, 4, 5, 6].map((k) => 'sfx/fill-' + k + '.mp3'), // rising tones, one step per square a drag fills
+      tap: 'sfx/tap.mp3',      // a cross placed
+      line: 'sfx/line.mp3',    // a row or column completed
+      solve: 'sfx/solve.mp3',
+      lost: 'sfx/lost.mp3',
+      mistake: 'sfx/lost.mp3', // placeholder until a mistake sound exists
+    };
+    // Squares filled so far in the current drag (or Shift+arrow run). Each
+    // fill plays the next tone up, holding on the last one.
+    let fillStreak = 0;
+
+    const sound = (() => {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+      const none = { play() {} };
+      if (!AC || !OAC) return none;
+      const buffers = new Map(); // url -> AudioBuffer
+      let ctx = null, out = null, lastFill = null;
+      try {
+        const dec = new OAC(1, 1, 48000);
+        const decode = (data) => new Promise((res, rej) => dec.decodeAudioData(data, res, rej));
+        new Set(Object.values(SFX).flat()).forEach((url) => {
+          fetch(url)
+            .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(url))))
+            .then(decode)
+            .then((buf) => buffers.set(url, buf))
+            .catch(() => {});
+        });
+      } catch (e) { return none; }
+
+      function unlock() {
+        try {
+          if (!ctx) {
+            ctx = new AC();
+            out = ctx.createGain();
+            out.connect(ctx.destination);
+          }
+          if (ctx.state !== 'running') { const p = ctx.resume(); if (p) p.catch(() => {}); }
+        } catch (e) {}
+      }
+      // Capture on window so the context exists before the grid's own
+      // handlers play anything. Touch only counts as a gesture on release,
+      // so a first tap's sound waits for it; every later one plays at once.
+      // Running on every gesture also wakes audio iOS suspended while the
+      // page was in the background.
+      for (const type of ['pointerdown', 'pointerup', 'touchend', 'keydown']) {
+        window.addEventListener(type, unlock, { capture: true, passive: true });
+      }
+
+      function play(name, step) {
+        if (!settings.sound || !ctx || ctx.state === 'closed') return;
+        const buf = buffers.get(name === 'fill' ? SFX.fill[step] : SFX[name]);
+        if (!buf) return;
+        const src = ctx.createBufferSource(), gain = ctx.createGain();
+        src.buffer = buf;
+        src.connect(gain);
+        gain.connect(out);
+        src.start(0);
+        if (name === 'fill') {
+          // Each tone damps the one before it, like a re-struck bar, so a
+          // fast drag stays clear instead of piling up.
+          if (lastFill) lastFill.gain.setTargetAtTime(0, ctx.currentTime, 0.04);
+          lastFill = gain;
+        }
+      }
+      return { play };
+    })();
 
     // ── Game state ────────────────────────────────────────────────
     // state per cell: 0 unknown, 1 filled, 2 crossed
@@ -1388,6 +1467,10 @@
       }
       paintCell(i);
       if (!ok) flashMistake(cellEls[i]);
+      // The last life lost plays the lost sound instead (see lose).
+      if (!ok) { fillStreak = 0; if (game.lives > 0) sound.play('mistake'); }
+      else if (truth === 1) sound.play('fill', Math.min(fillStreak++, SFX.fill.length - 1));
+      else sound.play('tap');
       afterChange(i);
       if (!ok && game.lives <= 0) lose();
       persistSoon();
@@ -1410,7 +1493,7 @@
     const WAVE_LEN = 450;    // ms each point takes to brighten and fade
     const WAVE_PEAK = 0.35;  // share of WAVE_LEN spent brightening
     const WAVE_FEATHER = 0.14; // share of the line's width the light fades over, each side
-    let wavesEl = null, waves = [], waveFrame = 0, waveIds = 0;
+    let wavesEl = null, waves = [], waveFrame = 0, waveIds = 0, lineChimeAt = -1;
 
     function waveLine(kind, k, origin) {
       waves.push({ kind, k, origin, start: null, svg: null, mask: '' });
@@ -1419,6 +1502,9 @@
 
     function startWave(w, now) {
       const n = game.n, idx = lineIdx(w.kind, w.k), id = ++waveIds, row = w.kind === 'r';
+      // One chime per frame, even when a row and a column finish together.
+      // The move that solves the board plays the solve sound instead.
+      if (game.status === 'playing' && now !== lineChimeAt) { lineChimeAt = now; sound.play('line'); }
       // Restart tiles that are already waving: clear them all, then one
       // style flush, then set them again (not a flush per tile).
       let restart = false;
@@ -1556,6 +1642,7 @@
     function win() {
       game.status = 'won';
       stopClock();
+      sound.play('solve');
       recordWin();
       for (let j = 0; j < game.state.length; j++) if (game.state[j] === 0) { game.state[j] = 2; paintCell(j); }
       els.board.classList.add('over', 'won');
@@ -1567,6 +1654,7 @@
     function lose() {
       game.status = 'lost';
       stopClock();
+      sound.play('lost');
       els.board.classList.add('over');
       revealSolution();
       persist();
@@ -1687,6 +1775,7 @@
       const action = e.button === 2 ? (base === 'fill' ? 'x' : 'fill') : base;
       setCursor(null);
       drag = { id: e.pointerId, start: i, last: i, axis: null, action };
+      fillStreak = 0;
       els.grid.setPointerCapture(e.pointerId);
       setHover(i);
       if (!applyAt(i, action)) drag = null;
@@ -1845,9 +1934,13 @@
         setMode(settings.mode === 'fill' ? 'x' : 'fill');
         return;
       }
+      if (e.key === 'm' || e.key === 'M') { setSound(!settings.sound); return; }
       if (game.status !== 'playing') return;
       const n = game.n;
       const moves = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
+      // Shift+arrow marks a run like a drag, so its fills keep climbing in
+      // tone; any other key starts the next mark from the bottom.
+      if (!(moves[e.key] && e.shiftKey)) fillStreak = 0;
       if (moves[e.key]) {
         e.preventDefault();
         if (cursor === null) { setCursor(0); return; }
@@ -1868,6 +1961,18 @@
         applyAt(cursor, 'x');
       }
     });
+
+    document.addEventListener('keyup', (e) => { if (e.key === 'Shift') fillStreak = 0; });
+
+    // ── Sound toggle ──────────────────────────────────────────────
+    function setSound(on) {
+      settings.sound = on;
+      saveSettings();
+      $('soundIcon').setAttribute('href', on ? '#i-sound' : '#i-mute');
+      $('soundBtn').setAttribute('aria-pressed', String(on));
+      $('soundBtn').title = on ? 'Sound on (M)' : 'Sound off (M)';
+    }
+    $('soundBtn').addEventListener('click', () => setSound(!settings.sound));
 
     // ── Mode toggle ───────────────────────────────────────────────
     function setMode(m) {
@@ -2068,6 +2173,7 @@
 
     // ── Boot ──────────────────────────────────────────────────────
     applyScheme();
+    setSound(settings.sound !== false);
     setMode(settings.mode === 'x' ? 'x' : 'fill');
     if (restore()) render(); else newGame();
   })();
