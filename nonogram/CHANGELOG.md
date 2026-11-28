@@ -8,6 +8,10 @@ change a player would notice, grouped under the time it was pushed live (US Cent
 
 ## 2026-11-27
 
+### 18:41
+
+- Temporary: click the hearts to give yourself a life, as many times as you like.
+
 ### 18:05
 
 - Smoother animation late in a game on phones, when most squares are marked and every fill

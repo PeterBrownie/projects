@@ -204,6 +204,8 @@
       font-variant-numeric: tabular-nums; color: var(--muted); font-size: 0.92rem;
     }
     .lives { display: inline-flex; gap: 4px; justify-self: start; }
+    /* Temporary: clicking the hearts gives a life (see addLife). */
+    .lives { cursor: pointer; }
     .heart {
       width: 20px; height: 20px; color: var(--danger);
       fill: currentColor; stroke: currentColor; stroke-width: 1.5; stroke-linejoin: round;
@@ -1218,7 +1220,7 @@
 
       document.querySelectorAll('#size button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.size === n)));
       document.querySelectorAll('#difficulty button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.diff === game.diff)));
-      renderLives(false);
+      renderLives(-1);
       tickStart = null; clearInterval(tickHandle);
       updateTime();
       els.board.classList.toggle('over', game.status !== 'playing');
@@ -1517,15 +1519,26 @@
       }, 2500);
     }
 
-    function renderLives(animateLoss) {
+    // `pop` is the index of the heart to animate: the one just lost, or
+    // the one just gained. Lives gained past MAX_LIVES add hearts.
+    function renderLives(pop) {
       let html = '';
-      for (let i = 0; i < MAX_LIVES; i++) {
+      const shown = Math.max(MAX_LIVES, game.lives);
+      for (let i = 0; i < shown; i++) {
         const lost = i >= game.lives;
-        const pop = animateLoss && i === game.lives;
-        html += '<svg class="heart' + (lost ? ' lost' : '') + (pop ? ' pop' : '') + '" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-heart"/></svg>';
+        html += '<svg class="heart' + (lost ? ' lost' : '') + (i === pop ? ' pop' : '') + '" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-heart"/></svg>';
       }
       els.lives.innerHTML = html;
-      els.lives.setAttribute('aria-label', game.lives + ' of ' + MAX_LIVES + ' lives remaining');
+      els.lives.setAttribute('aria-label', game.lives + ' of ' + shown + ' lives remaining');
+    }
+
+    // Temporary: clicking the hearts gives a life, any number of times,
+    // while a game is in play.
+    function addLife() {
+      if (game.status !== 'playing') return;
+      game.lives++;
+      renderLives(game.lives - 1);
+      persistSoon();
     }
 
     function lineIdx(kind, k) {
@@ -1677,7 +1690,7 @@
       if (!ok) {
         game.mistakes.push(i);
         game.lives--;
-        renderLives(true);
+        renderLives(game.lives);
       }
       paintCell(i);
       if (!ok) flashMistake(cellEls[i]);
@@ -2454,6 +2467,7 @@
         newGame();
       });
     });
+    els.lives.addEventListener('click', addLife);
     $('newBtn').addEventListener('click', () => newGame());
     $('bannerNew').addEventListener('click', () => newGame());
     // Pressed down as the result is about to open: the overlay would swallow the release, so cancel it now.
