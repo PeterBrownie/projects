@@ -8,6 +8,11 @@ change a player would notice, grouped under the time it was pushed live (US Cent
 
 ## 2026-11-27
 
+### 20:56
+
+- Major grid lines through the picture fade away when the board is solved, along with the
+  rest of the grid lines.
+
 ### 18:41
 
 - Temporary: click the hearts to give yourself a life, as many times as you like.

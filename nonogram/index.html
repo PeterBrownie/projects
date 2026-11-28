@@ -442,7 +442,10 @@
       display: none; overflow: visible; pointer-events: none;
       fill: var(--accent);
     }
-    .piece .maj { fill: var(--major-fill); }
+    .piece .maj { fill: var(--major-fill); transition: fill 0.6s; }
+    /* Once solved, the major lines through fills fade into the fill too,
+       with the lanes over empty squares (.grid::before/::after). */
+    .board.won .piece .maj { fill: var(--accent); }
     .cell.f .piece, .cell.x .piece { display: block; }
     /* A crossed square fills in the same way, as a plain square in the
        gutter color, so it reads as part of the ground between squares with
