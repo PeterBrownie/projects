@@ -8,6 +8,23 @@ change a player would notice, grouped under the time it was pushed live (US Cent
 
 ## 2026-11-27
 
+### 22:23
+
+- Painting previews in the gallery have square corners, and the cards no longer list section
+  counts, sizes or colors found; the progress bar stays.
+- On a painting, every section shows the board's tiles, each in its pixel's color so far, or
+  empty with no colors found yet. They fade in as the painting grows out of its card, and a
+  chosen section lands tile for tile on its board.
+- Section lines on a painting are much thinner.
+- A painting has a dark frame all the way around its edge.
+- Opening a painting fades the rest of the gallery out instead of dropping it at once, and picking
+  a section fades out the other sections the same way.
+- Restart painting fades in with the rest of the page.
+- The hover outline on a section sits above its tiles.
+- Random boards moved to the header on the paintings pages, in place of the size and difficulty
+  choices.
+- Removed the gallery's subtitle and the sections-done count above a painting.
+
 ### 22:00
 
 - Paintings: eight special puzzles made from pixel-art paintings, opened with the new

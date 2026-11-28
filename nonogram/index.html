@@ -53,6 +53,7 @@
       --ch-r: #e5484d; /* the red, green and blue boards' markers */
       --ch-g: #2f9e5b;
       --ch-b: #3e63dd;
+      --paint-frame: #8a877e; /* a painting's outer frame and section lines */
       color-scheme: light;
     }
     :root[data-theme="dark"] {
@@ -75,6 +76,7 @@
       --accent: var(--a-dark);
       --accent-ink: #14141b;
       --ch-r: #ff6369; --ch-g: #3dd68c; --ch-b: #7b93ff;
+      --paint-frame: #050508;
       color-scheme: dark;
     }
     @media (prefers-color-scheme: dark) {
@@ -82,7 +84,7 @@
         --bg: #14141b; --surface: #1d1d27; --surface-2: #262633; --cap: #1c1c26; --cap-line: #0e0e14; --text: #e8e8f0;
         --muted: #9696a8; --faint: #5c5c70; --line: #30303f; --line-strong: #6c6c85;
         --cell: #1f1f2b; --gutter: #111118; --major-line: #34344a; --cross: #6e6e85; --danger: #ff5d52; --accent: var(--a-dark);
-        --accent-ink: #14141b; --ch-r: #ff6369; --ch-g: #3dd68c; --ch-b: #7b93ff; color-scheme: dark;
+        --accent-ink: #14141b; --ch-r: #ff6369; --ch-g: #3dd68c; --ch-b: #7b93ff; --paint-frame: #050508; color-scheme: dark;
       }
     }
 
@@ -189,6 +191,11 @@
        contents sit in the header row as plain items and the buttons hide. */
     .drawer, .drawer-clip, .drawer-body { display: contents; }
     .disclose, .opt-lbl { display: none; }
+    /* On the paintings pages, Random boards takes the place of the size and
+       difficulty choices (and of their drawer button on narrow windows). */
+    #randomBtn { display: none; }
+    body.paint-mode #randomBtn { display: inline-flex; }
+    body.paint-mode :is(#boardOptsBtn, #boardOpts) { display: none; }
     .disclose[aria-expanded="true"] { background: var(--surface-2); border-color: var(--line-strong); }
 
     /* Time and lives sit together above the column caps, centered over the
@@ -658,7 +665,7 @@
     main:is([data-view="gallery"], [data-view="canvas"], [data-view="loading"]) :is(.board, .controls) { display: none; }
     .paint, .crumb, .gallery-view, .canvas-view { display: none; }
     main:is([data-view="gallery"], [data-view="canvas"]) .paint { display: flex; }
-    main:is([data-view="gallery"], [data-view="canvas"], [data-view="play"]) .crumb { display: flex; }
+    main:is([data-view="canvas"], [data-view="play"]) .crumb { display: flex; }
     main[data-view="gallery"] .gallery-view, main[data-view="canvas"] .canvas-view { display: flex; }
     /* Page changes run here (see cloneOut and fly in the script): a fixed
        layer over the page, so what animates in it can't scroll the page. */
@@ -683,7 +690,7 @@
     .paint { flex-direction: column; align-items: center; width: 100%; flex-shrink: 0; }
     .gallery-view, .canvas-view { flex-direction: column; align-items: center; gap: 14px; width: 100%; }
     .paint-title { margin: 0; font-size: 1.15rem; }
-    .paint-sub, .pick-hint { margin: 0; color: var(--muted); font-size: 0.9rem; text-align: center; }
+    .pick-hint { margin: 0; color: var(--muted); font-size: 0.9rem; text-align: center; }
     .gallery {
       display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px;
       width: min(780px, 100%);
@@ -702,7 +709,6 @@
     }
     .pcard .name { display: flex; align-items: center; justify-content: space-between; font-weight: 650; font-size: 0.95rem; }
     .pcard .name .ic { color: var(--accent); }
-    .pcard .meta { font-size: 0.78rem; color: var(--muted); }
     .bar { height: 5px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
     .bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
 
@@ -719,17 +725,38 @@
     /* A finished painting is one picture: its section lines shrink away
        (see meltDividers) and the sections' corners square off. */
     .pgrid.whole { gap: 0; }
-    .pgrid.whole .sec { border-radius: 0; }
-    .canvas-view .pgrid { --pg-gap: 4px; border-radius: 10px; }
+    .pgrid.whole { --sec-rad: 0px; }
+    /* The full-size painting: hairline section lines in the board's
+       major-line color, so they read apart from the tiles' gutters. */
+    .canvas-view .pgrid { --pg-gap: 1px; padding: 2px; border-radius: 10px; background: var(--paint-frame); }
+    /* Gallery previews are square-cornered, sections included. */
+    .pcard .pgrid { border-radius: 0; --sec-rad: 0px; }
+    /* Sections' corner radius, set on their grid. Registered so a picture
+       flying between a preview and the full painting can morph it (gridLook). */
+    @property --sec-rad { syntax: '<length>'; inherits: true; initial-value: 3px; }
     .sec {
       position: relative; display: block; min-width: 0; min-height: 0; padding: 0; border: 0;
-      background: var(--cell); border-radius: 3px; overflow: hidden; font: inherit; color: var(--muted);
+      background: var(--cell); border-radius: var(--sec-rad); overflow: hidden; font: inherit; color: var(--muted);
       transition: border-radius 1.2s ease-in-out;
     }
     .sec canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+    /* The board's tiles over a section (see tileSvg): gutters in --gutter,
+       each square showing its pixel's color so far, or --cell when none. A
+       finished painting fades them out as its section lines shrink. */
+    .tiles { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; transition: opacity 1.2s ease-in-out; }
+    .pgrid.whole .tiles { opacity: 0; }
+    .tile-gut { fill: var(--gutter); }
+    /* The tiles' outer half-gutters along the painting's edge join its frame. */
+    .tile-edge { fill: var(--paint-frame); }
     /* A section that can be played brightens a little under the pointer. */
-    button.sec { cursor: pointer; transition: box-shadow 0.15s, filter 0.15s, border-radius 1.2s ease-in-out; }
-    button.sec:hover:not(.complete):not(.locked) { box-shadow: inset 0 0 0 2px var(--accent); filter: brightness(1.12); }
+    button.sec { cursor: pointer; transition: filter 0.15s, border-radius 1.2s ease-in-out; }
+    button.sec:hover:not(.complete):not(.locked) { filter: brightness(1.12); }
+    /* The hover ring is a layer of its own, above the tiles and labels. */
+    button.sec::after {
+      content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+      box-shadow: inset 0 0 0 2px var(--accent); opacity: 0; transition: opacity 0.15s;
+    }
+    button.sec:hover:not(.complete):not(.locked)::after { opacity: 1; }
     button.sec.complete { cursor: default; }
     .sec-tag, .sec-lock {
       position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 4px;
@@ -837,6 +864,7 @@
     <div class="title-group">
       <span class="title">Nonogram</span>
     </div>
+    <button class="icon-btn text" id="randomBtn" title="Back to random boards"><svg class="ic"><use href="#i-back"/></svg>Random boards</button>
     <button class="icon-btn text disclose" id="boardOptsBtn" aria-expanded="false" aria-controls="boardOpts">Board settings…</button>
     <div class="drawer" id="boardOpts"><div class="drawer-clip"><div class="drawer-body">
     <div class="seg" id="size" role="group" aria-label="Board size">
@@ -904,7 +932,6 @@
     <section class="paint" id="paint" aria-label="Paintings">
       <div class="gallery-view">
         <h2 class="paint-title">Paintings</h2>
-        <p class="paint-sub">Each section is three boards: red, then green, then blue.</p>
         <div class="gallery" id="gallery"></div>
       </div>
       <div class="canvas-view">
@@ -2266,6 +2293,30 @@
       img.data.set(sectionRGBA(p, s, done));
       ctx.putImageData(img, 0, 0);
     }
+    // A section's tiles: one path, the gutters, with a hole for each square
+    // (tile units, as on the board), stretched over the section. A plain
+    // path, not an SVG pattern: Safari stretched a pattern unevenly. Cached
+    // per section size.
+    // edges: the painting's outer sides this section lies on (1 top, 2
+    // right, 4 bottom, 8 left); their half-gutters are drawn in the frame color.
+    const tilePaths = new Map();
+    const secEdges = (p, s) => (s.y === 0 ? 1 : 0) | (s.x + s.w === p.w ? 2 : 0) | (s.y + s.h === p.h ? 4 : 0) | (s.x === 0 ? 8 : 0);
+    function tileSvg(s, edges = 0) {
+      const W = s.w * 100, H = s.h * 100, key = W + 'x' + H;
+      let d = tilePaths.get(key);
+      if (!d) {
+        d = 'M0 0H' + W + 'V' + H + 'H0Z';
+        for (let r = 0; r < s.h; r++) for (let c = 0; c < s.w; c++) {
+          d += roundRect(c * 100 + T_IN, r * 100 + T_IN, c * 100 + 100 - T_IN, r * 100 + 100 - T_IN, T_RAD, T_RAD, T_RAD, T_RAD);
+        }
+        tilePaths.set(key, d);
+      }
+      const strip = (x0, y0, x1, y1) => 'M' + x0 + ' ' + y0 + 'H' + x1 + 'V' + y1 + 'H' + x0 + 'Z';
+      const edge = (edges & 1 ? strip(0, 0, W, T_IN) : '') + (edges & 2 ? strip(W - T_IN, 0, W, H) : '') +
+        (edges & 4 ? strip(0, H - T_IN, W, H) : '') + (edges & 8 ? strip(0, 0, T_IN, H) : '');
+      return '<svg class="tiles" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true">' +
+        '<path class="tile-gut" fill-rule="evenodd" d="' + d + '"/>' + (edge ? '<path class="tile-edge" d="' + edge + '"/>' : '') + '</svg>';
+    }
     const chanDots = (done, now) => '<span class="chans">' + [0, 1, 2].map((c) =>
       '<i class="chan c' + c + (c < done ? ' done' : c === now ? ' now' : '') + '"></i>').join('') + '</span>';
     const sectionsDone = (p) => p.secs.filter((s, k) => secInfo(p.id, k).done >= 3).length;
@@ -2274,7 +2325,9 @@
 
     // The painting as a grid of its sections. Interactive: each section is
     // a button that opens its next board.
-    function paintGrid(p, interactive) {
+    // tiles: draw the board's tiles over each section (the full-size
+    // painting); gallery previews are too small for them.
+    function paintGrid(p, interactive, tiles = interactive) {
       const g = document.createElement('div');
       g.className = 'pgrid';
       g.style.gridTemplateColumns = p.cols.map((c) => c + 'fr').join(' ');
@@ -2287,6 +2340,7 @@
         const cv = document.createElement('canvas');
         drawSection(cv, p, s, info.done);
         el.appendChild(cv);
+        if (tiles) el.insertAdjacentHTML('beforeend', tileSvg(s, secEdges(p, s)));
         if (interactive) {
           el.type = 'button';
           const left = lockLeft(info), started = info.done > 0 || (info.cur && info.cur.started);
@@ -2308,7 +2362,16 @@
       return g;
     }
 
+    // The header parts that trade places between random boards and paintings.
+    const modeParts = () => ['size', 'difficulty', 'boardOptsBtn', 'randomBtn'].map($).filter((el) => el.getClientRects().length);
     function setView(v) {
+      const paintMode = v !== 'board';
+      if (paintMode !== document.body.classList.contains('paint-mode')) {
+        modeParts().forEach((el) => cloneOut(el));
+        if (paintMode) setDrawer(null);
+        document.body.classList.toggle('paint-mode', paintMode);
+        modeParts().forEach((el) => fadeIn(el, 80));
+      }
       view = v;
       els.main.dataset.view = v;
       $('paintBtn').setAttribute('aria-pressed', String(v !== 'board'));
@@ -2387,6 +2450,10 @@
         left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px',
         display: getComputedStyle(el).display,
       });
+      // Parts shown by main[data-view] would be hidden outside main: keep their display.
+      const VIEWED = '.gallery-view, .canvas-view, .crumb, .board, .controls';
+      const vo = el.querySelectorAll(VIEWED), vc = c.querySelectorAll(VIEWED);
+      vo.forEach((n, i) => { vc[i].style.display = getComputedStyle(n).display; });
       flightEl.appendChild(c);
       track(c.animate([{ opacity: 1 }, { opacity: 0 }], { duration: dur, delay, easing: 'ease', fill: 'both' }), () => c.remove());
       return c;
@@ -2422,14 +2489,31 @@
     // A painting grid's gaps and corners, to morph between thumbnail and full size.
     function gridLook(el) {
       const cs = getComputedStyle(el);
-      return { rowGap: cs.rowGap, columnGap: cs.columnGap, padding: cs.paddingTop, borderRadius: cs.borderTopLeftRadius };
+      return {
+        rowGap: cs.rowGap, columnGap: cs.columnGap, padding: cs.paddingTop, borderRadius: cs.borderTopLeftRadius,
+        backgroundColor: cs.backgroundColor,
+        '--sec-rad': cs.getPropertyValue('--sec-rad').trim() || '3px',
+      };
     }
     function sectionGhost(p, k) {
       const g = document.createElement('div'), cv = document.createElement('canvas');
       g.className = 'sec';
       drawSection(cv, p, p.secs[k], secInfo(p.id, k).done);
       g.appendChild(cv);
+      g.insertAdjacentHTML('beforeend', tileSvg(p.secs[k], secEdges(p, p.secs[k])));
       return g;
+    }
+    // A section ghost's frame edge fades out on the way to its board (light
+    // edges) and back in on the way home.
+    function fadeEdge(g, show, delay = 0) {
+      const e = g.querySelector('.tile-edge');
+      if (e) track(e.animate([{ opacity: show ? 0 : 1 }, { opacity: show ? 1 : 0 }], { duration: FLY_MS * 0.7, delay, easing: 'ease', fill: 'both' }));
+    }
+    // Fades a grid's tiles in or out over a flight (none on a finished painting).
+    function fadeTiles(grid, show, delay) {
+      if (grid.classList.contains('whole')) return;
+      grid.querySelectorAll('.tiles').forEach((t) => (show ? fadeIn(t, delay)
+        : track(t.animate([{ opacity: 1 }, { opacity: 0 }], { duration: FLY_MS * 0.6, delay, easing: 'ease', fill: 'forwards' }))));
     }
     // The board's squares, edge to edge, and their corner radius.
     function tilesRect() {
@@ -2450,7 +2534,6 @@
     function showGallery() {
       leaveGame();
       paint = null;
-      setCrumb('Random boards', '');
       setView('gallery');
       paintProg.at = { view: 'gallery' };
       savePaint();
@@ -2538,9 +2621,7 @@
         b.appendChild(thumb);
         b.insertAdjacentHTML('beforeend',
           '<span class="name">' + p.name + (sectionsDone(p) === n ? '<svg class="ic"><use href="#i-check"/></svg>' : '') + '</span>' +
-          '<span class="meta">' + n + ' section' + (n > 1 ? 's' : '') + ' · ' + p.w + '×' + p.h + '</span>' +
-          '<span class="bar"><i style="width:' + (100 * found) / (3 * n) + '%"></i></span>' +
-          '<span class="meta">' + found + ' of ' + 3 * n + ' colors</span>');
+          '<span class="bar"><i style="width:' + (100 * found) / (3 * n) + '%"></i></span>');
         b.setAttribute('aria-label', p.name + ', ' + n + ' sections, ' + found + ' of ' + 3 * n + ' colors found');
         b.dataset.pid = p.id;
         b.addEventListener('click', () => openCanvas(p, grid));
@@ -2561,9 +2642,10 @@
         const card = $('gallery').querySelector('[data-pid="' + p.id + '"]');
         if (!card) { shownParts().forEach((el) => fadeIn(el, 80)); return; }
         card.scrollIntoView({ block: 'nearest' });
-        const thumb = card.querySelector('.pgrid'), ghost = paintGrid(p, false);
+        const thumb = card.querySelector('.pgrid'), ghost = paintGrid(p, false, true);
         thumb.style.visibility = 'hidden';
         fly(ghost, a, thumb.getBoundingClientRect(), look, gridLook(thumb), () => { thumb.style.visibility = ''; ghost.remove(); });
+        fadeTiles(ghost, false, 0); // the tiles go as the picture shrinks into its preview
         fadeIn(els.crumb, 80);
         fadeIn($('paint'), 80);
       };
@@ -2578,17 +2660,19 @@
       thumb.style.visibility = 'hidden';
       shownParts().forEach((el) => cloneOut(el));
       showCanvas(p);
-      const grid = $('pcanvas').firstChild, ghost = paintGrid(p, false);
+      const grid = $('pcanvas').firstChild, ghost = paintGrid(p, false, true);
       grid.style.visibility = 'hidden';
       fly(ghost, a, grid.getBoundingClientRect(), look, gridLook(grid), () => { grid.style.visibility = ''; ghost.remove(); });
+      fadeTiles(ghost, true, reduceMotion.matches ? 0 : FLY_MS * 0.3); // the tiles appear as it grows
       fadeTags(grid, FLY_MS);
       fadeIn(els.crumb, 80);
       fadeIn($('pickHint'), 80);
+      fadeIn($('restartRow'), 80);
     }
 
     function renderCanvas() {
       const p = paint.p, n = p.secs.length, done = sectionsDone(p);
-      setCrumb('Paintings', '<b>' + p.name + '</b><span>' + done + ' of ' + n + ' section' + (n > 1 ? 's' : '') + ' done</span>');
+      setCrumb('Paintings', '<b>' + p.name + '</b>');
       clearTimeout(hintTimer);
       $('pickHint').textContent = done === n ? 'Painting complete' : 'Pick a section';
       const wrap = $('pcanvas');
@@ -2649,6 +2733,7 @@
       playSection(p, k);
       const fly0 = reduceMotion.matches ? 0 : FLY_MS;
       fly(ghost, a, tilesRect(), { borderRadius: '3px' }, { borderRadius: tileRad() }, () => fadeOutGhost(ghost));
+      fadeEdge(ghost, false);
       fadeIn(els.grid, Math.max(0, fly0 - 60));
       for (const part of [els.board.querySelector('.stats'), els.colclues, els.rowclues, els.controls]) fadeIn(part, fly0 * 0.55, 360);
       fadeIn(els.crumb, 80);
@@ -2666,11 +2751,13 @@
       target.style.visibility = 'hidden';
       fly(ghost, a, target.getBoundingClientRect(), { borderRadius: rad }, { borderRadius: '3px' },
         () => { target.style.visibility = ''; ghost.remove(); }, reduceMotion.matches ? 0 : 140);
+      fadeEdge(ghost, true, reduceMotion.matches ? 0 : 140);
       fadeIn(ghost, 0, 200);
       fadeIn(grid, 120, 360);
       fadeTags(target, (reduceMotion.matches ? 0 : FLY_MS + 140));
       fadeIn(els.crumb, 80);
       fadeIn($('pickHint'), 80);
+      fadeIn($('restartRow'), 80);
     }
 
     // Opens the section's next board (or the one in progress).
@@ -2805,8 +2892,7 @@
     }
 
     $('crumbBack').addEventListener('click', () => {
-      if (view === 'gallery') backToRandom();
-      else if (view === 'canvas') openGallery();
+      if (view === 'canvas') openGallery();
       else if (view === 'play') exitToCanvas();
     });
 
@@ -3291,6 +3377,7 @@
     $('newBtn').addEventListener('click', () => newGame());
     $('bannerNew').addEventListener('click', () => (game.kind === 'paint' ? paintBannerAction() : newGame()));
     $('paintBtn').addEventListener('click', () => openGallery());
+    $('randomBtn').addEventListener('click', () => backToRandom());
     // Pressed down as the result is about to open: the overlay would swallow the release, so cancel it now.
     for (const id of ['newBtn', 'bannerNew']) $(id).addEventListener('pointerdown', () => clearTimeout(resultTimer));
 
