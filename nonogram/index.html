@@ -50,6 +50,9 @@
       --major-line: #b3b0a7; /* gutters every 5 cells */
       --major-fill: color-mix(in srgb, var(--accent) 70%, #000); /* the same gutters where they run through a fill */
       --size: 32px;
+      --ch-r: #e5484d; /* the red, green and blue boards' markers */
+      --ch-g: #2f9e5b;
+      --ch-b: #3e63dd;
       color-scheme: light;
     }
     :root[data-theme="dark"] {
@@ -71,6 +74,7 @@
       --shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
       --accent: var(--a-dark);
       --accent-ink: #14141b;
+      --ch-r: #ff6369; --ch-g: #3dd68c; --ch-b: #7b93ff;
       color-scheme: dark;
     }
     @media (prefers-color-scheme: dark) {
@@ -78,7 +82,7 @@
         --bg: #14141b; --surface: #1d1d27; --surface-2: #262633; --cap: #1c1c26; --cap-line: #0e0e14; --text: #e8e8f0;
         --muted: #9696a8; --faint: #5c5c70; --line: #30303f; --line-strong: #6c6c85;
         --cell: #1f1f2b; --gutter: #111118; --major-line: #34344a; --cross: #6e6e85; --danger: #ff5d52; --accent: var(--a-dark);
-        --accent-ink: #14141b; color-scheme: dark;
+        --accent-ink: #14141b; --ch-r: #ff6369; --ch-g: #3dd68c; --ch-b: #7b93ff; color-scheme: dark;
       }
     }
 
@@ -369,7 +373,7 @@
     .grid {
       grid-area: 3 / 2;
       display: grid;
-      grid-template-columns: repeat(var(--n), var(--size));
+      grid-template-columns: repeat(var(--cols), var(--size));
       grid-auto-rows: var(--size);
       padding: var(--edge);
       border-radius: calc(var(--rad) + var(--gut)); /* concentric with the corner squares */
@@ -399,13 +403,13 @@
       transition: opacity 0.6s;
     }
     .grid::before {
-      width: calc(var(--size) * (var(--n) - 1)); height: calc(var(--size) * var(--n) - var(--gut));
+      width: calc(var(--size) * (var(--cols) - 1)); height: calc(var(--size) * var(--rows) - var(--gut));
       background: repeating-linear-gradient(to right,
         transparent 0 calc(var(--major) - var(--gut)),
         var(--major-line) calc(var(--major) - var(--gut)) var(--major));
     }
     .grid::after {
-      width: calc(var(--size) * var(--n) - var(--gut)); height: calc(var(--size) * (var(--n) - 1));
+      width: calc(var(--size) * var(--cols) - var(--gut)); height: calc(var(--size) * (var(--rows) - 1));
       background: repeating-linear-gradient(to bottom,
         transparent 0 calc(var(--major) - var(--gut)),
         var(--major-line) calc(var(--major) - var(--gut)) var(--major));
@@ -478,7 +482,7 @@
     @keyframes waveCross { 0%, 100% { fill: var(--gutter); } 35% { fill: color-mix(in srgb, var(--accent) 22%, var(--gutter)); } }
     .waves {
       position: absolute; left: var(--edge); top: var(--edge); z-index: 3;
-      width: calc(var(--size) * var(--n)); height: calc(var(--size) * var(--n));
+      width: calc(var(--size) * var(--cols)); height: calc(var(--size) * var(--rows));
       pointer-events: none;
     }
     /* Each line's overlay is clipped to a strip around its line, in cells
@@ -495,7 +499,7 @@
     .waves svg {
       position: absolute; overflow: visible;
       left: calc(var(--size) * var(--sx) * -1); top: calc(var(--size) * var(--sy) * -1);
-      width: calc(var(--size) * var(--n)); height: calc(var(--size) * var(--n));
+      width: calc(var(--size) * var(--cols)); height: calc(var(--size) * var(--rows));
     }
     /* Run count shown while dragging over filled squares (see trackRunCount). */
     .runcount {
@@ -637,12 +641,121 @@
     .btn:hover { background: var(--surface-2); }
     .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
     .btn.primary:hover { filter: brightness(1.08); background: var(--accent); }
+    .btn.danger { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 40%, var(--line)); }
+    .btn:disabled { opacity: 0.45; cursor: default; }
+    .btn:disabled:hover { background: var(--surface); }
 
     .banner {
       display: none; align-items: center; gap: 10px; height: var(--ctl-h);
       font-size: 0.88rem; color: var(--muted);
     }
     .banner.show { display: flex; }
+
+    /* ── Paintings ── */
+    /* main's view: board (a random puzzle), play (a painting section's
+       board), canvas (one painting's sections), gallery (every painting),
+       or loading. The board and its controls show only in board and play. */
+    main:is([data-view="gallery"], [data-view="canvas"], [data-view="loading"]) :is(.board, .controls) { display: none; }
+    .paint, .crumb, .gallery-view, .canvas-view { display: none; }
+    main:is([data-view="gallery"], [data-view="canvas"]) .paint { display: flex; }
+    main:is([data-view="gallery"], [data-view="canvas"], [data-view="play"]) .crumb { display: flex; }
+    main[data-view="gallery"] .gallery-view, main[data-view="canvas"] .canvas-view { display: flex; }
+    /* Page changes run here (see cloneOut and fly in the script): a fixed
+       layer over the page, so what animates in it can't scroll the page. */
+    #flight { position: fixed; inset: 0; z-index: 45; pointer-events: none; overflow: hidden; }
+    #flight > * { position: absolute; margin: 0; box-sizing: border-box; }
+
+    /* The line above a painting or its board: a back button, then where
+       the player is. Its height counts against the board's (see fitBoard). */
+    .crumb {
+      align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px 12px;
+      font-size: 0.88rem; color: var(--muted); flex-shrink: 0;
+    }
+    .crumb b { color: var(--text); font-weight: 650; }
+    .crumb-info { display: inline-flex; align-items: center; gap: 8px; }
+    /* One dot per color channel: filled once found, ringed for the board in play. */
+    .chans { display: inline-flex; gap: 5px; }
+    .chan { width: 11px; height: 11px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--faint); transition: background-color 0.3s, box-shadow 0.3s; }
+    .chan.c0 { --c: var(--ch-r); } .chan.c1 { --c: var(--ch-g); } .chan.c2 { --c: var(--ch-b); }
+    .chan.done { background: var(--c); box-shadow: none; }
+    .chan.now { box-shadow: inset 0 0 0 2.5px var(--c); }
+
+    .paint { flex-direction: column; align-items: center; width: 100%; flex-shrink: 0; }
+    .gallery-view, .canvas-view { flex-direction: column; align-items: center; gap: 14px; width: 100%; }
+    .paint-title { margin: 0; font-size: 1.15rem; }
+    .paint-sub, .pick-hint { margin: 0; color: var(--muted); font-size: 0.9rem; text-align: center; }
+    .gallery {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px;
+      width: min(780px, 100%);
+    }
+    .pcard {
+      display: flex; flex-direction: column; gap: 8px; padding: 10px;
+      border: 1px solid var(--line); border-radius: 12px; background: var(--surface);
+      cursor: pointer; text-align: left; font: inherit; color: var(--text);
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .pcard:hover { border-color: var(--line-strong); }
+    .pcard:focus-visible, .sec:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .pcard .thumb {
+      aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+      background: var(--surface-2); border-radius: 8px; padding: 8px;
+    }
+    .pcard .name { display: flex; align-items: center; justify-content: space-between; font-weight: 650; font-size: 0.95rem; }
+    .pcard .name .ic { color: var(--accent); }
+    .pcard .meta { font-size: 0.78rem; color: var(--muted); }
+    .bar { height: 5px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+    .bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+
+    /* A painting as its grid of sections, sized by their pixel counts. The
+       grid's background shows through the gaps as the section lines. Each
+       section's canvas is its pixels at 1:1, scaled up without smoothing;
+       pixels from channels not yet found are black, and a section with
+       none found is blank. */
+    .pgrid {
+      display: grid; gap: var(--pg-gap, 2px); padding: var(--pg-gap, 2px);
+      background: var(--gutter); border-radius: 6px; width: 100%;
+      transition: row-gap 1.2s ease-in-out, column-gap 1.2s ease-in-out;
+    }
+    /* A finished painting is one picture: its section lines shrink away
+       (see meltDividers) and the sections' corners square off. */
+    .pgrid.whole { gap: 0; }
+    .pgrid.whole .sec { border-radius: 0; }
+    .canvas-view .pgrid { --pg-gap: 4px; border-radius: 10px; }
+    .sec {
+      position: relative; display: block; min-width: 0; min-height: 0; padding: 0; border: 0;
+      background: var(--cell); border-radius: 3px; overflow: hidden; font: inherit; color: var(--muted);
+      transition: border-radius 1.2s ease-in-out;
+    }
+    .sec canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+    /* A section that can be played brightens a little under the pointer. */
+    button.sec { cursor: pointer; transition: box-shadow 0.15s, filter 0.15s, border-radius 1.2s ease-in-out; }
+    button.sec:hover:not(.complete):not(.locked) { box-shadow: inset 0 0 0 2px var(--accent); filter: brightness(1.12); }
+    button.sec.complete { cursor: default; }
+    .sec-tag, .sec-lock {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 4px;
+      font-size: 0.75rem; font-weight: 600; font-variant-numeric: tabular-nums; pointer-events: none;
+    }
+    /* Over a section that already shows color, the dots sit on a small plate. */
+    .sec-tag .chans { padding: 4px 6px; border-radius: 9px; background: var(--surface); }
+    .sec-lock { flex-direction: column; background: color-mix(in srgb, var(--surface) 72%, transparent); color: var(--text); }
+    .sec-lock .ic { width: 16px; height: 16px; }
+    .sec.nope { animation: shake 0.32s ease; }
+    .paint-msg { color: var(--muted); text-align: center; grid-column: 1 / -1; }
+    /* Restart painting, then a confirmation in its place. */
+    .restart { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px; min-height: 40px; }
+    .restart .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; }
+    .restart .ic { width: 16px; height: 16px; }
+    .restart-ask { font-size: 0.88rem; color: var(--muted); }
+    .restart:not(.asking) :is(.restart-ask, #restartNo, #restartYes), .restart.asking #restartBtn { display: none; }
+
+    /* A solved painting board fades into its true colors, square by square
+       from the top left (see revealColors). It covers the whole grid, so
+       the picture loses its gutters and its two-tone look. */
+    .reveal {
+      position: absolute; left: var(--edge); top: var(--edge); z-index: 6;
+      width: calc(var(--size) * var(--cols)); height: calc(var(--size) * var(--rows));
+      border-radius: var(--rad); image-rendering: pixelated; pointer-events: none;
+    }
 
     @media (max-width: 640px) {
       header { padding: 8px 12px; }
@@ -661,8 +774,8 @@
        script once the grow ends), it stops clipping, so the color popover
        can hang below the header. Only one drawer is open at a time. */
     @media (max-width: 767px) {
-      /* The first row (title, two drawer buttons, New) is tightened to fit
-         in 380px; narrower than that, the title makes way. */
+      /* The first row (title, two drawer buttons, Paintings, New) is
+         tightened to fit in 420px; narrower than that, the title makes way. */
       header { gap: 4px; row-gap: 0; padding: 8px 10px; }
       .title { margin-right: 2px; font-size: 0.9rem; }
       .spacer { display: none; }
@@ -695,7 +808,7 @@
          numbers a line could have. */
       .rowclue { min-width: 0; }
     }
-    @media (max-width: 379px) { .title-group { display: none; } }
+    @media (max-width: 419px) { .title-group { display: none; } }
   </style>
 </head>
 <body>
@@ -713,6 +826,9 @@
       <symbol id="i-broken" viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-9.2-9.4C1.6 7.6 3.8 4 7.4 4c2 0 3.5 1.1 4.6 2.6l-1.5 3.4 3 2-2 3.5 3-3.5-3-2 1.5-3.4C14.1 5.1 15.6 4 16.6 4c3.6 0 5.8 3.6 4.6 7.1-1.7 4.8-9.2 9.4-9.2 9.4z"/></symbol>
       <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9.2a4 4 0 0 1 0 5.6M18.4 6.5a7.8 7.8 0 0 1 0 11"/></symbol>
       <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></symbol>
+      <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="9.5" r="1.8"/><path d="M21 15.5l-5-5L5 20"/></symbol>
+      <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9.5" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+      <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
       <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
     </defs>
   </svg>
@@ -752,10 +868,15 @@
     <button class="icon-btn" id="soundBtn" title="Sound on (M)" aria-label="Sound" aria-pressed="true"><svg class="ic"><use id="soundIcon" href="#i-sound"/></svg><span class="opt-lbl" id="soundLbl">Sound on</span></button>
     <button class="icon-btn" id="schemeBtn" title="Toggle light / dark" aria-label="Toggle light or dark mode"><svg class="ic"><use id="schemeIcon" href="#i-moon"/></svg><span class="opt-lbl" id="schemeLbl">Dark mode</span></button>
     </div></div></div>
+    <button class="icon-btn text" id="paintBtn" title="Paintings" aria-pressed="false"><svg class="ic"><use href="#i-image"/></svg><span class="lbl">Paintings</span></button>
     <button class="icon-btn text" id="newBtn" title="New puzzle"><svg class="ic"><use href="#i-refresh"/></svg><span class="lbl">New</span></button>
   </header>
 
-  <main id="main">
+  <main id="main" data-view="board">
+    <div class="crumb" id="crumb">
+      <button class="icon-btn text" id="crumbBack"><svg class="ic"><use href="#i-back"/></svg><span id="crumbBackLbl"></span></button>
+      <span class="crumb-info" id="crumbInfo"></span>
+    </div>
     <div class="board" id="board">
       <div class="stats"><div class="stats-in">
         <span class="timer" title="Time"><svg class="ic"><use href="#i-clock"/></svg><span id="time">0:00</span></span>
@@ -779,7 +900,27 @@
       </button>
       <div class="hint kb">Drag to mark a line. Right-click uses the other mode. Keys: arrows, <kbd>Enter</kbd> mark, <kbd>Space</kbd> switch mode, <kbd>M</kbd> sound</div>
     </div>
+
+    <section class="paint" id="paint" aria-label="Paintings">
+      <div class="gallery-view">
+        <h2 class="paint-title">Paintings</h2>
+        <p class="paint-sub">Each section is three boards: red, then green, then blue.</p>
+        <div class="gallery" id="gallery"></div>
+      </div>
+      <div class="canvas-view">
+        <p class="pick-hint" id="pickHint" aria-live="polite">Pick a section</p>
+        <div id="pcanvas"></div>
+        <div class="restart" id="restartRow">
+          <button class="btn" id="restartBtn"><svg class="ic"><use href="#i-refresh"/></svg>Restart painting</button>
+          <span class="restart-ask">Clear every color found in this painting?</span>
+          <button class="btn" id="restartNo">Cancel</button>
+          <button class="btn danger" id="restartYes">Restart</button>
+        </div>
+      </div>
+    </section>
   </main>
+
+  <div id="flight" aria-hidden="true"></div>
 
   <div class="overlay" id="overlay" aria-hidden="true">
     <div class="card" id="card" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
@@ -870,36 +1011,38 @@
       return out;
     }
 
-    function lineSolvable(n, rows, cols) {
-      const g = new Int8Array(n * n).fill(-1);
-      const dirtyR = new Uint8Array(n).fill(1), dirtyC = new Uint8Array(n).fill(1);
-      let progress = true, unknown = n * n;
+    // Boards are w columns by h rows (random boards are square; painting
+    // sections need not be). Cell i is at row floor(i / w), column i % w.
+    function lineSolvable(w, h, rows, cols) {
+      const g = new Int8Array(w * h).fill(-1);
+      const dirtyR = new Uint8Array(h).fill(1), dirtyC = new Uint8Array(w).fill(1);
+      let progress = true, unknown = w * h;
       while (progress) {
         progress = false;
-        for (let r = 0; r < n; r++) {
+        for (let r = 0; r < h; r++) {
           if (!dirtyR[r]) continue; dirtyR[r] = 0;
-          const line = g.slice(r * n, r * n + n), res = solveLine(rows[r], line);
+          const line = g.slice(r * w, r * w + w), res = solveLine(rows[r], line);
           if (!res) return false;
-          for (let c = 0; c < n; c++) if (line[c] === -1 && res[c] !== -1) { g[r * n + c] = res[c]; dirtyC[c] = 1; unknown--; progress = true; }
+          for (let c = 0; c < w; c++) if (line[c] === -1 && res[c] !== -1) { g[r * w + c] = res[c]; dirtyC[c] = 1; unknown--; progress = true; }
         }
-        for (let c = 0; c < n; c++) {
+        for (let c = 0; c < w; c++) {
           if (!dirtyC[c]) continue; dirtyC[c] = 0;
-          const line = new Int8Array(n);
-          for (let r = 0; r < n; r++) line[r] = g[r * n + c];
+          const line = new Int8Array(h);
+          for (let r = 0; r < h; r++) line[r] = g[r * w + c];
           const res = solveLine(cols[c], line);
           if (!res) return false;
-          for (let r = 0; r < n; r++) if (line[r] === -1 && res[r] !== -1) { g[r * n + c] = res[r]; dirtyR[r] = 1; unknown--; progress = true; }
+          for (let r = 0; r < h; r++) if (line[r] === -1 && res[r] !== -1) { g[r * w + c] = res[r]; dirtyR[r] = 1; unknown--; progress = true; }
         }
       }
       return unknown === 0;
     }
 
-    function cluesFor(n, sol) {
+    function cluesFor(w, h, sol) {
       const rows = [], cols = [];
-      for (let r = 0; r < n; r++) rows.push(clueOf(sol.slice(r * n, r * n + n)));
-      for (let c = 0; c < n; c++) {
+      for (let r = 0; r < h; r++) rows.push(clueOf(sol.slice(r * w, r * w + w)));
+      for (let c = 0; c < w; c++) {
         const l = [];
-        for (let r = 0; r < n; r++) l.push(sol[r * n + c]);
+        for (let r = 0; r < h; r++) l.push(sol[r * w + c]);
         cols.push(clueOf(l));
       }
       return { rows, cols };
@@ -943,9 +1086,9 @@
       let last = null;
       for (let attempt = 0; attempt < 2000; attempt++) {
         const sol = randomBoard(n, blur, clump, density);
-        const clues = cluesFor(n, sol);
+        const clues = cluesFor(n, n, sol);
         last = { sol, clues };
-        if (lineSolvable(n, clues.rows, clues.cols)) return last;
+        if (lineSolvable(n, n, clues.rows, clues.cols)) return last;
       }
       return last;
     }
@@ -1070,9 +1213,12 @@
       board: $('board'), grid: $('grid'), rowclues: $('rowclues'), colclues: $('colclues'),
       time: $('time'), lives: $('lives'), main: $('main'), controls: $('controls'),
       overlay: $('overlay'), card: $('card'), banner: $('banner'), bannerText: $('bannerText'),
+      crumb: $('crumb'),
     };
 
     function newGame(reuse) {
+      // From a painting: keep that section's board, then back to random boards.
+      if (view !== 'board') { crossfade(() => { leaveGame(); leavePaintings(); newGame(reuse); }); return; }
       const n = reuse ? reuse.n : settings.size, d = reuse ? reuse.diff : settings.difficulty;
       const puzzle = reuse || generate(n, d);
       // A board of the same size eases from the old one's layout (see fitBoard).
@@ -1081,9 +1227,9 @@
         w: els.rowclues.getBoundingClientRect().width,
       } : null;
       game = {
-        diff: d, n,
+        diff: d, n, w: n, h: n,
         sol: Array.from(puzzle.sol),
-        clues: puzzle.clues || cluesFor(n, puzzle.sol),
+        clues: puzzle.clues || cluesFor(n, n, puzzle.sol),
         state: new Array(n * n).fill(0),
         mistakes: [],
         autoX: [],
@@ -1116,6 +1262,7 @@
     function persist() {
       clearTimeout(persistTimer); persistTimer = 0;
       if (!game) return;
+      if (game.kind === 'paint') { persistPaint(); return; }
       save('nonogram.game', {
         n: game.n, diff: game.diff, sol: game.sol.join(''), state: game.state.join(''),
         mistakes: game.mistakes, autoX: game.autoX, lives: game.lives,
@@ -1132,7 +1279,7 @@
       if (typeof s.sol !== 'string' || s.sol.length !== n * n) return false;
       const sol = s.sol.split('').map(Number);
       game = {
-        diff, n, sol, clues: cluesFor(n, sol),
+        diff, n, w: n, h: n, sol, clues: cluesFor(n, n, sol),
         state: s.state.split('').map(Number),
         mistakes: s.mistakes || [], autoX: s.autoX || [],
         lives: s.lives, elapsed: s.elapsed || 0, started: !!s.started, status: s.status || 'playing',
@@ -1147,7 +1294,7 @@
       return game.elapsed + (tickStart !== null ? performance.now() - tickStart : 0);
     }
     function startClock() {
-      if (tickStart !== null || game.status !== 'playing' || document.hidden) return;
+      if (tickStart !== null || game.status !== 'playing' || document.hidden || !boardShown()) return;
       tickStart = performance.now();
       tickHandle = setInterval(updateTime, 250);
     }
@@ -1178,25 +1325,27 @@
     // ── Rendering ─────────────────────────────────────────────────
     // from: the previous board's layout to ease from, if any (see fitBoard).
     function render(from) {
-      const { n, clues } = game;
-      els.board.style.setProperty('--n', n);
+      const { w, h, clues } = game;
+      els.board.style.setProperty('--cols', w);
+      els.board.style.setProperty('--rows', h);
       // Most numbers one line can need: alternating filled and empty cells.
-      els.board.style.setProperty('--slots', Math.ceil(n / 2));
-      els.board.style.setProperty('--col-slots', SIZES[n].colSlots[game.diff]);
+      // A painting section reserves what its three boards need (see paintBoard).
+      els.board.style.setProperty('--slots', game.slots || Math.ceil(w / 2));
+      els.board.style.setProperty('--col-slots', game.colSlots || SIZES[game.n].colSlots[game.diff]);
       els.grid.innerHTML = '';
       els.rowclues.innerHTML = '';
       els.colclues.innerHTML = '';
       cellEls = []; rowClueEls = []; colClueEls = [];
       resetGrow();
 
-      for (let c = 0; c < n; c++) {
+      for (let c = 0; c < w; c++) {
         const el = document.createElement('div');
         el.className = 'colclue';
         const nums = clues.cols[c].length ? clues.cols[c] : [0];
         el.innerHTML = nums.map((v) => '<span>' + v + '</span>').join('');
         els.colclues.appendChild(el); colClueEls.push(el);
       }
-      for (let r = 0; r < n; r++) {
+      for (let r = 0; r < h; r++) {
         const el = document.createElement('div');
         el.className = 'rowclue';
         const nums = clues.rows[r].length ? clues.rows[r] : [0];
@@ -1204,11 +1353,11 @@
         els.rowclues.appendChild(el); rowClueEls.push(el);
       }
       const frag = document.createDocumentFragment();
-      for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+      for (let r = 0; r < h; r++) for (let c = 0; c < w; c++) {
         const el = document.createElement('div');
         el.className = 'cell';
-        el.innerHTML = '<svg class="piece" viewBox="' + -T_PAD + ' ' + -T_PAD + ' ' + (100 + 2 * T_PAD) + ' ' + (100 + 2 * T_PAD) + '" aria-hidden="true"><g class="pg"></g><path class="xl" d="' + crossD + '"/><clipPath id="gc' + (r * n + c) + '"></clipPath></svg>';
-        el.dataset.i = r * n + c;
+        el.innerHTML = '<svg class="piece" viewBox="' + -T_PAD + ' ' + -T_PAD + ' ' + (100 + 2 * T_PAD) + ' ' + (100 + 2 * T_PAD) + '" aria-hidden="true"><g class="pg"></g><path class="xl" d="' + crossD + '"/><clipPath id="gc' + (r * w + c) + '"></clipPath></svg>';
+        el.dataset.i = r * w + c;
         frag.appendChild(el); cellEls.push(el);
       }
       els.grid.appendChild(frag);
@@ -1217,12 +1366,12 @@
       hoverR = hoverC = -1; geom = null;
       waves = []; cancelAnimationFrame(waveFrame); waveFrame = 0;
 
-      for (let i = 0; i < n * n; i++) paintCell(i);
-      for (let r = 0; r < n; r++) updateLineDone('r', r);
-      for (let c = 0; c < n; c++) updateLineDone('c', c);
+      for (let i = 0; i < w * h; i++) paintCell(i);
+      for (let r = 0; r < h; r++) updateLineDone('r', r);
+      for (let c = 0; c < w; c++) updateLineDone('c', c);
 
-      document.querySelectorAll('#size button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.size === n)));
-      document.querySelectorAll('#difficulty button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.diff === game.diff)));
+      document.querySelectorAll('#size button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.size === game.n)));
+      document.querySelectorAll('#difficulty button').forEach((b) => b.setAttribute('aria-pressed', String(!!game.n && b.dataset.diff === game.diff)));
       renderLives(-1);
       tickStart = null; clearInterval(tickHandle);
       updateTime();
@@ -1246,10 +1395,10 @@
     // A fill's shape depends on its 8 neighbors, so refresh the 3x3 block.
     // Growing cells are skipped: they keep the join shape set when they began.
     function refreshShapes(i) {
-      const n = game.n, r = Math.floor(i / n), c = i % n;
+      const { w, h } = game, r = Math.floor(i / w), c = i % w;
       for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
-        const rr = r + dr, cc = c + dc, j = rr * n + cc;
-        if (rr >= 0 && rr < n && cc >= 0 && cc < n && game.state[j] === 1 && !growing.has(j)) {
+        const rr = r + dr, cc = c + dc, j = rr * w + cc;
+        if (rr >= 0 && rr < h && cc >= 0 && cc < w && game.state[j] === 1 && !growing.has(j)) {
           setPiece(j, fillPaths(neighborBits(j, false), false, majorSides(j)));
         }
       }
@@ -1275,16 +1424,16 @@
     // withGrowing: count neighbors that are still growing as filled.
     // Sides of square i that face a major gutter (every 5 squares, never the frame), as fillPaths' maj.
     function majorSides(i) {
-      const n = game.n, r = Math.floor(i / n), c = i % n, at = (k) => k > 0 && k < n && k % 5 === 0;
-      return (at(r) ? 1 : 0) | (at(c + 1) ? 2 : 0) | (at(r + 1) ? 4 : 0) | (at(c) ? 8 : 0);
+      const { w, h } = game, r = Math.floor(i / w), c = i % w, at = (k, n) => k > 0 && k < n && k % 5 === 0;
+      return (at(r, h) ? 1 : 0) | (at(c + 1, w) ? 2 : 0) | (at(r + 1, h) ? 4 : 0) | (at(c, w) ? 8 : 0);
     }
 
     function neighborBits(i, withGrowing) {
-      const n = game.n, r = Math.floor(i / n), c = i % n;
+      const { w, h } = game, r = Math.floor(i / w), c = i % w;
       let bits = 0;
       NEIGHBORS.forEach(([dr, dc], b) => {
-        const rr = r + dr, cc = c + dc, j = rr * n + cc;
-        if (rr >= 0 && rr < n && cc >= 0 && cc < n && game.state[j] === 1 && (withGrowing || !growing.has(j))) bits |= 1 << b;
+        const rr = r + dr, cc = c + dc, j = rr * w + cc;
+        if (rr >= 0 && rr < h && cc >= 0 && cc < w && game.state[j] === 1 && (withGrowing || !growing.has(j))) bits |= 1 << b;
       });
       return bits;
     }
@@ -1432,10 +1581,10 @@
 
     // Crossed squares grow in the same way, as a lone square.
     function startGrow(i, from) {
-      const n = game.n, fill = game.state[i] === 1, el = cellEls[i];
+      const w = game.w, fill = game.state[i] === 1, el = cellEls[i];
       const bits = fill ? neighborBits(i, true) : 0;
       setPiece(i, fillPaths(bits, fill, fill ? majorSides(i) : 0));
-      const prev = from ? growing.get({ l: i - 1, r: i + 1, t: i - n, b: i + n }[from]) : null;
+      const prev = from ? growing.get({ l: i - 1, r: i + 1, t: i - w, b: i + w }[from]) : null;
       let g0 = growClock;
       if (prev) g0 = Math.max(g0, prev.g0 + (!prev.from ? CHAIN.tap : prev.from === from ? CHAIN.straight : CHAIN.turn));
       // Sides of the sweep, across its direction: A is left/top, B right/bottom.
@@ -1545,8 +1694,9 @@
     }
 
     function lineIdx(kind, k) {
-      const n = game.n, out = [];
-      for (let t = 0; t < n; t++) out.push(kind === 'r' ? k * n + t : t * n + k);
+      const { w, h } = game, out = [];
+      if (kind === 'r') for (let t = 0; t < w; t++) out.push(k * w + t);
+      else for (let t = 0; t < h; t++) out.push(t * w + k);
       return out;
     }
 
@@ -1639,7 +1789,7 @@
       geom = null;
     }
     function fitBoard(from) {
-      if (!game) return;
+      if (!game || !boardShown()) return;
       const b = els.board;
       endEase();
       const measure = (s) => { b.style.setProperty('--size', s + 'px'); const r = b.getBoundingClientRect(); return [r.width, r.height]; };
@@ -1650,7 +1800,9 @@
       const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
       const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
       const availW = Math.min(els.main.clientWidth - padX, 960);
-      const availH = els.main.clientHeight - padY - els.controls.offsetHeight - parseFloat(cs.rowGap || 0);
+      // The crumb above a painting's board (0 high when hidden) takes room too.
+      const crumbH = els.crumb.offsetHeight ? els.crumb.offsetHeight + parseFloat(cs.rowGap || 0) : 0;
+      const availH = els.main.clientHeight - padY - els.controls.offsetHeight - parseFloat(cs.rowGap || 0) - crumbH;
       const size = Math.max(14, Math.min(56, Math.floor(Math.min((availW - bw) / aw, (availH - bh) / ah))));
       b.style.setProperty('--size', size + 'px');
       sizeCrosses(size);
@@ -1674,7 +1826,7 @@
     let fitFrame = 0;
     new ResizeObserver(() => {
       geom = null;
-      if (!fitFrame) fitFrame = requestAnimationFrame(() => { fitFrame = 0; fitBoard(); });
+      if (!fitFrame) fitFrame = requestAnimationFrame(() => { fitFrame = 0; fitBoard(); fitCanvas(); });
     }).observe(els.main);
 
     // ── Marking cells ─────────────────────────────────────────────
@@ -1732,7 +1884,7 @@
     }
 
     function startWave(w, now) {
-      const n = game.n, idx = lineIdx(w.kind, w.k), id = ++waveIds, row = w.kind === 'r';
+      const { w: cols, h: rows } = game, idx = lineIdx(w.kind, w.k), id = ++waveIds, row = w.kind === 'r', len = idx.length;
       // One chime per frame, even when a row and a column finish together.
       // The move that solves the board plays the solve sound instead.
       if (game.status === 'playing' && now !== lineChimeAt) { lineChimeAt = now; sound.play('line'); }
@@ -1759,17 +1911,17 @@
       idx.forEach((j) => {
         const cl = cellEls[j].classList;
         if (game.state[j] !== 2 || cl.contains('xwait') || cl.contains('m') || cl.contains('mfade') || cl.contains('xin')) return;
-        const at = ' transform="translate(' + (j % n) * 100 + ' ' + Math.floor(j / n) * 100 + ')"';
+        const at = ' transform="translate(' + (j % cols) * 100 + ' ' + Math.floor(j / cols) * 100 + ')"';
         marks += '<path class="wc"' + at + ' d="' + WAVE_SQUARE + '"/><path class="wx' + (cl.contains('mx') ? ' mx' : '') + '"' + at + ' d="' + crossD + '"/>';
       });
       let pieces = '';
       idx.forEach((j) => {
         if (game.state[j] !== 1) return;
-        pieces += '<g transform="translate(' + (j % n) * 100 + ' ' + Math.floor(j / n) * 100 + ')">' + fillPaths(neighborBits(j, true), false) + '</g>';
+        pieces += '<g transform="translate(' + (j % cols) * 100 + ' ' + Math.floor(j / cols) * 100 + ')">' + fillPaths(neighborBits(j, true), false) + '</g>';
       });
       const across = row ? 'x1="0" y1="0" x2="0" y2="100"' : 'x1="0" y1="0" x2="100" y2="0"';
       // The light covers the line and 30 units on each side, in board units.
-      const box = row ? [-30, w.k * 100 - 30, n * 100 + 60, 160] : [w.k * 100 - 30, -30, 160, n * 100 + 60];
+      const box = row ? [-30, w.k * 100 - 30, cols * 100 + 60, 160] : [w.k * 100 - 30, -30, 160, rows * 100 + 60];
       const rect = 'x="' + box[0] + '" y="' + box[1] + '" width="' + box[2] + '" height="' + box[3] + '"';
       // The board-sized overlay sits in a strip-sized clip (.wstrip) that is
       // its own compositing layer, so the per-frame mask change repaints the
@@ -1779,7 +1931,7 @@
       strip.style.setProperty('--sx', box[0] / 100); strip.style.setProperty('--sy', box[1] / 100);
       strip.style.setProperty('--sw', box[2] / 100); strip.style.setProperty('--sh', box[3] / 100);
       const svg = document.createElementNS(SVG_NS, 'svg');
-      svg.setAttribute('viewBox', '0 0 ' + n * 100 + ' ' + n * 100);
+      svg.setAttribute('viewBox', '0 0 ' + cols * 100 + ' ' + rows * 100);
       svg.innerHTML =
         '<linearGradient id="wf' + id + '" gradientUnits="userSpaceOnUse" ' + across + '>' +
           '<stop offset="0" stop-color="#000"/><stop offset="' + WAVE_FEATHER + '" stop-color="#fff"/>' +
@@ -1787,12 +1939,13 @@
         '<mask id="wm' + id + '" maskUnits="userSpaceOnUse" ' + rect + '><g fill="url(#wf' + id + ')">' + pieces + '</g></mask>' +
         '<rect class="lit" ' + rect + ' mask="url(#wm' + id + ')"/>';
       w.svg = svg; w.start = now;
-      w.end = WAVE_LEN + WAVE_STEP * Math.max(w.origin + 0.5, n - w.origin - 0.5);
+      w.len = len;
+      w.end = WAVE_LEN + WAVE_STEP * Math.max(w.origin + 0.5, len - w.origin - 0.5);
       strip.appendChild(svg);
       if (marks) {
         // A second overlay in the same strip, pulsed per square (see drawWave).
         const svg2 = document.createElementNS(SVG_NS, 'svg');
-        svg2.setAttribute('viewBox', '0 0 ' + n * 100 + ' ' + n * 100);
+        svg2.setAttribute('viewBox', '0 0 ' + cols * 100 + ' ' + rows * 100);
         svg2.innerHTML = marks;
         w.marks = svg2; w.marksMask = '';
         strip.appendChild(svg2);
@@ -1813,7 +1966,7 @@
     // The pulse along the line, sampled 4 times per cell, as an alpha mask
     // gradient spanning the board (the line's full length).
     function drawWave(w, t) {
-      const n = game.n, samples = n * 4;
+      const n = w.len, samples = n * 4;
       let g = 'linear-gradient(' + (w.kind === 'r' ? 'to right' : 'to bottom');
       for (let s = 0; s <= samples; s++) {
         const pos = (s / samples) * n;
@@ -1863,7 +2016,7 @@
     }
 
     function afterChange(i) {
-      const n = game.n, r = Math.floor(i / n), c = i % n;
+      const n = game.w, r = Math.floor(i / n), c = i % n;
       const wasDone = { r: rowClueEls[r].classList.contains('done'), c: colClueEls[c].classList.contains('done') };
       // Lines whose clues need rechecking, each checked once at the end.
       const rows = new Set([r]), cols = new Set([c]);
@@ -1912,26 +2065,34 @@
       // before is cut off, and waves still to start skip theirs (startWave).
       sound.hushLines();
       sound.play('solve');
-      recordWin();
+      setHover(null);
       for (let j = 0; j < game.state.length; j++) if (game.state[j] === 0) { game.state[j] = 2; paintCell(j); }
       els.board.classList.add('over', 'won');
+      // A painting's board turns into its colors and says what's left,
+      // with no result card over it.
+      if (game.kind === 'paint') paintWon(); else recordWin();
       persist();
       updateBanner();
-      resultTimer = setTimeout(() => showResult('won'), RESULT_DELAY);
+      if (game.kind !== 'paint') resultTimer = setTimeout(() => showResult('won'), RESULT_DELAY);
     }
 
     function lose() {
       game.status = 'lost';
       stopClock();
       sound.play('lost');
+      setHover(null);
       els.board.classList.add('over');
+      if (game.kind === 'paint') paintLost();
       revealSolution();
       persist();
       updateBanner();
       resultTimer = setTimeout(() => showResult('lost'), RESULT_DELAY);
     }
 
+    // A painting's section is played again once its lock ends, so its
+    // answer stays hidden.
     function revealSolution() {
+      if (game.kind === 'paint') return;
       for (let j = 0; j < game.sol.length; j++) {
         cellEls[j].classList.toggle('rev', game.sol[j] === 1 && game.state[j] !== 1);
       }
@@ -1942,6 +2103,8 @@
       els.banner.classList.toggle('show', over);
       $('modeWrap').style.display = over ? 'none' : '';
       els.bannerText.textContent = game.status === 'won' ? 'Solved in ' + fmt(currentElapsed()) : game.status === 'lost' ? 'Out of lives' : '';
+      $('bannerNew').textContent = 'New puzzle';
+      if (game.kind === 'paint' && over) paintBanner();
       fitBoard();
     }
 
@@ -1954,10 +2117,11 @@
       $('resultTitle').textContent = won ? 'Solved' : 'Out of lives';
       $('resultText').textContent = won
         ? (game.mistakes.length === 0 ? 'A clean solve, no mistakes.' : 'Puzzle complete.')
+        : game.kind === 'paint' ? 'This section is locked for ' + LOCK_MS / 60000 + ' minutes. Try another section or another painting.'
         : 'The solution is shown on the board.';
       $('statTime').textContent = fmt(currentElapsed());
       $('statMistakes').textContent = game.mistakes.length;
-      $('statSize').textContent = game.n + '×' + game.n;
+      $('statSize').textContent = game.w + '×' + game.h;
       const actions = $('resultActions');
       actions.innerHTML = '';
       const mk = (label, cls, fn) => {
@@ -1968,7 +2132,10 @@
         actions.appendChild(b);
         return b;
       };
-      if (won) {
+      if (game.kind === 'paint') {
+        mk('View board', '', () => closeResult());
+        mk('Back to painting', 'primary', () => { closeResult(); exitToCanvas(); });
+      } else if (won) {
         mk('View picture', '', () => closeResult());
         mk('New puzzle', 'primary', () => newGame());
       } else {
@@ -1999,6 +2166,650 @@
       else closeResult();
     });
 
+    // ── Paintings ─────────────────────────────────────────────────
+    // Puzzles cut from paintings (paintings.json, built by
+    // tools/build_paintings.py). Each painting is split into sections,
+    // often not square, and each section is three boards: its red, green
+    // and blue channels, contrast-stretched to two tones, in that order.
+    // Solving a board fades it into that channel's true values, mixed with
+    // the channels found before it, so a section ends in full color.
+    // Running out of lives locks every board of the section for LOCK_MS.
+    // Progress lives in localStorage under PAINT_KEY:
+    //   { puzzles: { [id]: { [section]: { done, cur, lock, times } } }, at }
+    // done counts channels found (0-3), cur is the board in progress, lock
+    // is when a lock ends (ms), times are solve times, and at is the page
+    // the player was on (gallery, a painting's canvas, or a section's board).
+    const PAINT_KEY = 'nonogram.paintings';
+    const LOCK_MS = 20 * 60 * 1000;
+    const CHANNELS = ['Red', 'Green', 'Blue'];
+    const REVEAL_DELAY = 350;  // ms after the solve before the colors come in
+    const REVEAL_STEP = 30;    // ms of delay per square along the diagonal
+    const REVEAL_FADE = 450;   // ms each square takes to fade in
+    let paintings = null, paintLoad = null;
+    let view = 'board';        // see main[data-view] in the CSS
+    let paint = null;          // { p, k }: the painting on screen and its section in play
+    let lockTick = 0, hintTimer = 0;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const boardShown = () => view === 'board' || view === 'play';
+
+    const paintProg = (() => {
+      const s = load(PAINT_KEY, null);
+      return s && typeof s === 'object' && s.puzzles && typeof s.puzzles === 'object' ? s : { puzzles: {}, at: null };
+    })();
+    const savePaint = () => save(PAINT_KEY, paintProg);
+    function secInfo(pid, k) { const p = paintProg.puzzles[pid]; return (p && p[k]) || { done: 0 }; }
+    function secProg(pid, k) {
+      const p = paintProg.puzzles[pid] || (paintProg.puzzles[pid] = {});
+      return p[k] || (p[k] = { done: 0 });
+    }
+    function lockLeft(info) {
+      if (!info.lock) return 0;
+      const left = info.lock - Date.now();
+      return left > 0 ? left : 0;
+    }
+
+    function loadPaintings() {
+      if (!paintLoad) {
+        paintLoad = fetch('paintings.json')
+          .then((r) => (r.ok ? r.json() : Promise.reject(new Error('paintings.json'))))
+          .then((d) => (paintings = d.puzzles.map(decodePainting)))
+          .catch((e) => { paintLoad = null; throw e; });
+      }
+      return paintLoad;
+    }
+
+    // pixels: RGB bytes, row by row. boards: per section, one hex string
+    // per channel, 4 squares a digit, row by row (1 filled).
+    function decodePainting(d, num) {
+      const bin = atob(d.pixels), pixels = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) pixels[i] = bin.charCodeAt(i);
+      const secs = [];
+      let y = 0;
+      for (const h of d.rows) {
+        let x = 0;
+        for (const w of d.cols) {
+          const boards = d.boards[secs.length].map((hx) => {
+            const bits = [];
+            for (const ch of hx) { const v = parseInt(ch, 16); bits.push(v >> 3 & 1, v >> 2 & 1, v >> 1 & 1, v & 1); }
+            return bits.slice(0, w * h);
+          });
+          const clues = boards.map((b) => cluesFor(w, h, b));
+          // Clue room shared by the section's three boards, so moving on to
+          // the next color keeps the board's layout.
+          const most = (lines) => Math.max(1, ...lines.map((l) => l.length));
+          secs.push({
+            x, y, w, h, boards, clues,
+            slots: Math.max(2, ...clues.map((c) => most(c.rows))),
+            colSlots: Math.max(3, ...clues.map((c) => most(c.cols))),
+          });
+          x += w;
+        }
+        y += h;
+      }
+      return { id: d.id, name: 'Puzzle ' + (num + 1), w: d.w, h: d.h, cols: d.cols, rows: d.rows, pixels, secs };
+    }
+
+    // A section's pixels as RGBA, keeping only the first `done` channels.
+    function sectionRGBA(p, s, done) {
+      const out = new Uint8ClampedArray(s.w * s.h * 4);
+      for (let y = 0; y < s.h; y++) for (let x = 0; x < s.w; x++) {
+        const src = ((s.y + y) * p.w + s.x + x) * 3, dst = (y * s.w + x) * 4;
+        for (let ch = 0; ch < 3; ch++) out[dst + ch] = ch < done ? p.pixels[src + ch] : 0;
+        out[dst + 3] = 255;
+      }
+      return out;
+    }
+    function drawSection(cv, p, s, done) {
+      cv.width = s.w; cv.height = s.h;
+      if (!done) return; // nothing found yet: blank
+      const ctx = cv.getContext('2d'), img = ctx.createImageData(s.w, s.h);
+      img.data.set(sectionRGBA(p, s, done));
+      ctx.putImageData(img, 0, 0);
+    }
+    const chanDots = (done, now) => '<span class="chans">' + [0, 1, 2].map((c) =>
+      '<i class="chan c' + c + (c < done ? ' done' : c === now ? ' now' : '') + '"></i>').join('') + '</span>';
+    const sectionsDone = (p) => p.secs.filter((s, k) => secInfo(p.id, k).done >= 3).length;
+    // Finished, and its section lines already shrunk away (paintProg.whole).
+    const isWhole = (p) => !!(paintProg.whole && paintProg.whole[p.id]) && sectionsDone(p) === p.secs.length;
+
+    // The painting as a grid of its sections. Interactive: each section is
+    // a button that opens its next board.
+    function paintGrid(p, interactive) {
+      const g = document.createElement('div');
+      g.className = 'pgrid';
+      g.style.gridTemplateColumns = p.cols.map((c) => c + 'fr').join(' ');
+      g.style.gridTemplateRows = p.rows.map((r) => r + 'fr').join(' ');
+      g.style.aspectRatio = p.w + ' / ' + p.h;
+      if (isWhole(p)) g.classList.add('whole');
+      p.secs.forEach((s, k) => {
+        const info = secInfo(p.id, k), el = document.createElement(interactive ? 'button' : 'div');
+        el.className = 'sec';
+        const cv = document.createElement('canvas');
+        drawSection(cv, p, s, info.done);
+        el.appendChild(cv);
+        if (interactive) {
+          el.type = 'button';
+          const left = lockLeft(info), started = info.done > 0 || (info.cur && info.cur.started);
+          el.classList.toggle('locked', left > 0);
+          el.classList.toggle('complete', info.done >= 3);
+          let label = 'Section ' + (k + 1) + ', ' + s.w + ' by ' + s.h;
+          if (left) {
+            el.insertAdjacentHTML('beforeend', '<span class="sec-lock"><svg class="ic"><use href="#i-lock"/></svg><span class="lt">' + fmt(left + 999) + '</span></span>');
+            label += ', locked';
+          } else if (info.done < 3) {
+            el.insertAdjacentHTML('beforeend', '<span class="sec-tag">' + (started ? chanDots(info.done, info.done) : s.w + '×' + s.h) + '</span>');
+            label += ', ' + CHANNELS[info.done].toLowerCase() + ' next';
+          } else label += ', complete';
+          el.setAttribute('aria-label', label);
+          el.addEventListener('click', () => pickSection(p, k, el));
+        }
+        g.appendChild(el);
+      });
+      return g;
+    }
+
+    function setView(v) {
+      view = v;
+      els.main.dataset.view = v;
+      $('paintBtn').setAttribute('aria-pressed', String(v !== 'board'));
+      clearInterval(lockTick); lockTick = 0;
+      if (v === 'canvas') lockTick = setInterval(tickLocks, 1000);
+      els.main.scrollTop = 0;
+      geom = null;
+    }
+
+    function setCrumb(back, info) {
+      $('crumbBackLbl').textContent = back;
+      $('crumbInfo').innerHTML = info;
+    }
+
+    // Save and stop the board on screen before showing something else.
+    function leaveGame() {
+      if (!game || !boardShown()) return; // already left when its page went
+      stopClock();
+      persist();
+      clearTimeout(resultTimer);
+      closeResult();
+      if (drag) { hideRunCount(); drag = null; }
+      setCursor(null);
+    }
+
+    // Back to random boards (New, a size or difficulty, or the gallery's back button).
+    function leavePaintings() {
+      paint = null;
+      paintProg.at = null;
+      savePaint();
+      setView('board');
+    }
+
+    // ── Page changes ──────────────────────────────────────────────
+    // Moving between the random board, the gallery, a painting and a
+    // section's board swaps nothing in or out at once and moves nothing in
+    // a jump. What leaves is copied into #flight, a fixed layer over the
+    // page, and fades out there (cloneOut); what arrives fades in where it
+    // is (fadeIn). The picture travels between pages as a ghost in #flight:
+    // a gallery thumbnail grows into the painting, a section grows onto its
+    // board's squares, and back. The real one stays hidden until its ghost
+    // lands exactly on it. Nothing on the page itself moves, so the page
+    // never gains scrollbars mid-change. Every animation is tracked, so a
+    // new change first finishes the last one (finishFlight).
+    const FLY_MS = 460, FADE_OUT_MS = 200, FADE_IN_MS = 280;
+    const FLY_EASE = 'cubic-bezier(.45, 0, .15, 1)';
+    const flightEl = $('flight');
+    let flights = [];
+
+    function track(anim, end) {
+      const f = { anim, end, done: false };
+      flights.push(f);
+      anim.addEventListener('finish', () => {
+        if (f.done) return;
+        f.done = true;
+        flights = flights.filter((x) => x !== f);
+        if (end) end();
+      });
+      return anim;
+    }
+    function finishFlight() {
+      const all = flights;
+      flights = [];
+      all.forEach((f) => { f.anim.cancel(); if (!f.done) { f.done = true; if (f.end) f.end(); } });
+    }
+
+    // A copy of el, in place in #flight, fading out. Canvases are copied
+    // pixel for pixel (a cloned canvas starts blank).
+    function cloneOut(el, dur = FADE_OUT_MS, delay = 0) {
+      const r = el.getBoundingClientRect();
+      if (!r.width || !r.height) return null;
+      const c = el.cloneNode(true), from = el.querySelectorAll('canvas'), to = c.querySelectorAll('canvas');
+      from.forEach((cv, i) => { if (cv.width && cv.height) to[i].getContext('2d').drawImage(cv, 0, 0); });
+      for (const n of [c, ...c.querySelectorAll('[id]')]) if (!(n instanceof SVGElement)) n.removeAttribute('id');
+      Object.assign(c.style, {
+        left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px',
+        display: getComputedStyle(el).display,
+      });
+      flightEl.appendChild(c);
+      track(c.animate([{ opacity: 1 }, { opacity: 0 }], { duration: dur, delay, easing: 'ease', fill: 'both' }), () => c.remove());
+      return c;
+    }
+    function fadeIn(el, delay = 0, dur = FADE_IN_MS) {
+      return track(el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: dur, delay, easing: 'ease', fill: 'backwards' }));
+    }
+    function fadeOutGhost(g, delay = 0, dur = FADE_IN_MS) {
+      track(g.animate([{ opacity: 1 }, { opacity: 0 }], { duration: dur, delay, easing: 'ease', fill: 'forwards' }), () => g.remove());
+    }
+
+    // What main shows now: the crumb, the board and its controls, or the paintings pages.
+    const shownParts = () => [els.crumb, els.board, els.controls, $('paint')].filter((el) => el.getClientRects().length);
+
+    // Old page out, new page in, both in place.
+    function crossfade(change) {
+      finishFlight();
+      shownParts().forEach((el) => cloneOut(el));
+      change();
+      shownParts().forEach((el) => fadeIn(el, 80));
+    }
+
+    // Moves ghost (in #flight) from rect a to rect b. sa and sb add style
+    // to each end (gaps, corner radius). land runs on arrival.
+    function fly(ghost, a, b, sa, sb, land, delay = 0) {
+      const at = (r, s) => Object.assign({ left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' }, s);
+      Object.assign(ghost.style, at(a, sa));
+      flightEl.appendChild(ghost);
+      return track(ghost.animate([at(a, sa), at(b, sb)], {
+        duration: reduceMotion.matches ? 0 : FLY_MS, delay, easing: FLY_EASE, fill: 'both',
+      }), land);
+    }
+    // A painting grid's gaps and corners, to morph between thumbnail and full size.
+    function gridLook(el) {
+      const cs = getComputedStyle(el);
+      return { rowGap: cs.rowGap, columnGap: cs.columnGap, padding: cs.paddingTop, borderRadius: cs.borderTopLeftRadius };
+    }
+    function sectionGhost(p, k) {
+      const g = document.createElement('div'), cv = document.createElement('canvas');
+      g.className = 'sec';
+      drawSection(cv, p, p.secs[k], secInfo(p.id, k).done);
+      g.appendChild(cv);
+      return g;
+    }
+    // The board's squares, edge to edge, and their corner radius.
+    function tilesRect() {
+      const a = cellEls[0].getBoundingClientRect(), b = cellEls[cellEls.length - 1].getBoundingClientRect();
+      return { left: a.left, top: a.top, width: b.right - a.left, height: b.bottom - a.top };
+    }
+    const tileRad = () => parseFloat(getComputedStyle(els.board).getPropertyValue('--size')) * 0.18 + 'px';
+    // A section's labels (size, dots, lock) wait for its ghost to land, then fade in.
+    const fadeTags = (root, delay) => root.querySelectorAll('.sec-tag, .sec-lock').forEach((t) => fadeIn(t, delay));
+
+    // ── The pages themselves (no animation) ──
+    function showRandom() {
+      leaveGame();
+      leavePaintings();
+      if (game && game.kind !== 'paint') { render(); return; }
+      if (restore()) render(); else newGame();
+    }
+    function showGallery() {
+      leaveGame();
+      paint = null;
+      setCrumb('Random boards', '');
+      setView('gallery');
+      paintProg.at = { view: 'gallery' };
+      savePaint();
+      if (paintings) renderGallery();
+      else $('gallery').innerHTML = '<p class="paint-msg">The paintings couldn’t load. Check your connection and try again.</p>';
+    }
+    function showCanvas(p) {
+      leaveGame();
+      paint = { p, k: null };
+      setView('canvas');
+      renderCanvas();
+      paintProg.at = { view: 'canvas', pid: p.id };
+      savePaint();
+      if (sectionsDone(p) === p.secs.length && !isWhole(p)) meltDividers(p);
+    }
+
+    // The first time a painting is shown finished, once any picture flying
+    // onto it has landed, its section lines shrink until they're gone.
+    const MELT_WAIT = 700; // ms; longer than a page change's flight (FLY_MS + 140)
+    let meltTimer = 0;
+    function meltDividers(p) {
+      clearTimeout(meltTimer);
+      meltTimer = setTimeout(() => {
+        const grid = $('pcanvas').firstChild;
+        if (view !== 'canvas' || !paint || paint.p !== p || !grid) return;
+        (paintProg.whole || (paintProg.whole = {}))[p.id] = true;
+        savePaint();
+        grid.classList.add('whole');
+      }, reduceMotion.matches ? 0 : MELT_WAIT);
+    }
+
+    // Restart painting: every section back to blank. A lock still running
+    // stays, so restarting can't be used to skip one.
+    const hasProgress = (p) => p.secs.some((s, k) => { const i = secInfo(p.id, k); return i.done > 0 || (i.cur && i.cur.started); });
+    function setRestart(asking) {
+      const row = $('restartRow');
+      if (row.classList.contains('asking') === asking) return;
+      if (row.getClientRects().length) { cloneOut(row, 150); fadeIn(row, 60, 200); }
+      row.classList.toggle('asking', asking);
+    }
+    function restartPainting() {
+      if (!paint) return;
+      finishFlight();
+      const p = paint.p, old = paintProg.puzzles[p.id] || {}, kept = {}, wasWhole = isWhole(p);
+      Object.keys(old).forEach((k) => { if (lockLeft(old[k])) kept[k] = { done: 0, lock: old[k].lock }; });
+      paintProg.puzzles[p.id] = kept;
+      if (paintProg.whole) delete paintProg.whole[p.id];
+      savePaint();
+      cloneOut($('pcanvas').firstChild, 700);
+      cloneOut(els.crumb);
+      cloneOut($('pickHint'));
+      setRestart(false);
+      renderCanvas();
+      const grid = $('pcanvas').firstChild;
+      if (wasWhole) {
+        // The section lines grow back under the fading picture.
+        grid.classList.add('whole');
+        void grid.offsetWidth;
+        grid.classList.remove('whole');
+      }
+      fadeIn(els.crumb, 80);
+      fadeIn($('pickHint'), 80);
+      fadeTags(grid, 300);
+    }
+    $('restartBtn').addEventListener('click', () => setRestart(true));
+    $('restartNo').addEventListener('click', () => setRestart(false));
+    $('restartYes').addEventListener('click', restartPainting);
+
+    function backToRandom() { crossfade(showRandom); }
+
+    function renderGallery() {
+      if (view !== 'gallery') return;
+      const g = $('gallery');
+      g.innerHTML = '';
+      paintings.forEach((p) => {
+        const n = p.secs.length, found = p.secs.reduce((t, s, k) => t + Math.min(3, secInfo(p.id, k).done), 0);
+        const b = document.createElement('button');
+        b.className = 'pcard';
+        const thumb = document.createElement('div');
+        thumb.className = 'thumb';
+        const grid = paintGrid(p, false);
+        // The square thumb holds the painting at its own shape.
+        grid.style.width = (p.w >= p.h ? 100 : (100 * p.w) / p.h) + '%';
+        thumb.appendChild(grid);
+        b.appendChild(thumb);
+        b.insertAdjacentHTML('beforeend',
+          '<span class="name">' + p.name + (sectionsDone(p) === n ? '<svg class="ic"><use href="#i-check"/></svg>' : '') + '</span>' +
+          '<span class="meta">' + n + ' section' + (n > 1 ? 's' : '') + ' · ' + p.w + '×' + p.h + '</span>' +
+          '<span class="bar"><i style="width:' + (100 * found) / (3 * n) + '%"></i></span>' +
+          '<span class="meta">' + found + ' of ' + 3 * n + ' colors</span>');
+        b.setAttribute('aria-label', p.name + ', ' + n + ' sections, ' + found + ' of ' + 3 * n + ' colors found');
+        b.dataset.pid = p.id;
+        b.addEventListener('click', () => openCanvas(p, grid));
+        g.appendChild(b);
+      });
+    }
+
+
+    // The gallery: from a painting, its picture shrinks back into its card.
+    function openGallery() {
+      const go = () => {
+        if (view !== 'canvas' || !paint) { crossfade(showGallery); return; }
+        finishFlight();
+        const p = paint.p, grid = $('pcanvas').firstChild, a = grid.getBoundingClientRect(), look = gridLook(grid);
+        grid.style.visibility = 'hidden';
+        shownParts().forEach((el) => cloneOut(el));
+        showGallery();
+        const card = $('gallery').querySelector('[data-pid="' + p.id + '"]');
+        if (!card) { shownParts().forEach((el) => fadeIn(el, 80)); return; }
+        card.scrollIntoView({ block: 'nearest' });
+        const thumb = card.querySelector('.pgrid'), ghost = paintGrid(p, false);
+        thumb.style.visibility = 'hidden';
+        fly(ghost, a, thumb.getBoundingClientRect(), look, gridLook(thumb), () => { thumb.style.visibility = ''; ghost.remove(); });
+        fadeIn(els.crumb, 80);
+        fadeIn($('paint'), 80);
+      };
+      if (paintings) go(); else loadPaintings().then(go, go);
+    }
+
+    // A painting: from the gallery, its card's picture grows into place.
+    function openCanvas(p, thumb) {
+      finishFlight();
+      if (!thumb || view !== 'gallery') { crossfade(() => showCanvas(p)); return; }
+      const a = thumb.getBoundingClientRect(), look = gridLook(thumb);
+      thumb.style.visibility = 'hidden';
+      shownParts().forEach((el) => cloneOut(el));
+      showCanvas(p);
+      const grid = $('pcanvas').firstChild, ghost = paintGrid(p, false);
+      grid.style.visibility = 'hidden';
+      fly(ghost, a, grid.getBoundingClientRect(), look, gridLook(grid), () => { grid.style.visibility = ''; ghost.remove(); });
+      fadeTags(grid, FLY_MS);
+      fadeIn(els.crumb, 80);
+      fadeIn($('pickHint'), 80);
+    }
+
+    function renderCanvas() {
+      const p = paint.p, n = p.secs.length, done = sectionsDone(p);
+      setCrumb('Paintings', '<b>' + p.name + '</b><span>' + done + ' of ' + n + ' section' + (n > 1 ? 's' : '') + ' done</span>');
+      clearTimeout(hintTimer);
+      $('pickHint').textContent = done === n ? 'Painting complete' : 'Pick a section';
+      const wrap = $('pcanvas');
+      wrap.innerHTML = '';
+      wrap.appendChild(paintGrid(p, true));
+      $('restartRow').classList.remove('asking');
+      $('restartBtn').disabled = !hasProgress(p);
+      fitCanvas();
+    }
+
+    // The painting as large as the page allows, below the crumb and hint.
+    function fitCanvas() {
+      if (view !== 'canvas' || !paint) return;
+      const grid = $('pcanvas').firstChild;
+      if (!grid) return;
+      const cs = getComputedStyle(els.main), gap = parseFloat(cs.rowGap || 0);
+      const availW = els.main.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      const availH = els.main.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) -
+        els.crumb.offsetHeight - gap - $('pickHint').offsetHeight - 14 - $('restartRow').offsetHeight - 14;
+      const p = paint.p, w = Math.min(availW, (availH * p.w) / p.h, 760);
+      grid.style.width = Math.max(140, Math.floor(w)) + 'px';
+    }
+
+    // A lock running out redraws the painting under a fading copy of it.
+    function tickLocks() {
+      if (view !== 'canvas' || !paint || flights.length) return;
+      let expired = false;
+      $('pcanvas').querySelectorAll('.sec.locked').forEach((el) => {
+        const k = Array.prototype.indexOf.call(el.parentNode.children, el), left = lockLeft(secInfo(paint.p.id, k));
+        if (!left) expired = true;
+        else el.querySelector('.lt').textContent = fmt(left + 999);
+      });
+      if (expired) { cloneOut($('pcanvas').firstChild, 400); cloneOut(els.crumb, 400); renderCanvas(); }
+    }
+
+    function hint(text) {
+      clearTimeout(hintTimer);
+      $('pickHint').textContent = text;
+      hintTimer = setTimeout(() => {
+        if (view === 'canvas' && paint) $('pickHint').textContent = sectionsDone(paint.p) === paint.p.secs.length ? 'Painting complete' : 'Pick a section';
+      }, 2500);
+    }
+
+    // A section: it grows from its place in the painting onto the board's
+    // squares, square for pixel, then gives way to them while the clue caps,
+    // time, lives and controls fade in around it.
+    function pickSection(p, k, el) {
+      const info = secInfo(p.id, k), left = lockLeft(info);
+      if (left || info.done >= 3) {
+        hint(left ? 'Locked for ' + fmt(left + 999) + '. Try another section.' : 'That section is done.');
+        if (left) { el.classList.remove('nope'); void el.offsetWidth; el.classList.add('nope'); }
+        return;
+      }
+      finishFlight();
+      const a = el.getBoundingClientRect(), ghost = sectionGhost(p, k);
+      el.style.visibility = 'hidden';
+      shownParts().forEach((part) => cloneOut(part));
+      playSection(p, k);
+      const fly0 = reduceMotion.matches ? 0 : FLY_MS;
+      fly(ghost, a, tilesRect(), { borderRadius: '3px' }, { borderRadius: tileRad() }, () => fadeOutGhost(ghost));
+      fadeIn(els.grid, Math.max(0, fly0 - 60));
+      for (const part of [els.board.querySelector('.stats'), els.colclues, els.rowclues, els.controls]) fadeIn(part, fly0 * 0.55, 360);
+      fadeIn(els.crumb, 80);
+    }
+
+    // Back to the painting: the section leaves the board's squares and
+    // shrinks into its place while the rest of the painting fades in.
+    function exitToCanvas() {
+      if (!paint) return;
+      finishFlight();
+      const { p, k } = paint, a = tilesRect(), rad = tileRad(), ghost = sectionGhost(p, k);
+      shownParts().forEach((part) => cloneOut(part, 260));
+      showCanvas(p);
+      const grid = $('pcanvas').firstChild, target = grid.children[k];
+      target.style.visibility = 'hidden';
+      fly(ghost, a, target.getBoundingClientRect(), { borderRadius: rad }, { borderRadius: '3px' },
+        () => { target.style.visibility = ''; ghost.remove(); }, reduceMotion.matches ? 0 : 140);
+      fadeIn(ghost, 0, 200);
+      fadeIn(grid, 120, 360);
+      fadeTags(target, (reduceMotion.matches ? 0 : FLY_MS + 140));
+      fadeIn(els.crumb, 80);
+      fadeIn($('pickHint'), 80);
+    }
+
+    // Opens the section's next board (or the one in progress).
+    function playSection(p, k) {
+      const s = p.secs[k], info = secProg(p.id, k);
+      if (info.done >= 3 || lockLeft(info)) { showCanvas(p); return; }
+      const ch = info.done, cur = info.cur;
+      const resume = cur && cur.ch === ch && typeof cur.state === 'string' && cur.state.length === s.w * s.h;
+      // The next color of the same section eases from the board before.
+      const from = view === 'play' && game && game.w === s.w && game.h === s.h ? {
+        size: parseFloat(getComputedStyle(els.board).getPropertyValue('--size')),
+        w: els.rowclues.getBoundingClientRect().width,
+      } : null;
+      leaveGame();
+      paint = { p, k };
+      game = {
+        kind: 'paint', pid: p.id, sec: k, ch, w: s.w, h: s.h, slots: s.slots, colSlots: s.colSlots,
+        sol: s.boards[ch].slice(), clues: s.clues[ch],
+        state: resume ? cur.state.split('').map(Number) : new Array(s.w * s.h).fill(0),
+        mistakes: resume ? cur.mistakes || [] : [], autoX: resume ? cur.autoX || [] : [],
+        lives: resume ? cur.lives : MAX_LIVES, elapsed: resume ? cur.elapsed || 0 : 0,
+        started: resume ? !!cur.started : false, status: 'playing',
+      };
+      setMode('fill');
+      setView('play');
+      playCrumb();
+      paintProg.at = { view: 'play', pid: p.id, sec: k };
+      render(from);
+      persist();
+    }
+
+    function playCrumb() {
+      const { p, k } = paint, found = game.status === 'won' ? game.ch + 1 : game.ch;
+      setCrumb(p.name, '<span>Section ' + (k + 1) + ' of ' + p.secs.length + '</span>' + chanDots(found, game.status === 'won' ? -1 : game.ch) +
+        '<b>' + (found >= 3 ? 'Complete' : CHANNELS[game.ch] + (game.status === 'won' ? ' done' : '')) + '</b>');
+    }
+
+    // The painting board's part of persist: its progress, kept per section.
+    function persistPaint() {
+      const info = secProg(game.pid, game.sec);
+      if (game.status === 'playing') {
+        info.cur = {
+          ch: game.ch, state: game.state.join(''), mistakes: game.mistakes, autoX: game.autoX,
+          lives: game.lives, elapsed: Math.round(currentElapsed()), started: game.started,
+        };
+      } else delete info.cur;
+      savePaint();
+    }
+
+    function paintWon() {
+      const info = secProg(game.pid, game.sec);
+      info.done = game.ch + 1;
+      delete info.cur;
+      (info.times || (info.times = [])).push(Math.round(currentElapsed()));
+      savePaint();
+      cloneOut(els.crumb, 400);
+      playCrumb();
+      revealColors();
+    }
+
+    function paintLost() {
+      const info = secProg(game.pid, game.sec);
+      info.lock = Date.now() + LOCK_MS;
+      delete info.cur;
+      savePaint();
+    }
+
+    function paintBanner() {
+      const p = paint.p;
+      if (game.status === 'won') {
+        const left = 2 - game.ch;
+        els.bannerText.textContent = left ? left + ' more color' + (left > 1 ? 's' : '') + ' left for this section'
+          : sectionsDone(p) === p.secs.length ? 'Painting complete' : 'Section complete';
+        $('bannerNew').textContent = left ? 'Next: ' + CHANNELS[game.ch + 1] : 'Back to painting';
+      } else {
+        els.bannerText.textContent = 'Locked for ' + LOCK_MS / 60000 + ' minutes';
+        $('bannerNew').textContent = 'Back to painting';
+      }
+    }
+    function paintBannerAction() {
+      if (game.status === 'won' && game.ch < 2) {
+        // The next color: the solved board fades away over the new one.
+        finishFlight();
+        shownParts().forEach((el) => cloneOut(el, 360));
+        playSection(paint.p, paint.k);
+      } else exitToCanvas();
+    }
+
+    // The solved board fades into its colors: the channels found so far at
+    // their true values, every square (filled or not) its own pixel, square
+    // by square along the diagonals from the top left. A canvas over the
+    // grid, drawn each frame, keeps it one element however big the board.
+    function revealColors() {
+      const { w, h } = game, s = paint.p.secs[game.sec];
+      const cv = document.createElement('canvas');
+      cv.className = 'reveal';
+      cv.width = w; cv.height = h;
+      cv.setAttribute('aria-hidden', 'true');
+      els.grid.appendChild(cv);
+      const ctx = cv.getContext('2d'), img = ctx.createImageData(w, h);
+      img.data.set(sectionRGBA(paint.p, s, game.ch + 1));
+      const t0 = performance.now() + (reduceMotion.matches ? 0 : REVEAL_DELAY);
+      const frame = (now) => {
+        if (!cv.isConnected) return;
+        const t = reduceMotion.matches ? 1e9 : now - t0;
+        let busy = false;
+        for (let i = 0; i < w * h; i++) {
+          const a = Math.min(1, Math.max(0, (t - (Math.floor(i / w) + (i % w)) * REVEAL_STEP) / REVEAL_FADE));
+          if (a < 1) busy = true;
+          img.data[i * 4 + 3] = Math.round(a * a * (3 - 2 * a) * 255);
+        }
+        ctx.putImageData(img, 0, 0);
+        if (busy) requestAnimationFrame(frame);
+      };
+      requestAnimationFrame(frame);
+    }
+
+    // At load, return to the paintings page the player was last on.
+    function resumePaintings() {
+      const at = paintProg.at;
+      if (!at || !at.view) return;
+      leaveGame();
+      setView('loading');
+      const show = () => {
+        const p = paintings && paintings.find((q) => q.id === at.pid);
+        if (at.view === 'play' && p && p.secs[at.sec]) playSection(p, at.sec);
+        else if (at.view === 'canvas' && p) showCanvas(p);
+        else showGallery();
+        shownParts().forEach((el) => fadeIn(el));
+      };
+      loadPaintings().then(show, show);
+    }
+
+    $('crumbBack').addEventListener('click', () => {
+      if (view === 'gallery') backToRandom();
+      else if (view === 'canvas') openGallery();
+      else if (view === 'play') exitToCanvas();
+    });
+
     // ── Pointer input (click and drag along a line) ───────────────
     let drag = null;
     let cursor = null;
@@ -2019,15 +2830,17 @@
 
     // Only the lines entering or leaving the highlight are touched.
     let hoverR = -1, hoverC = -1;
+    // A finished board (solved or lost) highlights nothing.
     function setHover(i) {
-      const n = game.n;
-      const r = i === null ? -1 : Math.floor(i / n), c = i === null ? -1 : i % n;
+      if (game.status !== 'playing') i = null;
+      const { w, h } = game;
+      const r = i === null ? -1 : Math.floor(i / w), c = i === null ? -1 : i % w;
       if (r === hoverR && c === hoverC) return;
       const pr = hoverR, pc = hoverC;
       hoverR = r; hoverC = c;
-      const mark = (j) => cellEls[j].classList.toggle('hl', Math.floor(j / n) === r || j % n === c);
-      for (const lr of pr === r ? [r] : [pr, r]) if (lr >= 0) for (let t = 0; t < n; t++) mark(lr * n + t);
-      for (const lc of pc === c ? [c] : [pc, c]) if (lc >= 0) for (let t = 0; t < n; t++) mark(t * n + lc);
+      const mark = (j) => cellEls[j].classList.toggle('hl', Math.floor(j / w) === r || j % w === c);
+      for (const lr of pr === r ? [r] : [pr, r]) if (lr >= 0) for (let t = 0; t < w; t++) mark(lr * w + t);
+      for (const lc of pc === c ? [c] : [pc, c]) if (lc >= 0) for (let t = 0; t < h; t++) mark(t * w + lc);
       if (pr !== r) { if (pr >= 0) rowClueEls[pr].classList.remove('hl'); if (r >= 0) rowClueEls[r].classList.add('hl'); }
       if (pc !== c) { if (pc >= 0) colClueEls[pc].classList.remove('hl'); if (c >= 0) colClueEls[c].classList.add('hl'); }
     }
@@ -2058,7 +2871,7 @@
 
     // Mark every cell from drag.last to target (same row or column).
     function walkTo(target) {
-      const n = game.n;
+      const n = game.w;
       const lr = Math.floor(drag.last / n), lc = drag.last % n;
       const r = Math.floor(target / n), c = target % n;
       const steps = Math.max(Math.abs(r - lr), Math.abs(c - lc));
@@ -2078,11 +2891,11 @@
     // The number stays where it first appeared and counts up as the drag
     // fills past the end of the run. It goes when the drag ends or turns.
     function runAround(i, axis) {
-      const n = game.n, r = Math.floor(i / n), c = i % n, row = axis === 'row';
+      const n = game.w, r = Math.floor(i / n), c = i % n, row = axis === 'row', len = row ? game.w : game.h;
       const at = (t) => game.state[row ? r * n + t : t * n + c] === 1;
       let a = row ? c : r, b = a;
       while (a > 0 && at(a - 1)) a--;
-      while (b < n - 1 && at(b + 1)) b++;
+      while (b < len - 1 && at(b + 1)) b++;
       return { a, b, line: row ? r : c };
     }
 
@@ -2090,8 +2903,11 @@
       const rc = drag.count;
       if (rc && rc.axis !== axis) hideRunCount();
       if (!drag.count) {
-        if (!wasFilled || game.state[prev] !== 1) return;
-        const run = runAround(j, axis), el = document.createElement('div');
+        // Shown when the drag runs into squares already filled, or once the
+        // run it is filling grows past 5.
+        const run = runAround(j, axis);
+        if (!(wasFilled && game.state[prev] === 1) && !(game.state[j] === 1 && run.b - run.a + 1 > 5)) return;
+        const el = document.createElement('div');
         el.className = 'runcount';
         el.setAttribute('aria-hidden', 'true');
         // Middle of the run, in cells from the grid's first square.
@@ -2120,12 +2936,12 @@
         if (e.pointerType === 'mouse') setHover(cellFromPoint(e.clientX, e.clientY));
         return;
       }
-      const n = game.n;
+      const n = game.w, rows = game.h;
       const first = gridGeom(), size = first.size;
       // Fractional grid position, clamped so dragging past the edge still works.
       const rx = (e.clientX - first.left) / size, ry = (e.clientY - first.top) / size;
       const fx = Math.min(n - 0.001, Math.max(0, rx));
-      const fy = Math.min(n - 0.001, Math.max(0, ry));
+      const fy = Math.min(rows - 0.001, Math.max(0, ry));
       const r = Math.floor(fy), c = Math.floor(fx);
       const lr = Math.floor(drag.last / n), lc = drag.last % n;
       if (r === lr && c === lc) return;
@@ -2135,7 +2951,7 @@
       // would walk the last column. So off the board the drag only extends
       // along its own line, only while the pointer stays near that line,
       // and never turns.
-      const inside = rx >= 0 && rx < n && ry >= 0 && ry < n;
+      const inside = rx >= 0 && rx < n && ry >= 0 && ry < rows;
       const nearRow = Math.abs(ry - (lr + 0.5)) <= TURN, nearCol = Math.abs(rx - (lc + 0.5)) <= TURN;
       if (!inside) {
         if (!drag.axis && nearRow !== nearCol) drag.axis = nearRow ? 'row' : 'col';
@@ -2197,6 +3013,8 @@
       if (e.target.closest && e.target.closest('.popover')) return; // the color picker handles its own keys
       const tag = (e.target.tagName || '').toLowerCase();
       if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
+      if (e.key === 'm' || e.key === 'M') { setSound(!settings.sound); return; }
+      if (!boardShown()) return; // the paintings pages use the keys' usual meanings
       if (e.key === ' ') {
         // Space always switches mode. Blurring first keeps it from also
         // pressing whichever button has focus (such as New) on key-up.
@@ -2205,9 +3023,8 @@
         toggleMode();
         return;
       }
-      if (e.key === 'm' || e.key === 'M') { setSound(!settings.sound); return; }
       if (game.status !== 'playing') return;
-      const n = game.n;
+      const n = game.w;
       const moves = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
       // Shift+arrow marks a run like a drag, so its fills keep stepping
       // through the tones; any other key starts the next mark from the bottom.
@@ -2215,7 +3032,7 @@
       if (moves[e.key]) {
         e.preventDefault();
         if (cursor === null) { setCursor(0); return; }
-        const r = Math.min(n - 1, Math.max(0, Math.floor(cursor / n) + moves[e.key][0]));
+        const r = Math.min(game.h - 1, Math.max(0, Math.floor(cursor / n) + moves[e.key][0]));
         const c = Math.min(n - 1, Math.max(0, cursor % n + moves[e.key][1]));
         const next = r * n + c;
         setCursor(next);
@@ -2472,7 +3289,8 @@
     });
     els.lives.addEventListener('click', addLife);
     $('newBtn').addEventListener('click', () => newGame());
-    $('bannerNew').addEventListener('click', () => newGame());
+    $('bannerNew').addEventListener('click', () => (game.kind === 'paint' ? paintBannerAction() : newGame()));
+    $('paintBtn').addEventListener('click', () => openGallery());
     // Pressed down as the result is about to open: the overlay would swallow the release, so cancel it now.
     for (const id of ['newBtn', 'bannerNew']) $(id).addEventListener('pointerdown', () => clearTimeout(resultTimer));
 
@@ -2481,6 +3299,7 @@
     setSound(settings.sound !== false);
     setMode(settings.mode === 'x' ? 'x' : 'fill');
     if (restore()) render(); else newGame();
+    resumePaintings();
   })();
   </script>
 </body>

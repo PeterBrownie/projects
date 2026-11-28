@@ -8,6 +8,27 @@ change a player would notice, grouped under the time it was pushed live (US Cent
 
 ## 2026-11-27
 
+### 22:00
+
+- Paintings: eight special puzzles made from pixel-art paintings, opened with the new
+  Paintings button. Each painting is cut into sections, many of them not square, and each section
+  is three boards: its red, green, then blue channel in two tones. Solving one fades the board into
+  that channel's true colors, mixed with the ones found before, until the section is in full color.
+  Running out of lives locks that section for 20 minutes. Progress is saved in the browser.
+- The title hides on windows narrower than 420px so the header stays on one row.
+- Paintings move smoothly between pages: a painting's picture grows out of its gallery card, a
+  chosen section grows onto its board's squares while the clues, time and lives fade in, and both
+  shrink back when you leave. Nothing pops in or out, and the page no longer shows scrollbars
+  partway through.
+- Playable painting sections brighten a little under the pointer.
+- A lost painting board no longer shows the squares you missed.
+- A finished board (solved or lost) no longer highlights rows, columns or clues under the pointer.
+- A finished painting becomes one picture: its section lines shrink until they're gone.
+- Restart painting, under each painting, clears its colors (after asking) so it can be played
+  again. A section that is still locked stays locked.
+- The run length shown while dragging now also appears once the run you're filling grows past 5
+  squares, then counts up as before.
+
 ### 20:56
 
 - Major grid lines through the picture fade away when the board is solved, along with the
