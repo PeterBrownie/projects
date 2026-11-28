@@ -8,6 +8,12 @@ change a player would notice, grouped under the time it was pushed live (US Cent
 
 ## 2026-11-27
 
+### 18:05
+
+- Smoother animation late in a game on phones, when most squares are marked and every fill
+  completes lines.
+- Crosses no longer flash black in Chrome when their line completes.
+
 ### 17:49
 
 - Major grid lines run unbroken through the inner corners of filled shapes.

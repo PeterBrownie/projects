@@ -455,16 +455,22 @@
        masked to the line's fill shape, so it has no seams between squares
        and its edges are soft. Cells showing a mistake keep their own
        animation. */
-    .cell.wave:not(.f):not(.m):not(.mfade) { animation: waveTile 0.45s ease var(--wd, 0ms) 1; }
+    /* Crosses already in the line are lit by the same overlay, as squares
+       in the cross tint (.wc), each lit evenly. Only the crosses the line's
+       completion adds animate on their own (.wave, then .xin): they grow in
+       as the wave reaches them, so the overlay can't cover them. A completed
+       line has no empty squares left, so nothing else needs lighting. */
+    .cell.wave:not(.m):not(.mfade) { animation: waveTile 0.45s ease var(--wd, 0ms) 1; }
     @keyframes waveTile { 35% { background-color: var(--hl-strong); } }
-    .cell.wave.x:not(.m):not(.mfade):not(.xin) .piece { animation: waveCross 0.45s ease var(--wd, 0ms) 1; }
     /* A completed line's new crosses wait, as plain empty squares, for the
        wave to reach them (.xwait), then grow in already lit (.xin). */
-    .cell.x.xwait .piece, .cell.xwait::before, .cell.xwait::after { display: none; }
+    .cell.x.xwait .piece { display: none; }
     .cell.x.xwait { background-color: var(--cell); }
     .cell.x.xwait.hl { background-color: var(--hl); }
     .cell.xin .piece { animation: waveCross 0.45s ease 1; }
-    @keyframes waveCross { 35% { fill: color-mix(in srgb, var(--accent) 22%, var(--gutter)); } }
+    /* Both ends are spelled out: with only the 35% step, Chromium animates an
+       SVG fill toward a color-mix() through black. */
+    @keyframes waveCross { 0%, 100% { fill: var(--gutter); } 35% { fill: color-mix(in srgb, var(--accent) 22%, var(--gutter)); } }
     .waves {
       position: absolute; left: var(--edge); top: var(--edge); z-index: 3;
       width: calc(var(--size) * var(--n)); height: calc(var(--size) * var(--n));
@@ -498,15 +504,24 @@
     }
     .runcount.show { opacity: 1; }
     .waves .lit { fill: color-mix(in srgb, var(--accent) 55%, #fff); }
-    .cell.x::before, .cell.x::after {
-      content: ""; position: absolute; left: 50%; top: 50%;
-      width: 56%; height: 3px; border-radius: 1.5px;
-      background: var(--cross);
-      transform: translate(-50%, -50%) rotate(45deg);
-      animation: fadeIn 0.14s ease-out;
-      z-index: 1; /* above the square's piece */
+    .waves .wc { fill: color-mix(in srgb, var(--accent) 22%, var(--gutter)); }
+    /* A lit cross's X, drawn again over the tint exactly as in its piece. */
+    .waves .wx {
+      fill: none; stroke: var(--cross); stroke-width: 3px; stroke-linecap: round;
+      vector-effect: non-scaling-stroke;
     }
-    .cell.x::after { transform: translate(-50%, -50%) rotate(-45deg); }
+    .waves .wx.mx { stroke: var(--danger); }
+    /* A cross's X is one path in its piece (.xl, outside the clipped group,
+       so it fades in rather than growing). It is 3px thick at every tile
+       size (non-scaling stroke), and the script sets its ends so the X
+       spans 56% of the tile, round caps included (see sizeCrosses). Drawing
+       it in the SVG, not as two rotated pseudo-elements, keeps each cross
+       one painted element, which late boards full of crosses need on mobile. */
+    .piece .xl {
+      display: none; fill: none; stroke: var(--cross); stroke-width: 3px; stroke-linecap: round;
+      vector-effect: non-scaling-stroke;
+    }
+    .cell.x .piece .xl { display: inline; animation: fadeIn 0.14s ease-out; }
     @keyframes fadeIn { from { opacity: 0; } }
 
     /* Mistake highlight: .m holds it, .mfade fades it out, then both are removed.
@@ -516,8 +531,7 @@
     .cell.m, .cell.mfade { z-index: 4; }
     .cell.m.x .piece { fill: color-mix(in srgb, var(--danger) 22%, var(--gutter)); transition: none; }
     .cell.mfade.x .piece { transition: fill 0.5s ease; }
-    .cell.m.x::before, .cell.m.x::after,
-    .cell.mfade.x::before, .cell.mfade.x::after { background: var(--danger); opacity: 1; }
+    .cell.m.x .xl, .cell.mfade.x .xl { stroke: var(--danger); }
     .cell.m.f::after, .cell.mfade.f::after {
       content: ""; position: absolute; inset: calc(var(--gut) / 2); pointer-events: none;
       border-radius: var(--rad);
@@ -526,7 +540,7 @@
     .cell.mfade.f::after { animation: mistakeFade 0.5s ease forwards; }
     /* An X placed by a mistake keeps red lines for the rest of the game;
        only the red background fades. */
-    .cell.mx::before, .cell.mx::after { background: var(--danger); opacity: 1; }
+    .cell.mx .xl { stroke: var(--danger); }
     @keyframes mistakeFade { to { opacity: 0; } }
     .cell.m { animation: shake 0.32s ease; }
     @keyframes shake {
@@ -540,7 +554,7 @@
       background: color-mix(in srgb, var(--accent) 35%, transparent);
     }
     .board.over .cell { cursor: default; }
-    .board.won .cell.x::before, .board.won .cell.x::after { opacity: 0; transition: opacity 0.6s; }
+    .board.won .cell.x .xl { opacity: 0; transition: opacity 0.6s; }
     .board.won .cell.x .piece, .board.won .cell.x.hl .piece { fill: var(--gutter); transition: fill 0.6s; }
 
     /* ── Mode toggle ── */
@@ -1188,7 +1202,7 @@
       for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
         const el = document.createElement('div');
         el.className = 'cell';
-        el.innerHTML = '<svg class="piece" viewBox="' + -T_PAD + ' ' + -T_PAD + ' ' + (100 + 2 * T_PAD) + ' ' + (100 + 2 * T_PAD) + '" aria-hidden="true"><g class="pg"></g><clipPath id="gc' + (r * n + c) + '"></clipPath></svg>';
+        el.innerHTML = '<svg class="piece" viewBox="' + -T_PAD + ' ' + -T_PAD + ' ' + (100 + 2 * T_PAD) + ' ' + (100 + 2 * T_PAD) + '" aria-hidden="true"><g class="pg"></g><path class="xl" d="' + crossD + '"/><clipPath id="gc' + (r * n + c) + '"></clipPath></svg>';
         el.dataset.i = r * n + c;
         frag.appendChild(el); cellEls.push(el);
       }
@@ -1587,6 +1601,19 @@
     // sideways as the row clues change width. The clues' width is pinned
     // inline while easing, then released at its natural value. Any other
     // fit (a resize, a game ending) ends an ease in place.
+    // Each cross's X: two diagonals through the tile's center, 56% of the
+    // tile long with their round caps. The stroke doesn't scale (3px), so
+    // its 1.5px caps take a different share of each tile size; the ends are
+    // set for the tile size in px whenever the board refits.
+    let crossD = '', crossSize = 0;
+    function sizeCrosses(size) {
+      if (size === crossSize) return;
+      crossSize = size;
+      const h = +((28 - 150 / size) / Math.SQRT2).toFixed(2), lo = 50 - h, hi = 50 + h;
+      crossD = 'M' + lo + ' ' + lo + 'L' + hi + ' ' + hi + 'M' + lo + ' ' + hi + 'L' + hi + ' ' + lo;
+      for (const el of cellEls) el.firstChild.children[1].setAttribute('d', crossD); // the .xl after the piece's group
+    }
+
     const EASE_MS = 180; // must match the .board.easing transitions
     let easeTimer = 0;
     function endEase() {
@@ -1610,6 +1637,7 @@
       const availH = els.main.clientHeight - padY - els.controls.offsetHeight - parseFloat(cs.rowGap || 0);
       const size = Math.max(14, Math.min(56, Math.floor(Math.min((availW - bw) / aw, (availH - bh) / ah))));
       b.style.setProperty('--size', size + 'px');
+      sizeCrosses(size);
       geom = null;
       if (!from) return;
       const toW = els.rowclues.getBoundingClientRect().width;
@@ -1680,6 +1708,7 @@
     const WAVE_PEAK = 0.35;  // share of WAVE_LEN spent brightening
     const WAVE_FEATHER = 0.14; // share of the line's width the light fades over, each side
     let wavesEl = null, waves = [], waveFrame = 0, waveIds = 0, lineChimeAt = -1;
+    const WAVE_SQUARE = roundRect(T_IN, T_IN, 100 - T_IN, 100 - T_IN, T_RAD, T_RAD, T_RAD, T_RAD); // a lit cross's square, in tile units
 
     function waveLine(kind, k, origin) {
       waves.push({ kind, k, origin, start: null, svg: null, mask: '' });
@@ -1691,18 +1720,31 @@
       // One chime per frame, even when a row and a column finish together.
       // The move that solves the board plays the solve sound instead.
       if (game.status === 'playing' && now !== lineChimeAt) { lineChimeAt = now; sound.play('line'); }
-      // Restart tiles that are already waving: clear them all, then one
-      // style flush, then set them again (not a flush per tile).
+      // The line's waiting crosses animate on their own (.wave) and appear
+      // as the wave reaches them. Restart any already waving: clear them
+      // all, then one style flush, then set them again (not a flush per cell).
+      const waiting = idx.filter((j) => cellEls[j].classList.contains('xwait'));
       let restart = false;
-      idx.forEach((j) => { const el = cellEls[j]; if (el.classList.contains('wave')) { el.classList.remove('wave'); restart = true; } });
+      waiting.forEach((j) => { const el = cellEls[j]; if (el.classList.contains('wave')) { el.classList.remove('wave'); restart = true; } });
       if (restart) void els.grid.offsetWidth;
-      idx.forEach((j, t) => {
-        const el = cellEls[j], delay = Math.abs(t - w.origin) * WAVE_STEP;
+      waiting.forEach((j) => {
+        const el = cellEls[j], delay = Math.abs(idx.indexOf(j) - w.origin) * WAVE_STEP;
         el.style.setProperty('--wd', delay + 'ms');
         el.classList.add('wave');
         clearTimeout(el._waveTimer);
         el._waveTimer = setTimeout(() => el.classList.remove('wave'), delay + 500);
-        if (el.classList.contains('xwait')) setTimeout(() => revealCross(j, el), delay);
+        setTimeout(() => revealCross(j, el), delay);
+      });
+      // The line's other crosses are lit by the overlay: a tinted square
+      // each, with its X drawn again on top. Cells showing a mistake keep
+      // their own animation, and crosses just revealed by another line's
+      // wave (.xin) are already lit.
+      let marks = '';
+      idx.forEach((j) => {
+        const cl = cellEls[j].classList;
+        if (game.state[j] !== 2 || cl.contains('xwait') || cl.contains('m') || cl.contains('mfade') || cl.contains('xin')) return;
+        const at = ' transform="translate(' + (j % n) * 100 + ' ' + Math.floor(j / n) * 100 + ')"';
+        marks += '<path class="wc"' + at + ' d="' + WAVE_SQUARE + '"/><path class="wx' + (cl.contains('mx') ? ' mx' : '') + '"' + at + ' d="' + crossD + '"/>';
       });
       let pieces = '';
       idx.forEach((j) => {
@@ -1730,8 +1772,16 @@
         '<rect class="lit" ' + rect + ' mask="url(#wm' + id + ')"/>';
       w.svg = svg; w.start = now;
       w.end = WAVE_LEN + WAVE_STEP * Math.max(w.origin + 0.5, n - w.origin - 0.5);
-      drawWave(w, 0); // dark before it is shown
       strip.appendChild(svg);
+      if (marks) {
+        // A second overlay in the same strip, pulsed per square (see drawWave).
+        const svg2 = document.createElementNS(SVG_NS, 'svg');
+        svg2.setAttribute('viewBox', '0 0 ' + n * 100 + ' ' + n * 100);
+        svg2.innerHTML = marks;
+        w.marks = svg2; w.marksMask = '';
+        strip.appendChild(svg2);
+      }
+      drawWave(w, 0); // dark before it is shown
       wavesEl.appendChild(strip);
     }
 
@@ -1754,10 +1804,24 @@
         g += ', rgba(0,0,0,' + waveLevel(t - WAVE_STEP * Math.abs(pos - (w.origin + 0.5))).toFixed(3) + ') ' + (s / samples) * 100 + '%';
       }
       g += ')';
-      if (g === w.mask) return;
-      w.mask = g;
-      w.svg.style.webkitMaskImage = g;
-      w.svg.style.maskImage = g;
+      if (g !== w.mask) {
+        w.mask = g;
+        w.svg.style.webkitMaskImage = g;
+        w.svg.style.maskImage = g;
+      }
+      if (!w.marks) return;
+      // Squares light evenly, each on its own delay (WAVE_STEP per cell from
+      // the origin), so this pulse steps at the cell edges, in the gutters.
+      let m = 'linear-gradient(' + (w.kind === 'r' ? 'to right' : 'to bottom');
+      for (let c = 0; c < n; c++) {
+        const a = 'rgba(0,0,0,' + waveLevel(t - WAVE_STEP * Math.abs(c - w.origin)).toFixed(3) + ') ';
+        m += ', ' + a + (c / n) * 100 + '%, ' + a + ((c + 1) / n) * 100 + '%';
+      }
+      m += ')';
+      if (m === w.marksMask) return;
+      w.marksMask = m;
+      w.marks.style.webkitMaskImage = m;
+      w.marks.style.maskImage = m;
     }
 
     // Brightness of one point, `ms` after its own start: up, then back down.
